@@ -38,8 +38,8 @@ def t_error(t):
 
 
 def lex_text(text):
-    lex.lex()
-    lex.input(text)
+    lexer = get_lexer()
+    lexer.input(text)
     result = []
     while True:
         token = lex.token()
@@ -48,3 +48,7 @@ def lex_text(text):
         else:
             break
     return result
+
+
+def get_lexer():
+    return lex.lex()
