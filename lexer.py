@@ -2,11 +2,21 @@ from ply import lex
 
 
 tokens = [
+    'PLUS',
+    'MINUS',
+    'TIMES',
+    'DIVIDEDBY',
+    'MOD',
     'SELECT',
     'NUMBER'
 ]
 
 
+t_PLUS = r'\+'
+t_MINUS = r'-'
+t_TIMES = r'\*'
+t_DIVIDEDBY = r'/'
+t_MOD = r'%'
 t_SELECT = r'SELECT'
 
 
