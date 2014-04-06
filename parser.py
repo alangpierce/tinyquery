@@ -14,8 +14,24 @@ precedence = (
 
 
 def p_select(p):
-    """select : SELECT expression"""
-    p[0] = tq_ast.Select(p[2])
+    """select : SELECT select_field
+              | SELECT select_field FROM table_expr"""
+    if len(p) == 3:
+        p[0] = tq_ast.Select(p[2], None)
+    elif len(p) == 5:
+        p[0] = tq_ast.Select(p[2], p[4])
+    else:
+        assert False, 'Unexpected number of captured tokens.'
+
+
+def p_table_expr_id(p):
+    """table_expr : ID"""
+    p[0] = tq_ast.TableId(p[1])
+
+
+def p_select_field(p):
+    """select_field : expression"""
+    p[0] = tq_ast.SelectField(p[1])
 
 
 def p_expression_binary(p):
@@ -33,8 +49,13 @@ def p_int_literal(p):
     p[0] = tq_ast.Literal(p[1])
 
 
+def p_expr_id(p):
+    """expression : ID"""
+    p[0] = tq_ast.ColumnId(p[1])
+
+
 def p_error(p):
-    raise SyntaxError('Syntax error!')
+    raise SyntaxError('Unexpected token: %s' % p)
 
 
 def parse_text(text):

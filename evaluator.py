@@ -6,7 +6,9 @@ def evaluate_select(text):
     ast = parser.parse_text(text)
     if not isinstance(ast, tq_ast.Select):
         raise RuntimeError('Expected a select expression.')
-    return evaluate_expr(ast.expr)
+    if len(ast.select_fields) != 1:
+        raise NotImplementedError('Only one select field is supported.')
+    return evaluate_expr(ast.select_fields.expr)
 
 
 def evaluate_expr(expr):
