@@ -2,7 +2,7 @@ import parser
 import tq_ast
 
 
-def evaluate_text(text):
+def evaluate_select(text):
     ast = parser.parse_text(text)
     if not isinstance(ast, tq_ast.Select):
         raise RuntimeError('Expected a select expression.')
