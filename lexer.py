@@ -1,3 +1,5 @@
+"""The lexer turns a query string into a stream of tokens."""
+
 from ply import lex
 
 

@@ -1,4 +1,4 @@
-
+"""The parser turns a stream of tokens into an AST."""
 from ply import yacc
 
 import tq_ast
@@ -14,8 +14,8 @@ precedence = (
 
 
 def p_select(p):
-    """select : SELECT select_field
-              | SELECT select_field FROM table_expr"""
+    """select : SELECT select_field_list
+              | SELECT select_field_list FROM table_expr"""
     if len(p) == 3:
         p[0] = tq_ast.Select(p[2], None)
     elif len(p) == 5:
@@ -29,9 +29,9 @@ def p_table_expr_id(p):
     p[0] = tq_ast.TableId(p[1])
 
 
-def p_select_field(p):
-    """select_field : expression"""
-    p[0] = tq_ast.SelectField(p[1])
+def p_select_field_list(p):
+    """select_field_list : expression"""
+    p[0] = [tq_ast.SelectField(p[1])]
 
 
 def p_expression_binary(p):

@@ -1,3 +1,5 @@
+"""A set of AST classes that correspond to the code."""
+
 import collections
 
 
@@ -36,6 +38,7 @@ class Literal(collections.namedtuple('Literal', ['value'])):
 class ColumnId(collections.namedtuple('ColumnId', ['name'])):
     def __str__(self):
         return self.name
+
 
 class TableId(collections.namedtuple('TableId', ['name'])):
     def __str__(self):
