@@ -5,8 +5,10 @@ This step has a number of responsibilities:
 -Resolve all select fields to their aliases and types.
 """
 import parser
+import runtime
 import tq_ast
 import typed_ast
+import tq_types
 
 
 class CompileError(Exception):
@@ -88,19 +90,17 @@ class Compiler(object):
 
     def compile_Literal(self, expr, tables):
         if isinstance(expr.value, int):
-            return typed_ast.Literal(expr.value, 'int')
+            return typed_ast.Literal(expr.value, tq_types.INT)
         else:
             raise NotImplementedError('Only int literals supported for now.')
 
     def compile_BinaryOperator(self, expr, tables):
+        func = runtime.get_operator(expr.operator)
+
         compiled_left = self.compile_expr(expr.left, tables)
         compiled_right = self.compile_expr(expr.right, tables)
 
-        if compiled_left.type == 'int' and compiled_right.type == 'int':
-            return_type = 'int'
-        else:
-            raise NotImplementedError(
-                'Only int, int -> int operators are currently supported.')
+        result_type = func.check_types(compiled_left.type, compiled_right.type)
 
         return typed_ast.FunctionCall(
-            expr.operator, [compiled_left, compiled_right], return_type)
+            func, [compiled_left, compiled_right], result_type)

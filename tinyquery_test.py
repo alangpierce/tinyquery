@@ -37,3 +37,12 @@ class TinyQueryTest(unittest.TestCase):
             tinyquery.Table('query_result',
                             {'val1': tinyquery.Column('int', [4, 1, 8, 1, 2])})
         )
+
+    def test_select_comparison(self):
+        self.assert_query_result(
+            'SELECT val1 = val2 FROM test_table',
+            tinyquery.Table(
+                'query_result',
+                {'f0_': tinyquery.Column('bool',
+                                         [False, False, False, True, False])})
+        )

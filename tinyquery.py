@@ -51,19 +51,11 @@ class TinyQuery(object):
                 'Missing handler for type {}'.format(expr.__class__.__name__))
         return method(expr, num_rows)
 
-    functions = {
-        '+': lambda a, b: a + b,
-        '-': lambda a, b: a - b,
-        '*': lambda a, b: a * b,
-        '/': lambda a, b: a / b,
-        '%': lambda a, b: a % b,
-    }
-
     def evaluate_FunctionCall(self, func_call, num_rows):
         arg_results = [self.evaluate_expr(arg, num_rows)
                        for arg in func_call.args]
-        func = self.functions[func_call.name]
-        return [func(*func_args) for func_args in zip(*arg_results)]
+        return [func_call.func.evaluate(*func_args)
+                for func_args in zip(*arg_results)]
 
     def evaluate_Literal(self, literal, num_rows):
         return [literal.value for _ in xrange(num_rows)]

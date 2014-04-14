@@ -14,8 +14,14 @@ class SelectField(collections.namedtuple('SelectField', ['expr', 'alias'])):
 
 
 class FunctionCall(collections.namedtuple(
-        'FunctionCall', ['name', 'args', 'type'])):
-    pass
+        'FunctionCall', ['func', 'args', 'type'])):
+    """Expression representing a call to a built-in function.
+
+    Fields:
+        func: A runtime.Function for the function to call.
+        args: A list of expressions to pass in as the function's arguments.
+        type: The result type of the expression.
+    """
 
 
 class Literal(collections.namedtuple('Literal', ['value', 'type'])):
