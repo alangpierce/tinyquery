@@ -1,5 +1,6 @@
 """Implementation of the TinyQuery service."""
 import collections
+import itertools
 
 import compiler
 import typed_ast
@@ -30,39 +31,46 @@ class TinyQuery(object):
         assert isinstance(select_ast, typed_ast.Select)
         if select_ast.table:
             table = self.tables_by_name[select_ast.table]
-            num_rows = len(table.columns.itervalues().next().values)
+            where_context = context_from_table(table)
+            mask_column = self.evaluate_expr(select_ast.where_expr,
+                                             where_context)
+            select_context = mask_context(where_context, mask_column)
         else:
-            num_rows = 1
-        result_columns = [self.evaluate_select_field(select_field, num_rows)
-                          for select_field in select_ast.select_fields]
+            # If the user isn't selecting from any tables, just specify that
+            # there is one column to return and no table accessible.
+            select_context = Context(1, {})
+        result_columns = [
+            self.evaluate_select_field(select_field, select_context)
+            for select_field in select_ast.select_fields]
         return Table('query_result', dict(result_columns))
 
-    def evaluate_select_field(self, select_field, num_rows):
+    def evaluate_select_field(self, select_field, context):
         """Given a typed select field, return a resulting name and  Column."""
         assert isinstance(select_field, typed_ast.SelectField)
-        results = self.evaluate_expr(select_field.expr, num_rows)
+        results = self.evaluate_expr(select_field.expr, context)
         return select_field.alias, Column(select_field.expr.type, results)
 
-    def evaluate_expr(self, expr, num_rows):
+    def evaluate_expr(self, expr, context):
+        """Computes the raw data for the output column for the expression."""
         try:
             method = getattr(self, 'evaluate_' + expr.__class__.__name__)
         except AttributeError:
             raise NotImplementedError(
                 'Missing handler for type {}'.format(expr.__class__.__name__))
-        return method(expr, num_rows)
+        return method(expr, context)
 
-    def evaluate_FunctionCall(self, func_call, num_rows):
-        arg_results = [self.evaluate_expr(arg, num_rows)
+    def evaluate_FunctionCall(self, func_call, context):
+        arg_results = [self.evaluate_expr(arg, context)
                        for arg in func_call.args]
         return [func_call.func.evaluate(*func_args)
                 for func_args in zip(*arg_results)]
 
-    def evaluate_Literal(self, literal, num_rows):
-        return [literal.value for _ in xrange(num_rows)]
+    def evaluate_Literal(self, literal, context):
+        return [literal.value for _ in xrange(context.num_rows)]
 
-    def evaluate_ColumnRef(self, column_ref, num_rows):
-        table = self.tables_by_name[column_ref.table]
-        return table.columns[column_ref.column].values
+    def evaluate_ColumnRef(self, column_ref, context):
+        column = context.columns[column_ref.table + '.' + column_ref.column]
+        return column.values
 
 
 class Table(collections.namedtuple('Table', ['name', 'columns'])):
@@ -71,8 +79,41 @@ class Table(collections.namedtuple('Table', ['name', 'columns'])):
     Fields:
         columns: A dict mapping column name to column.
     """
-    pass
+
+
+class Context(collections.namedtuple('Context', ['num_rows', 'columns'])):
+    """Represents the columns accessible when evaluating an expression."""
+    def __init__(self, num_rows, columns):
+        for name, column in columns.iteritems():
+            assert len(column.values) == num_rows, (
+                'Column %s had %s rows, expected %s.' %
+                    (name, len(column.values), num_rows))
+        super(Context, self).__init__()
 
 
 class Column(collections.namedtuple('Column', ['type', 'values'])):
     pass
+
+
+def context_from_table(table):
+    any_column = table.columns.itervalues().next()
+    new_columns = {
+        table.name + '.' + column_name:column for
+        (column_name, column) in table.columns.iteritems()}
+    return Context(len(any_column.values), new_columns)
+
+
+def mask_context(context, mask):
+    """Apply a row filter to a given context.
+
+    Arguments:
+        context: A Context to filter.
+        mask: A column of type bool. Each row in this column should be True if
+            the row should be kept for the whole context and False otherwise.
+    """
+    new_columns = {
+        column_name: Column(column.type,
+                            list(itertools.compress(column.values, mask)))
+        for (column_name, column) in context.columns.iteritems()
+    }
+    return Context(sum(mask), new_columns)
