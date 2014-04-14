@@ -28,6 +28,19 @@ class ParserTest(unittest.TestCase):
                 tq_ast.TableId('bar')
             ))
 
+    def test_select_comparison(self):
+        self.assert_parsed_select(
+            'SELECT foo = bar FROM baz',
+            tq_ast.Select(
+                [tq_ast.SelectField(
+                    tq_ast.BinaryOperator(
+                        '=',
+                        tq_ast.ColumnId('foo'),
+                        tq_ast.ColumnId('bar')))],
+                tq_ast.TableId('baz')
+            )
+        )
+
     def assert_parsed_select(self, text, expected_ast):
         actual_ast = parser.parse_text(text)
         self.assertEqual(expected_ast, actual_ast,

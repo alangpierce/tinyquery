@@ -8,6 +8,8 @@ import lexer
 tokens = lexer.tokens
 
 precedence = (
+    ('left', 'EQUALS', 'NOT_EQUAL', 'GREATER_THAN', 'LESS_THAN',
+     'GREATER_THAN_OR_EQUAL', 'LESS_THAN_OR_EQUAL'),
     ('left', 'PLUS', 'MINUS'),
     ('left', 'TIMES', 'DIVIDED_BY', 'MOD'),
 )
@@ -40,6 +42,12 @@ def p_expression_binary(p):
                   | expression TIMES expression
                   | expression DIVIDED_BY expression
                   | expression MOD expression
+                  | expression EQUALS expression
+                  | expression NOT_EQUAL expression
+                  | expression GREATER_THAN expression
+                  | expression LESS_THAN expression
+                  | expression GREATER_THAN_OR_EQUAL expression
+                  | expression LESS_THAN_OR_EQUAL expression
     """
     p[0] = tq_ast.BinaryOperator(p[2], p[1], p[3])
 
