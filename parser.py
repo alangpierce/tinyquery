@@ -9,7 +9,7 @@ tokens = lexer.tokens
 
 precedence = (
     ('left', 'PLUS', 'MINUS'),
-    ('left', 'TIMES', 'DIVIDEDBY', 'MOD'),
+    ('left', 'TIMES', 'DIVIDED_BY', 'MOD'),
 )
 
 
@@ -38,7 +38,7 @@ def p_expression_binary(p):
     """expression : expression PLUS expression
                   | expression MINUS expression
                   | expression TIMES expression
-                  | expression DIVIDEDBY expression
+                  | expression DIVIDED_BY expression
                   | expression MOD expression
     """
     p[0] = tq_ast.BinaryOperator(p[2], p[1], p[3])

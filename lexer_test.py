@@ -6,8 +6,14 @@ import lexer
 plus = ('PLUS', '+')
 minus = ('MINUS', '-')
 times = ('TIMES', '*')
-dividedby = ('DIVIDEDBY', '/')
+divided_by = ('DIVIDED_BY', '/')
 mod = ('MOD', '%')
+equals = ('EQUALS', '=')
+not_equal = ('NOT_EQUAL', '!=')
+greater_than = ('GREATER_THAN', '>')
+less_than = ('LESS_THAN', '<')
+greater_than_or_equal = ('GREATER_THAN_OR_EQUAL', '>=')
+less_than_or_equal = ('LESS_THAN_OR_EQUAL', '<=')
 select = ('SELECT', 'select')
 from_tok = ('FROM', 'from')
 
@@ -30,12 +36,20 @@ class LexerTest(unittest.TestCase):
         self.assert_tokens(
             'SELECT 0 + 1 - 2 * 3 / 4 % 5',
             [select, num(0), plus, num(1), minus, num(2), times, num(3),
-             dividedby, num(4), mod, num(5)])
+             divided_by, num(4), mod, num(5)])
 
     def test_select_from_table(self):
         self.assert_tokens(
             'SELECT foo FROM bar',
             [select, ident('foo'), from_tok, ident('bar')])
+
+    def test_comparisons(self):
+        self.assert_tokens(
+            'SELECT 1 > 2 <= 3 = 4 != 5 < 6 >= 7',
+            [select, num(1), greater_than, num(2), less_than_or_equal, num(3),
+             equals, num(4), not_equal, num(5), less_than, num(6),
+             greater_than_or_equal, num(7)]
+        )
 
     def assert_tokens(self, text, expected_tokens):
         tokens = lexer.lex_text(text)

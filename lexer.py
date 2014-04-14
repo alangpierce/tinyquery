@@ -14,17 +14,30 @@ tokens = [
     'PLUS',
     'MINUS',
     'TIMES',
-    'DIVIDEDBY',
+    'DIVIDED_BY',
     'MOD',
+    'EQUALS',
+    'NOT_EQUAL',
+    'GREATER_THAN',
+    'LESS_THAN',
+    'GREATER_THAN_OR_EQUAL',
+    'LESS_THAN_OR_EQUAL',
     'NUMBER',
     'ID'
 ] + reserved_words.values()
 
+
 t_PLUS = r'\+'
 t_MINUS = r'-'
 t_TIMES = r'\*'
-t_DIVIDEDBY = r'/'
+t_DIVIDED_BY = r'/'
 t_MOD = r'%'
+t_EQUALS = r'='
+t_NOT_EQUAL = r'!='
+t_GREATER_THAN = r'>'
+t_LESS_THAN = r'<'
+t_GREATER_THAN_OR_EQUAL = r'>='
+t_LESS_THAN_OR_EQUAL = r'<='
 
 
 def t_NUMBER(token):
