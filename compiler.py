@@ -36,7 +36,12 @@ class Compiler(object):
             table_result = tables[0].name
         else:
             table_result = None
-        return typed_ast.Select(select_fields, table_result)
+
+        if select.where_expr:
+            where_expr = self.compile_expr(select.where_expr, tables)
+        else:
+            where_expr = typed_ast.Literal(True, tq_types.BOOL)
+        return typed_ast.Select(select_fields, table_result, where_expr)
 
     def compile_table_expr(self, table_expr):
         """Given a table expression, return the tables referenced.

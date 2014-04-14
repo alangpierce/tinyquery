@@ -4,7 +4,7 @@ import collections
 
 
 class Select(collections.namedtuple(
-        'Select', ['select_fields', 'table'])):
+        'Select', ['select_fields', 'table', 'where_expr'])):
     """Currently, you can only select directly from table columns."""
     pass
 
