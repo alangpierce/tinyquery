@@ -7,7 +7,8 @@ from ply import lex
 # before looking them up in this map.
 reserved_words = {
     'select': 'SELECT',
-    'from': 'FROM'
+    'from': 'FROM',
+    'where': 'WHERE'
 }
 
 tokens = [

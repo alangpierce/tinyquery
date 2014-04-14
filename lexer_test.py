@@ -16,6 +16,7 @@ greater_than_or_equal = ('GREATER_THAN_OR_EQUAL', '>=')
 less_than_or_equal = ('LESS_THAN_OR_EQUAL', '<=')
 select = ('SELECT', 'select')
 from_tok = ('FROM', 'from')
+where = ('WHERE', 'where')
 
 
 def num(n):
@@ -49,6 +50,13 @@ class LexerTest(unittest.TestCase):
             [select, num(1), greater_than, num(2), less_than_or_equal, num(3),
              equals, num(4), not_equal, num(5), less_than, num(6),
              greater_than_or_equal, num(7)]
+        )
+
+    def test_select_where(self):
+        self.assert_tokens(
+            'SELECT foo FROM bar WHERE foo > 3',
+            [select, ident('foo'), from_tok, ident('bar'), where, ident('foo'),
+             greater_than, num(3)]
         )
 
     def assert_tokens(self, text, expected_tokens):

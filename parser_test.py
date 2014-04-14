@@ -16,8 +16,8 @@ class ParserTest(unittest.TestCase):
                 tq_ast.SelectField(tq_ast.BinaryOperator(
                     '+',
                     tq_ast.BinaryOperator('*', literal(1), literal(2)),
-                    tq_ast.BinaryOperator('/', literal(3), literal(4))))
-                ],
+                    tq_ast.BinaryOperator('/', literal(3), literal(4))))],
+                None,
                 None))
 
     def test_select_from_table(self):
@@ -25,7 +25,8 @@ class ParserTest(unittest.TestCase):
             'SELECT foo FROM bar',
             tq_ast.Select(
                 [tq_ast.SelectField(tq_ast.ColumnId('foo'))],
-                tq_ast.TableId('bar')
+                tq_ast.TableId('bar'),
+                None
             ))
 
     def test_select_comparison(self):
@@ -37,11 +38,27 @@ class ParserTest(unittest.TestCase):
                         '=',
                         tq_ast.ColumnId('foo'),
                         tq_ast.ColumnId('bar')))],
-                tq_ast.TableId('baz')
+                tq_ast.TableId('baz'),
+                None
             )
         )
+
+    def test_where(self):
+        self.assert_parsed_select(
+            'SELECT foo + 2 FROM bar WHERE foo > 3',
+            tq_ast.Select(
+                [tq_ast.SelectField(tq_ast.BinaryOperator(
+                    '+',
+                    tq_ast.ColumnId('foo'),
+                    tq_ast.Literal(2)))],
+                tq_ast.TableId('bar'),
+                tq_ast.BinaryOperator(
+                    '>',
+                    tq_ast.ColumnId('foo'),
+                    tq_ast.Literal(3))))
 
     def assert_parsed_select(self, text, expected_ast):
         actual_ast = parser.parse_text(text)
         self.assertEqual(expected_ast, actual_ast,
-                         'Expected: %s, Actual %s' % (expected_ast, actual_ast))
+                         'Expected: %s, Actual %s.\nReprs: %r vs. %r.' %
+                         (expected_ast, actual_ast, expected_ast, actual_ast))

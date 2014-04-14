@@ -4,18 +4,23 @@ import collections
 
 
 class Select(collections.namedtuple(
-        'Select', ['select_fields', 'table_expr'])):
+        'Select', ['select_fields', 'table_expr', 'where_expr'])):
     """Represents a top-level select statement.
 
     Fields:
         select_fields: A list of SelectField objects.
-        table_expr: A table expression referring to the data to select from.
+        table_expr: A table expression referring to the data to select from, or
+            None if there is no table specified.
+        where_expr: An expression for the WHERE filter, or None if there is
+            no WHERE filter.
     """
     def __str__(self):
         result = 'SELECT {}'.format(
             ', '.join([str(field) for field in self.select_fields]))
         if self.table_expr:
             result += ' FROM {}'.format(self.table_expr)
+        if self.where_expr:
+            result += ' WHERE {}'.format(self.where_expr)
         return result
 
 
