@@ -28,6 +28,5 @@ class Literal(collections.namedtuple('Literal', ['value', 'type'])):
     pass
 
 
-class ColumnRef(collections.namedtuple(
-        'ColumnRef', ['table', 'column', 'type'])):
-    pass
+class ColumnRef(collections.namedtuple('ColumnRef', ['column', 'type'])):
+    """References a column from the current context."""

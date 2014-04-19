@@ -69,7 +69,7 @@ class TinyQuery(object):
         return [literal.value for _ in xrange(context.num_rows)]
 
     def evaluate_ColumnRef(self, column_ref, context):
-        column = context.columns[column_ref.table + '.' + column_ref.column]
+        column = context.columns[column_ref.column]
         return column.values
 
 

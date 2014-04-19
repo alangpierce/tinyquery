@@ -31,7 +31,7 @@ class CompilerTest(unittest.TestCase):
             'SELECT value FROM table1',
             typed_ast.Select(
                 [typed_ast.SelectField(
-                    typed_ast.ColumnRef('table1', 'value', tq_types.INT),
+                    typed_ast.ColumnRef('table1.value', tq_types.INT),
                     'value')],
                 'table1',
                 typed_ast.Literal(True, tq_types.BOOL))
@@ -42,12 +42,12 @@ class CompilerTest(unittest.TestCase):
             'SELECT value FROM table1 WHERE value > 3',
             typed_ast.Select(
                 [typed_ast.SelectField(
-                    typed_ast.ColumnRef('table1', 'value', tq_types.INT),
+                    typed_ast.ColumnRef('table1.value', tq_types.INT),
                     'value')],
                 'table1',
                 typed_ast.FunctionCall(
                     runtime.get_operator('>'),
-                    [typed_ast.ColumnRef('table1', 'value', tq_types.INT),
+                    [typed_ast.ColumnRef('table1.value', tq_types.INT),
                      typed_ast.Literal(3, tq_types.INT)],
                     tq_types.BOOL)
             )
@@ -61,27 +61,27 @@ class CompilerTest(unittest.TestCase):
                 [typed_ast.SelectField(
                     typed_ast.FunctionCall(
                         runtime.get_operator('*'),
-                        [typed_ast.ColumnRef('table1', 'value', tq_types.INT),
+                        [typed_ast.ColumnRef('table1.value', tq_types.INT),
                          typed_ast.Literal(3, tq_types.INT)],
                         tq_types.INT),
                     'foo'),
                  typed_ast.SelectField(
-                     typed_ast.ColumnRef('table1', 'value', tq_types.INT),
+                     typed_ast.ColumnRef('table1.value', tq_types.INT),
                      'value'),
                  typed_ast.SelectField(
                      typed_ast.FunctionCall(
                          runtime.get_operator('+'),
-                         [typed_ast.ColumnRef('table1', 'value', tq_types.INT),
+                         [typed_ast.ColumnRef('table1.value', tq_types.INT),
                           typed_ast.Literal(1, tq_types.INT)],
                          tq_types.INT),
                      'f0_'),
                  typed_ast.SelectField(
-                     typed_ast.ColumnRef('table1', 'value', tq_types.INT),
+                     typed_ast.ColumnRef('table1.value', tq_types.INT),
                      'bar'),
                  typed_ast.SelectField(
                      typed_ast.FunctionCall(
                          runtime.get_operator('-'),
-                         [typed_ast.ColumnRef('table1', 'value', tq_types.INT),
+                         [typed_ast.ColumnRef('table1.value', tq_types.INT),
                           typed_ast.Literal(1, tq_types.INT)],
                          tq_types.INT),
                      'f1_')],

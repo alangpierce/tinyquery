@@ -84,7 +84,7 @@ class Compiler(object):
         if len(matching_tables) > 1:
             raise CompileError('Ambiguous field: {}'.format(column_name))
         table = matching_tables[0]
-        return typed_ast.ColumnRef(table.name, column_name,
+        return typed_ast.ColumnRef(table.name + '.' + column_name,
                                    table.columns[column_name].type)
 
     def compile_Literal(self, expr, tables):
