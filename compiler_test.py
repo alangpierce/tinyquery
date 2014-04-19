@@ -1,3 +1,4 @@
+import collections
 import unittest
 
 import compiler
@@ -11,13 +12,13 @@ class CompilerTest(unittest.TestCase):
     def setUp(self):
         self.tables_by_name = {
             'table1': tinyquery.Table(
-                'table1', {
-                'value': tinyquery.Column('int', [])
-                }
+                'table1', collections.OrderedDict([
+                    ('value', tinyquery.Column('int', []))
+                ])
             )
         }
 
-    def assert_compiled_expr(self, text, expected_ast):
+    def assert_compiled_select(self, text, expected_ast):
         ast = compiler.compile_text(text, self.tables_by_name)
         self.assertEqual(expected_ast, ast)
 
@@ -26,7 +27,7 @@ class CompilerTest(unittest.TestCase):
                           text, self.tables_by_name)
 
     def test_compile_simple_select(self):
-        self.assert_compiled_expr(
+        self.assert_compiled_select(
             'SELECT value FROM table1',
             typed_ast.Select(
                 [typed_ast.SelectField(
@@ -37,7 +38,7 @@ class CompilerTest(unittest.TestCase):
         )
 
     def test_where(self):
-        self.assert_compiled_expr(
+        self.assert_compiled_select(
             'SELECT value FROM table1 WHERE value > 3',
             typed_ast.Select(
                 [typed_ast.SelectField(
@@ -53,7 +54,7 @@ class CompilerTest(unittest.TestCase):
         )
 
     def test_multiple_select(self):
-        self.assert_compiled_expr(
+        self.assert_compiled_select(
             'SELECT value * 3 AS foo, value, value + 1, value bar, value - 1 '
             'FROM table1',
             typed_ast.Select(

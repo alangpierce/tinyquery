@@ -42,10 +42,10 @@ class TinyQuery(object):
         result_columns = [
             self.evaluate_select_field(select_field, select_context)
             for select_field in select_ast.select_fields]
-        return Table('query_result', dict(result_columns))
+        return Table('query_result', collections.OrderedDict(result_columns))
 
     def evaluate_select_field(self, select_field, context):
-        """Given a typed select field, return a resulting name and  Column."""
+        """Given a typed select field, return a resulting name and Column."""
         assert isinstance(select_field, typed_ast.SelectField)
         results = self.evaluate_expr(select_field.expr, context)
         return select_field.alias, Column(select_field.expr.type, results)
@@ -79,6 +79,9 @@ class Table(collections.namedtuple('Table', ['name', 'columns'])):
     Fields:
         columns: A dict mapping column name to column.
     """
+    def __init__(self, name, columns):
+        assert isinstance(columns, collections.OrderedDict)
+        super(Table, self).__init__()
 
 
 class Context(collections.namedtuple('Context', ['num_rows', 'columns'])):
@@ -87,8 +90,8 @@ class Context(collections.namedtuple('Context', ['num_rows', 'columns'])):
         assert isinstance(columns, collections.OrderedDict)
         for name, column in columns.iteritems():
             assert len(column.values) == num_rows, (
-                'Column %s had %s rows, expected %s.' %
-                    (name, len(column.values), num_rows))
+                'Column %s had %s rows, expected %s.' % (
+                    name, len(column.values), num_rows))
         super(Context, self).__init__()
 
 
