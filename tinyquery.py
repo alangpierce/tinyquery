@@ -38,7 +38,7 @@ class TinyQuery(object):
         else:
             # If the user isn't selecting from any tables, just specify that
             # there is one column to return and no table accessible.
-            select_context = Context(1, {})
+            select_context = Context(1, collections.OrderedDict())
         result_columns = [
             self.evaluate_select_field(select_field, select_context)
             for select_field in select_ast.select_fields]
@@ -84,6 +84,7 @@ class Table(collections.namedtuple('Table', ['name', 'columns'])):
 class Context(collections.namedtuple('Context', ['num_rows', 'columns'])):
     """Represents the columns accessible when evaluating an expression."""
     def __init__(self, num_rows, columns):
+        assert isinstance(columns, collections.OrderedDict)
         for name, column in columns.iteritems():
             assert len(column.values) == num_rows, (
                 'Column %s had %s rows, expected %s.' %
@@ -97,9 +98,10 @@ class Column(collections.namedtuple('Column', ['type', 'values'])):
 
 def context_from_table(table):
     any_column = table.columns.itervalues().next()
-    new_columns = {
-        table.name + '.' + column_name:column for
-        (column_name, column) in table.columns.iteritems()}
+    new_columns = collections.OrderedDict([
+        (table.name + '.' + column_name, column)
+        for (column_name, column) in table.columns.iteritems()
+    ])
     return Context(len(any_column.values), new_columns)
 
 
@@ -111,9 +113,9 @@ def mask_context(context, mask):
         mask: A column of type bool. Each row in this column should be True if
             the row should be kept for the whole context and False otherwise.
     """
-    new_columns = {
-        column_name: Column(column.type,
-                            list(itertools.compress(column.values, mask)))
+    new_columns = collections.OrderedDict([
+        (column_name,
+         Column(column.type, list(itertools.compress(column.values, mask))))
         for (column_name, column) in context.columns.iteritems()
-    }
+    ])
     return Context(sum(mask), new_columns)
