@@ -21,6 +21,10 @@ class CompilerTest(unittest.TestCase):
         ast = compiler.compile_text(text, self.tables_by_name)
         self.assertEqual(expected_ast, ast)
 
+    def assert_compile_error(self, text):
+        self.assertRaises(compiler.CompileError, compiler.compile_text,
+                          text, self.tables_by_name)
+
     def test_compile_simple_select(self):
         self.assert_compiled_expr(
             'SELECT value FROM table1',
@@ -47,3 +51,44 @@ class CompilerTest(unittest.TestCase):
                     tq_types.BOOL)
             )
         )
+
+    def test_multiple_select(self):
+        self.assert_compiled_expr(
+            'SELECT value * 3 AS foo, value, value + 1, value bar, value - 1 '
+            'FROM table1',
+            typed_ast.Select(
+                [typed_ast.SelectField(
+                    typed_ast.FunctionCall(
+                        runtime.get_operator('*'),
+                        [typed_ast.ColumnRef('table1', 'value', tq_types.INT),
+                         typed_ast.Literal(3, tq_types.INT)],
+                        tq_types.INT),
+                    'foo'),
+                 typed_ast.SelectField(
+                     typed_ast.ColumnRef('table1', 'value', tq_types.INT),
+                     'value'),
+                 typed_ast.SelectField(
+                     typed_ast.FunctionCall(
+                         runtime.get_operator('+'),
+                         [typed_ast.ColumnRef('table1', 'value', tq_types.INT),
+                          typed_ast.Literal(1, tq_types.INT)],
+                         tq_types.INT),
+                     'f0_'),
+                 typed_ast.SelectField(
+                     typed_ast.ColumnRef('table1', 'value', tq_types.INT),
+                     'bar'),
+                 typed_ast.SelectField(
+                     typed_ast.FunctionCall(
+                         runtime.get_operator('-'),
+                         [typed_ast.ColumnRef('table1', 'value', tq_types.INT),
+                          typed_ast.Literal(1, tq_types.INT)],
+                         tq_types.INT),
+                     'f1_')],
+                'table1',
+                typed_ast.Literal(True, tq_types.BOOL)
+            )
+        )
+
+    def test_duplicate_aliases_not_allowed(self):
+        self.assert_compile_error(
+            'SELECT 0 AS foo, value foo FROM table1')

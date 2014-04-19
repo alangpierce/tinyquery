@@ -30,8 +30,10 @@ class Compiler(object):
             tables = self.compile_table_expr(select.table_expr)
         else:
             tables = []
-        select_fields = [self.compile_select_field(field, tables)
-                         for field in select.select_fields]
+        aliases = self.get_aliases(select.select_fields)
+        select_fields = [
+            self.compile_select_field(field.expr, alias, tables)
+            for field, alias in zip(select.select_fields, aliases)]
         if len(tables) > 0:
             table_result = tables[0].name
         else:
@@ -58,16 +60,8 @@ class Compiler(object):
         assert isinstance(table_expr, tq_ast.TableId), ''
         return [self.tables_by_name[table_expr.name]]
 
-    def compile_select_field(self, select_field, tables):
-        assert isinstance(select_field, tq_ast.SelectField)
-        source_expr = select_field.expr
-        compiled_expr = self.compile_expr(source_expr, tables)
-
-        if isinstance(source_expr, tq_ast.ColumnId):
-            alias = source_expr.name
-        else:
-            alias = 'f0_'
-
+    def compile_select_field(self, expr, alias, tables):
+        compiled_expr = self.compile_expr(expr, tables)
         return typed_ast.SelectField(compiled_expr, alias)
 
     def compile_expr(self, expr, tables):
@@ -109,3 +103,37 @@ class Compiler(object):
 
         return typed_ast.FunctionCall(
             func, [compiled_left, compiled_right], result_type)
+
+    @classmethod
+    def get_aliases(cls, select_field_list):
+        """Given a list of tq_ast.SelectField, return the aliases to use."""
+        used_aliases = set()
+        proposed_aliases = [cls.field_alias(select_field)
+                            for select_field in select_field_list]
+        for alias in proposed_aliases:
+            if alias is not None:
+                if alias in used_aliases:
+                    raise CompileError(
+                        'Ambiguous column name {}.'.format(alias))
+                used_aliases.add(alias)
+
+        generic_field_num = 0
+        result = []
+        for alias in proposed_aliases:
+            if alias is not None:
+                result.append(alias)
+            else:
+                while ('f%s_' % generic_field_num) in used_aliases:
+                    generic_field_num += 1
+                result.append('f%s_' % generic_field_num)
+                generic_field_num += 1
+        return result
+
+    @staticmethod
+    def field_alias(select_field):
+        """Gets the alias to use, or None if it's not specified."""
+        if select_field.alias is not None:
+            return select_field.alias
+        if isinstance(select_field.expr, tq_ast.ColumnId):
+            return select_field.expr.name
+        return None
