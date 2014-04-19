@@ -4,7 +4,7 @@ import collections
 
 
 class Select(collections.namedtuple(
-        'Select', ['select_fields', 'table_expr', 'where_expr'])):
+        'Select', ['select_fields', 'table_expr', 'where_expr', 'groups'])):
     """Represents a top-level select statement.
 
     Fields:
@@ -13,6 +13,8 @@ class Select(collections.namedtuple(
             None if there is no table specified.
         where_expr: An expression for the WHERE filter, or None if there is
             no WHERE filter.
+        groups: A list of strings for fields to group by, or None if there is
+            no GROUP BY clause.
     """
     def __str__(self):
         result = 'SELECT {}'.format(
@@ -21,6 +23,8 @@ class Select(collections.namedtuple(
             result += ' FROM {}'.format(self.table_expr)
         if self.where_expr:
             result += ' WHERE {}'.format(self.where_expr)
+        if self.groups:
+            result += ' GROUP BY {}'.format(', '.join(self.groups))
         return result
 
 

@@ -9,7 +9,9 @@ reserved_words = {
     'select': 'SELECT',
     'as': 'AS',
     'from': 'FROM',
-    'where': 'WHERE'
+    'where': 'WHERE',
+    'group': 'GROUP',
+    'by': 'BY'
 }
 
 tokens = [

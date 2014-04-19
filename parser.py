@@ -17,23 +17,47 @@ precedence = (
 
 def p_select(p):
     """select : SELECT select_field_list
-              | SELECT select_field_list FROM table_expr optional_where
+              | SELECT select_field_list FROM table_expr optional_where \
+                    optional_group_by
     """
     if len(p) == 3:
-        p[0] = tq_ast.Select(p[2], None, None)
-    elif len(p) == 6:
-        p[0] = tq_ast.Select(p[2], p[4], p[5])
+        p[0] = tq_ast.Select(p[2], None, None, None)
+    elif len(p) == 7:
+        p[0] = tq_ast.Select(p[2], p[4], p[5], p[6])
     else:
         assert False, 'Unexpected number of captured tokens.'
 
 
 def p_optional_where(p):
     """optional_where :
-                      | WHERE expression"""
+                      | WHERE expression
+    """
     if len(p) == 1:
         p[0] = None
     else:
         p[0] = p[2]
+
+
+def p_optional_group_by(p):
+    """optional_group_by :
+                         | GROUP BY id_list
+    """
+    if len(p) == 1:
+        p[0] = None
+    else:
+        p[0] = p[3]
+
+
+def p_id_list(p):
+    """id_list : ID
+               | id_list COMMA ID
+    """
+    if len(p) == 2:
+        p[0] = [p[1]]
+    else:
+        p[1].append(p[3])
+        p[0] = p[1]
+
 
 def p_table_expr_id(p):
     """table_expr : ID"""
@@ -42,7 +66,8 @@ def p_table_expr_id(p):
 
 def p_select_field_list(p):
     """select_field_list : select_field
-                         | select_field_list COMMA select_field"""
+                         | select_field_list COMMA select_field
+    """
     if len(p) == 2:
         p[0] = [p[1]]
     else:
@@ -53,7 +78,8 @@ def p_select_field_list(p):
 def p_select_field(p):
     """select_field : expression
                     | expression ID
-                    | expression AS ID"""
+                    | expression AS ID
+    """
     if len(p) > 2:
         alias = p[len(p) - 1]
     else:

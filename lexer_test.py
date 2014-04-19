@@ -18,6 +18,8 @@ select = ('SELECT', 'select')
 as_tok = ('AS', 'as')
 from_tok = ('FROM', 'from')
 where = ('WHERE', 'where')
+group = ('GROUP', 'group')
+by = ('BY', 'by')
 comma = ('COMMA', ',')
 
 
@@ -29,6 +31,11 @@ def ident(name):
 
 
 class LexerTest(unittest.TestCase):
+    def assert_tokens(self, text, expected_tokens):
+        tokens = lexer.lex_text(text)
+        self.assertEqual(expected_tokens,
+                         [(tok.type, tok.value) for tok in tokens])
+
     def test_lex_simple_select(self):
         self.assert_tokens('SELECT 0', [select, num(0)])
 
@@ -68,7 +75,8 @@ class LexerTest(unittest.TestCase):
              ident('bar'), comma, ident('a'), plus, num(1), ident('baz'),
              from_tok, ident('test_table')])
 
-    def assert_tokens(self, text, expected_tokens):
-        tokens = lexer.lex_text(text)
-        self.assertEqual(expected_tokens,
-                         [(tok.type, tok.value) for tok in tokens])
+    def test_group_by(self):
+        self.assert_tokens(
+            'SELECT foo FROM bar GROUP BY baz',
+            [select, ident('foo'), from_tok, ident('bar'), group, by,
+             ident('baz')])
