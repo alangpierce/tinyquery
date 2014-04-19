@@ -15,8 +15,10 @@ less_than = ('LESS_THAN', '<')
 greater_than_or_equal = ('GREATER_THAN_OR_EQUAL', '>=')
 less_than_or_equal = ('LESS_THAN_OR_EQUAL', '<=')
 select = ('SELECT', 'select')
+as_tok = ('AS', 'as')
 from_tok = ('FROM', 'from')
 where = ('WHERE', 'where')
+comma = ('COMMA', ',')
 
 
 def num(n):
@@ -58,6 +60,13 @@ class LexerTest(unittest.TestCase):
             [select, ident('foo'), from_tok, ident('bar'), where, ident('foo'),
              greater_than, num(3)]
         )
+
+    def test_multiple_select(self):
+        self.assert_tokens(
+            'SELECT a AS foo, b bar, a + 1 baz FROM test_table',
+            [select, ident('a'), as_tok, ident('foo'), comma, ident('b'),
+             ident('bar'), comma, ident('a'), plus, num(1), ident('baz'),
+             from_tok, ident('test_table')])
 
     def assert_tokens(self, text, expected_tokens):
         tokens = lexer.lex_text(text)

@@ -13,10 +13,12 @@ class ParserTest(unittest.TestCase):
         self.assert_parsed_select(
             'SELECT 1 * 2 + 3 / 4',
             tq_ast.Select([
-                tq_ast.SelectField(tq_ast.BinaryOperator(
-                    '+',
-                    tq_ast.BinaryOperator('*', literal(1), literal(2)),
-                    tq_ast.BinaryOperator('/', literal(3), literal(4))))],
+                tq_ast.SelectField(
+                    tq_ast.BinaryOperator(
+                        '+',
+                        tq_ast.BinaryOperator('*', literal(1), literal(2)),
+                        tq_ast.BinaryOperator('/', literal(3), literal(4))),
+                    None)],
                 None,
                 None))
 
@@ -24,7 +26,7 @@ class ParserTest(unittest.TestCase):
         self.assert_parsed_select(
             'SELECT foo FROM bar',
             tq_ast.Select(
-                [tq_ast.SelectField(tq_ast.ColumnId('foo'))],
+                [tq_ast.SelectField(tq_ast.ColumnId('foo'), None)],
                 tq_ast.TableId('bar'),
                 None
             ))
@@ -37,7 +39,8 @@ class ParserTest(unittest.TestCase):
                     tq_ast.BinaryOperator(
                         '=',
                         tq_ast.ColumnId('foo'),
-                        tq_ast.ColumnId('bar')))],
+                        tq_ast.ColumnId('bar')),
+                    None)],
                 tq_ast.TableId('baz'),
                 None
             )
@@ -50,12 +53,31 @@ class ParserTest(unittest.TestCase):
                 [tq_ast.SelectField(tq_ast.BinaryOperator(
                     '+',
                     tq_ast.ColumnId('foo'),
-                    tq_ast.Literal(2)))],
+                    tq_ast.Literal(2)),
+                    None)],
                 tq_ast.TableId('bar'),
                 tq_ast.BinaryOperator(
                     '>',
                     tq_ast.ColumnId('foo'),
                     tq_ast.Literal(3))))
+
+    def test_multiple_select(self):
+        self.assert_parsed_select(
+            'SELECT a AS foo, b bar, a + 1 baz FROM test_table',
+            tq_ast.Select(
+                [tq_ast.SelectField(tq_ast.ColumnId('a'), 'foo'),
+                 tq_ast.SelectField(tq_ast.ColumnId('b'), 'bar'),
+                 tq_ast.SelectField(
+                     tq_ast.BinaryOperator(
+                         '+',
+                         tq_ast.ColumnId('a'),
+                         tq_ast.Literal(1)),
+                     'baz'
+                 )],
+                tq_ast.TableId('test_table'),
+                None
+            )
+        )
 
     def assert_parsed_select(self, text, expected_ast):
         actual_ast = parser.parse_text(text)

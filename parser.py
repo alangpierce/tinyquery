@@ -41,8 +41,24 @@ def p_table_expr_id(p):
 
 
 def p_select_field_list(p):
-    """select_field_list : expression"""
-    p[0] = [tq_ast.SelectField(p[1])]
+    """select_field_list : select_field
+                         | select_field_list COMMA select_field"""
+    if len(p) == 2:
+        p[0] = [p[1]]
+    else:
+        p[1].append(p[3])
+        p[0] = p[1]
+
+
+def p_select_field(p):
+    """select_field : expression
+                    | expression ID
+                    | expression AS ID"""
+    if len(p) > 2:
+        alias = p[len(p) - 1]
+    else:
+        alias = None
+    p[0] = tq_ast.SelectField(p[1], alias)
 
 
 def p_expression_binary(p):

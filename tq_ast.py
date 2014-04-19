@@ -24,9 +24,12 @@ class Select(collections.namedtuple(
         return result
 
 
-class SelectField(collections.namedtuple('SelectField', ['expr'])):
+class SelectField(collections.namedtuple('SelectField', ['expr', 'alias'])):
     def __str__(self):
-        return str(self.expr)
+        if self.alias is not None:
+            return '{} AS {}'.format(self.expr, self.alias)
+        else:
+            return str(self.expr)
 
 
 class BinaryOperator(collections.namedtuple(

@@ -7,6 +7,7 @@ from ply import lex
 # before looking them up in this map.
 reserved_words = {
     'select': 'SELECT',
+    'as': 'AS',
     'from': 'FROM',
     'where': 'WHERE'
 }
@@ -23,6 +24,7 @@ tokens = [
     'LESS_THAN',
     'GREATER_THAN_OR_EQUAL',
     'LESS_THAN_OR_EQUAL',
+    'COMMA',
     'NUMBER',
     'ID'
 ] + reserved_words.values()
@@ -39,6 +41,7 @@ t_GREATER_THAN = r'>'
 t_LESS_THAN = r'<'
 t_GREATER_THAN_OR_EQUAL = r'>='
 t_LESS_THAN_OR_EQUAL = r'<='
+t_COMMA = r','
 
 
 def t_NUMBER(token):
