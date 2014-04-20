@@ -1,4 +1,5 @@
 import collections
+import mock
 import unittest
 
 import tinyquery
@@ -10,6 +11,7 @@ class TinyQueryTest(unittest.TestCase):
         self.tq = tinyquery.TinyQuery()
         self.tq.load_table(tinyquery.Table(
             'test_table',
+            5,
             collections.OrderedDict([
                 ('val1', tinyquery.Column('int', [4, 1, 8, 1, 2])),
                 ('val2', tinyquery.Column('int', [8, 2, 4, 1, 6]))
@@ -24,6 +26,7 @@ class TinyQueryTest(unittest.TestCase):
             'SELECT 0',
             tinyquery.Table(
                 'query_result',
+                1,
                 collections.OrderedDict([
                     ('f0_', tinyquery.Column(tq_types.INT, [0]))
                 ])
@@ -35,6 +38,7 @@ class TinyQueryTest(unittest.TestCase):
             'SELECT 1 + 2',
             tinyquery.Table(
                 'query_result',
+                1,
                 collections.OrderedDict([
                     ('f0_', tinyquery.Column(tq_types.INT, [3]))
                 ])
@@ -46,6 +50,7 @@ class TinyQueryTest(unittest.TestCase):
             'SELECT 2 * (3 + 1) + 2 * 3',
             tinyquery.Table(
                 'query_result',
+                1,
                 collections.OrderedDict([
                     ('f0_', tinyquery.Column(tq_types.INT, [14]))
                 ])
@@ -57,17 +62,34 @@ class TinyQueryTest(unittest.TestCase):
             'SELECT -3',
             tinyquery.Table(
                 'query_result',
+                1,
                 collections.OrderedDict([
                     ('f0_', tinyquery.Column(tq_types.INT, [-3]))
                 ])
             )
         )
 
+    def test_function_calls(self):
+        with mock.patch('time.time', lambda: 15):
+            self.assert_query_result(
+                'SELECT ABS(-2), POW(2, 3), NOW()',
+                tinyquery.Table(
+                    'query_result',
+                    1,
+                    collections.OrderedDict([
+                        ('f0_', tinyquery.Column(tq_types.INT, [2])),
+                        ('f1_', tinyquery.Column(tq_types.INT, [8])),
+                        ('f2_', tinyquery.Column(tq_types.INT, [15000000])),
+                    ])
+                )
+            )
+
     def test_select_from_table(self):
         self.assert_query_result(
             'SELECT val1 FROM test_table',
             tinyquery.Table(
                 'query_result',
+                5,
                 collections.OrderedDict([
                     ('val1', tinyquery.Column(tq_types.INT, [4, 1, 8, 1, 2]))
                 ])
@@ -79,6 +101,7 @@ class TinyQueryTest(unittest.TestCase):
             'SELECT val1 = val2 FROM test_table',
             tinyquery.Table(
                 'query_result',
+                5,
                 collections.OrderedDict([
                     ('f0_', tinyquery.Column(
                         tq_types.BOOL, [False, False, False, True, False]))
@@ -91,6 +114,7 @@ class TinyQueryTest(unittest.TestCase):
             'SELECT val1 + 2 FROM test_table WHERE val2 > 3',
             tinyquery.Table(
                 'query_result',
+                3,
                 collections.OrderedDict([
                     ('f0_', tinyquery.Column(tq_types.INT, [6, 10, 4]))
                 ])
@@ -103,6 +127,7 @@ class TinyQueryTest(unittest.TestCase):
             'FROM test_table WHERE val1 < 5',
             tinyquery.Table(
                 'query_result',
+                4,
                 collections.OrderedDict([
                     ('foo', tinyquery.Column(tq_types.INT, [5, 2, 2, 3])),
                     ('val2', tinyquery.Column(tq_types.INT, [8, 2, 1, 6])),

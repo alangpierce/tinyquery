@@ -107,6 +107,30 @@ class ParserTest(unittest.TestCase):
             ),
         )
 
+    def test_function_calls(self):
+        self.assert_parsed_select(
+            'SELECT ABS(-3), POW(2, 3), NOW()',
+            tq_ast.Select([
+                tq_ast.SelectField(
+                    tq_ast.FunctionCall('abs', [
+                        tq_ast.UnaryOperator('-', literal(3))
+                    ]),
+                    None
+                ),
+                tq_ast.SelectField(
+                    tq_ast.FunctionCall('pow', [literal(2), literal(3)]),
+                    None
+                ),
+                tq_ast.SelectField(
+                    tq_ast.FunctionCall('now', []),
+                    None
+                )],
+                None,
+                None,
+                None
+            )
+        )
+
     def test_where(self):
         self.assert_parsed_select(
             'SELECT foo + 2 FROM bar WHERE foo > 3',

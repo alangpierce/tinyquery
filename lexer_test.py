@@ -75,6 +75,14 @@ class LexerTest(unittest.TestCase):
             [select, minus, num(5)]
         )
 
+    def test_function_call(self):
+        self.assert_tokens(
+            'SELECT ABS(-5), POW(x, 3), NOW() FROM test_table',
+            [select, ident('abs'), lparen, minus, num(5), rparen, comma,
+             ident('pow'), lparen, ident('x'), comma, num(3), rparen, comma,
+             ident('now'), lparen, rparen, from_tok, ident('test_table')]
+        )
+
     def test_select_where(self):
         self.assert_tokens(
             'SELECT foo FROM bar WHERE foo > 3',

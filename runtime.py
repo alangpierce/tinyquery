@@ -1,5 +1,7 @@
 """Implementation of the standard built-in functions."""
 import abc
+import time
+
 import tq_types
 
 class Function(object):
@@ -54,6 +56,17 @@ class UnaryIntOperator(Function):
         return self.func(arg)
 
 
+class NoArgFunction(Function):
+    def __init__(self, func):
+        self.func = func
+
+    def check_types(self):
+        return tq_types.INT
+
+    def evaluate(self):
+        return self.func()
+
+
 _UNARY_OPERATORS = {
     '-': UnaryIntOperator(lambda a: -a)
 }
@@ -74,6 +87,13 @@ _BINARY_OPERATORS = {
 }
 
 
+_FUNCTIONS = {
+    'abs': UnaryIntOperator(lambda a: abs(a)),
+    'pow': ArithmeticOperator(lambda a, b: a ** b),
+    'now': NoArgFunction(lambda: int(time.time() * 1000000))
+}
+
+
 def get_unary_op(name):
     result = _UNARY_OPERATORS[name]
     assert isinstance(result, Function)
@@ -82,5 +102,11 @@ def get_unary_op(name):
 
 def get_binary_op(name):
     result = _BINARY_OPERATORS[name]
+    assert isinstance(result, Function)
+    return result
+
+
+def get_func(name):
+    result = _FUNCTIONS[name]
     assert isinstance(result, Function)
     return result

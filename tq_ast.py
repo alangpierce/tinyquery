@@ -48,6 +48,11 @@ class BinaryOperator(collections.namedtuple(
         return '({}{}{})'.format(self.left, self.operator, self.right)
 
 
+class FunctionCall(collections.namedtuple('FunctionCall', ['name', 'args'])):
+    def __str__(self):
+        return '({}({}))'.format(self.name, self.args)
+
+
 class Literal(collections.namedtuple('Literal', ['value'])):
     def __str__(self):
         return str(self.value)

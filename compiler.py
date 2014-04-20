@@ -105,6 +105,13 @@ class Compiler(object):
         return typed_ast.FunctionCall(
             func, [compiled_left, compiled_right], result_type)
 
+    def compile_FunctionCall(self, expr, type_ctx):
+        func = runtime.get_func(expr.name)
+        compiled_args = [self.compile_expr(sub_expr, type_ctx)
+                         for sub_expr in expr.args]
+        result_type = func.check_types(*(arg.type for arg in compiled_args))
+        return typed_ast.FunctionCall(func, compiled_args, result_type)
+
     @classmethod
     def get_aliases(cls, select_field_list):
         """Given a list of tq_ast.SelectField, return the aliases to use."""

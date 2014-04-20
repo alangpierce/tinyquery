@@ -12,6 +12,7 @@ class CompilerTest(unittest.TestCase):
     def setUp(self):
         self.table1 = tinyquery.Table(
             'table1',
+            0,
             collections.OrderedDict([
                 ('value', tinyquery.Column(tq_types.INT, []))
             ]))
@@ -53,6 +54,40 @@ class CompilerTest(unittest.TestCase):
                         [typed_ast.Literal(5, tq_types.INT)],
                         tq_types.INT),
                     'f0_'
+                )],
+                typed_ast.NoTable(),
+                typed_ast.Literal(True, tq_types.BOOL)
+            )
+        )
+
+    def test_function_calls(self):
+        self.assert_compiled_select(
+            'SELECT ABS(-3), POW(2, 3), NOW()',
+            typed_ast.Select([
+                typed_ast.SelectField(
+                    typed_ast.FunctionCall(
+                        runtime.get_func('abs'),
+                        [typed_ast.FunctionCall(
+                            runtime.get_unary_op('-'),
+                            [typed_ast.Literal(3, tq_types.INT)],
+                            tq_types.INT
+                        )],
+                        tq_types.INT),
+                    'f0_'),
+                typed_ast.SelectField(
+                    typed_ast.FunctionCall(
+                        runtime.get_func('pow'), [
+                            typed_ast.Literal(2, tq_types.INT),
+                            typed_ast.Literal(3, tq_types.INT)],
+                        tq_types.INT
+                    ),
+                    'f1_'
+                ),
+                typed_ast.SelectField(
+                    typed_ast.FunctionCall(
+                        runtime.get_func('now'), [], tq_types.INT
+                    ),
+                    'f2_'
                 )],
                 typed_ast.NoTable(),
                 typed_ast.Literal(True, tq_types.BOOL)

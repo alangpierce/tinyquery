@@ -37,7 +37,8 @@ class TinyQuery(object):
         result_columns = [
             self.evaluate_select_field(select_field, select_context)
             for select_field in select_ast.select_fields]
-        return Table('query_result', collections.OrderedDict(result_columns))
+        return Table('query_result', select_context.num_rows,
+                     collections.OrderedDict(result_columns))
 
     def evaluate_select_field(self, select_field, context):
         """Given a typed select field, return a resulting name and Column."""
@@ -75,6 +76,11 @@ class TinyQuery(object):
         return method(expr, context)
 
     def evaluate_FunctionCall(self, func_call, context):
+        # zip doesn't work for empty argument lists, so special-case it.
+        if not func_call.args:
+            return [func_call.func.evaluate()
+                    for _ in xrange(context.num_rows)]
+
         arg_results = [self.evaluate_expr(arg, context)
                        for arg in func_call.args]
         return [func_call.func.evaluate(*func_args)
@@ -88,14 +94,18 @@ class TinyQuery(object):
         return column.values
 
 
-class Table(collections.namedtuple('Table', ['name', 'columns'])):
+class Table(collections.namedtuple('Table', ['name', 'num_rows', 'columns'])):
     """Information containing metadata and contents of a table.
 
     Fields:
         columns: A dict mapping column name to column.
     """
-    def __init__(self, name, columns):
+    def __init__(self, name, num_rows, columns):
         assert isinstance(columns, collections.OrderedDict)
+        for name, column in columns.iteritems():
+            assert len(column.values) == num_rows, (
+                'Column %s had %s rows, expected %s.' % (
+                    name, len(column.values), num_rows))
         super(Table, self).__init__()
 
 

@@ -113,6 +113,26 @@ def p_expression_binary(p):
     p[0] = tq_ast.BinaryOperator(p[2], p[1], p[3])
 
 
+def p_expression_func_call(p):
+    """expression : ID LPAREN arg_list RPAREN"""
+    p[0] = tq_ast.FunctionCall(p[1], p[3])
+
+
+def p_arg_list(p):
+    """arg_list :
+                | expression
+                | arg_list COMMA expression"""
+    if len(p) == 1:
+        p[0] = []
+    elif len(p) == 2:
+        p[0] = [p[1]]
+    elif len(p) == 4:
+        p[1].append(p[3])
+        p[0] = p[1]
+    else:
+        assert False, 'Unexpected number of captured tokens.'
+
+
 def p_int_literal(p):
     """expression : NUMBER"""
     p[0] = tq_ast.Literal(p[1])
