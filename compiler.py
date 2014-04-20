@@ -4,6 +4,8 @@ This step has a number of responsibilities:
 -Validate that the expression is well-typed.
 -Resolve all select fields to their aliases and types.
 """
+import collections
+
 import parser
 import runtime
 import tq_ast
@@ -26,78 +28,71 @@ class Compiler(object):
 
     def compile_select(self, select):
         assert isinstance(select, tq_ast.Select)
-        if select.table_expr:
-            tables = self.compile_table_expr(select.table_expr)
-        else:
-            tables = []
+        table_expr = self.compile_table_expr(select.table_expr)
         aliases = self.get_aliases(select.select_fields)
         select_fields = [
-            self.compile_select_field(field.expr, alias, tables)
+            self.compile_select_field(field.expr, alias, table_expr.type_ctx)
             for field, alias in zip(select.select_fields, aliases)]
-        if len(tables) > 0:
-            table_result = tables[0].name
-        else:
-            table_result = None
 
         if select.where_expr:
-            where_expr = self.compile_expr(select.where_expr, tables)
+            where_expr = self.compile_expr(select.where_expr,
+                                           table_expr.type_ctx)
         else:
             where_expr = typed_ast.Literal(True, tq_types.BOOL)
-        return typed_ast.Select(select_fields, table_result, where_expr)
+        return typed_ast.Select(select_fields, table_expr, where_expr)
 
     def compile_table_expr(self, table_expr):
-        """Given a table expression, return the tables referenced.
+        """Compile a table expression and determine its result type context.
 
         Arguments:
-            table_expr: A TableId (and, in the future, a more general table
-                expression).
+            table_expr: Either None (indicating that there no table being
+                selected or a TableId.
 
-        Returns: A list of tables accessible to select fields.
+        Returns: A typed_ast.TableExpression.
         """
-        if not isinstance(table_expr, tq_ast.TableId):
-            raise NotImplementedError(
-                'Only direct table access supported for now.')
-        assert isinstance(table_expr, tq_ast.TableId), ''
-        return [self.tables_by_name[table_expr.name]]
+        if table_expr is None:
+            return typed_ast.NoTable()
+        else:
+            assert isinstance(table_expr, tq_ast.TableId)
+            table_name = table_expr.name
+            table = self.tables_by_name[table_expr.name]
 
-    def compile_select_field(self, expr, alias, tables):
-        compiled_expr = self.compile_expr(expr, tables)
+            columns = collections.OrderedDict()
+            aliases = {}
+            for name, column in table.columns.iteritems():
+                full_name = table_name + '.' + name
+                columns[full_name] = column.type
+                aliases[name] = full_name
+
+            type_context = typed_ast.TypeContext(columns, aliases, [])
+            return typed_ast.Table(table_name, type_context)
+
+    def compile_select_field(self, expr, alias, type_ctx):
+        compiled_expr = self.compile_expr(expr, type_ctx)
         return typed_ast.SelectField(compiled_expr, alias)
 
-    def compile_expr(self, expr, tables):
+    def compile_expr(self, expr, type_ctx):
         try:
             method = getattr(self, 'compile_' + expr.__class__.__name__)
         except AttributeError:
             raise NotImplementedError(
                 'Missing handler for type {}'.format(expr.__class__.__name__))
-        return method(expr, tables)
+        return method(expr, type_ctx)
 
-    def compile_ColumnId(self, expr, tables):
-        matching_tables = []
-        column_name = expr.name
-        for table in tables:
-            if column_name in table.columns:
-                matching_tables.append(table)
+    def compile_ColumnId(self, expr, type_ctx):
+        return type_ctx.column_ref_for_name(expr.name)
 
-        if len(matching_tables) == 0:
-            raise CompileError('Field not found: {}'.format(column_name))
-        if len(matching_tables) > 1:
-            raise CompileError('Ambiguous field: {}'.format(column_name))
-        table = matching_tables[0]
-        return typed_ast.ColumnRef(table.name + '.' + column_name,
-                                   table.columns[column_name].type)
-
-    def compile_Literal(self, expr, tables):
+    def compile_Literal(self, expr, type_ctx):
         if isinstance(expr.value, int):
             return typed_ast.Literal(expr.value, tq_types.INT)
         else:
             raise NotImplementedError('Only int literals supported for now.')
 
-    def compile_BinaryOperator(self, expr, tables):
+    def compile_BinaryOperator(self, expr, type_ctx):
         func = runtime.get_operator(expr.operator)
 
-        compiled_left = self.compile_expr(expr.left, tables)
-        compiled_right = self.compile_expr(expr.right, tables)
+        compiled_left = self.compile_expr(expr.left, type_ctx)
+        compiled_right = self.compile_expr(expr.right, type_ctx)
 
         result_type = func.check_types(compiled_left.type, compiled_right.type)
 
@@ -137,3 +132,10 @@ class Compiler(object):
         if isinstance(select_field.expr, tq_ast.ColumnId):
             return select_field.expr.name
         return None
+
+
+class TypeContext(collections.namedtuple('TypeContext', ['columns'])):
+    """Contains the columns available at a point in code, and their types."""
+    def __init__(self, columns):
+        assert isinstance(columns, collections.OrderedDict)
+        super(TypeContext, self).__init__()

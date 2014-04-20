@@ -10,13 +10,19 @@ import typed_ast
 
 class CompilerTest(unittest.TestCase):
     def setUp(self):
+        self.table1 = tinyquery.Table(
+            'table1',
+            collections.OrderedDict([
+                ('value', tinyquery.Column(tq_types.INT, []))
+            ]))
         self.tables_by_name = {
-            'table1': tinyquery.Table(
-                'table1', collections.OrderedDict([
-                    ('value', tinyquery.Column('int', []))
-                ])
-            )
+            'table1': self.table1
         }
+
+        self.table1_type_ctx = typed_ast.TypeContext(
+            collections.OrderedDict([('table1.value', tq_types.INT)]),
+            {'value': 'table1.value'},
+            [])
 
     def assert_compiled_select(self, text, expected_ast):
         ast = compiler.compile_text(text, self.tables_by_name)
@@ -33,7 +39,7 @@ class CompilerTest(unittest.TestCase):
                 [typed_ast.SelectField(
                     typed_ast.ColumnRef('table1.value', tq_types.INT),
                     'value')],
-                'table1',
+                typed_ast.Table('table1', self.table1_type_ctx),
                 typed_ast.Literal(True, tq_types.BOOL))
         )
 
@@ -44,7 +50,7 @@ class CompilerTest(unittest.TestCase):
                 [typed_ast.SelectField(
                     typed_ast.ColumnRef('table1.value', tq_types.INT),
                     'value')],
-                'table1',
+                typed_ast.Table('table1', self.table1_type_ctx),
                 typed_ast.FunctionCall(
                     runtime.get_operator('>'),
                     [typed_ast.ColumnRef('table1.value', tq_types.INT),
@@ -85,7 +91,7 @@ class CompilerTest(unittest.TestCase):
                           typed_ast.Literal(1, tq_types.INT)],
                          tq_types.INT),
                      'f1_')],
-                'table1',
+                typed_ast.Table('table1', self.table1_type_ctx),
                 typed_ast.Literal(True, tq_types.BOOL)
             )
         )

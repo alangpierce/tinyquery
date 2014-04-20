@@ -29,16 +29,11 @@ class TinyQuery(object):
     def evaluate_select(self, select_ast):
         """Given a typed select statement, return a Table with the results."""
         assert isinstance(select_ast, typed_ast.Select)
-        if select_ast.table:
-            table = self.tables_by_name[select_ast.table]
-            where_context = context_from_table(table)
-            mask_column = self.evaluate_expr(select_ast.where_expr,
-                                             where_context)
-            select_context = mask_context(where_context, mask_column)
-        else:
-            # If the user isn't selecting from any tables, just specify that
-            # there is one column to return and no table accessible.
-            select_context = Context(1, collections.OrderedDict())
+
+        table_context = self.evaluate_table_expr(select_ast.table)
+        mask_column = self.evaluate_expr(select_ast.where_expr, table_context)
+        select_context = mask_context(table_context, mask_column)
+
         result_columns = [
             self.evaluate_select_field(select_field, select_context)
             for select_field in select_ast.select_fields]
@@ -49,6 +44,26 @@ class TinyQuery(object):
         assert isinstance(select_field, typed_ast.SelectField)
         results = self.evaluate_expr(select_field.expr, context)
         return select_field.alias, Column(select_field.expr.type, results)
+
+    def evaluate_table_expr(self, table_expr):
+        """Given a table expression, return a Context with its values."""
+        try:
+            method = getattr(self,
+                             'eval_table_' + table_expr.__class__.__name__)
+        except AttributeError:
+            raise NotImplementedError(
+                'Missing handler for table type {}'.format(
+                    table_expr.__class__.__name__))
+        return method(table_expr)
+
+    def eval_table_NoTable(self, table_expr):
+        # If the user isn't selecting from any tables, just specify that there
+        # is one column to return and no table accessible.
+        return Context(1, collections.OrderedDict())
+
+    def eval_table_Table(self, table_expr):
+        table = self.tables_by_name[table_expr.name]
+        return context_from_table(table)
 
     def evaluate_expr(self, expr, context):
         """Computes the raw data for the output column for the expression."""
