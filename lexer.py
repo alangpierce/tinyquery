@@ -26,6 +26,8 @@ tokens = [
     'LESS_THAN',
     'GREATER_THAN_OR_EQUAL',
     'LESS_THAN_OR_EQUAL',
+    'LPAREN',
+    'RPAREN',
     'COMMA',
     'NUMBER',
     'ID'
@@ -43,6 +45,8 @@ t_GREATER_THAN = r'>'
 t_LESS_THAN = r'<'
 t_GREATER_THAN_OR_EQUAL = r'>='
 t_LESS_THAN_OR_EQUAL = r'<='
+t_LPAREN = r'\('
+t_RPAREN = r'\)'
 t_COMMA = r','
 
 

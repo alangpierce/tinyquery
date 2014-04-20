@@ -20,6 +20,8 @@ from_tok = ('FROM', 'from')
 where = ('WHERE', 'where')
 group = ('GROUP', 'group')
 by = ('BY', 'by')
+lparen = ('LPAREN', '(')
+rparen = ('RPAREN', ')')
 comma = ('COMMA', ',')
 
 
@@ -59,6 +61,12 @@ class LexerTest(unittest.TestCase):
             [select, num(1), greater_than, num(2), less_than_or_equal, num(3),
              equals, num(4), not_equal, num(5), less_than, num(6),
              greater_than_or_equal, num(7)]
+        )
+
+    def test_parens(self):
+        self.assert_tokens(
+            'SELECT 2 * (3 + 4)',
+            [select, num(2), times, lparen, num(3), plus, num(4), rparen]
         )
 
     def test_select_where(self):

@@ -55,6 +55,45 @@ class ParserTest(unittest.TestCase):
             )
         )
 
+    def test_operator_precedence(self):
+        self.assert_parsed_select(
+            'SELECT 2 + 3 * 4 + 5',
+            tq_ast.Select(
+                [tq_ast.SelectField(
+                    tq_ast.BinaryOperator(
+                        '+',
+                        tq_ast.BinaryOperator(
+                            '+',
+                            literal(2),
+                            tq_ast.BinaryOperator(
+                                '*', literal(3), literal(4))),
+                        literal(5)),
+                    None
+                )],
+                None,
+                None,
+                None
+            )
+        )
+
+    def test_parens(self):
+        self.assert_parsed_select(
+            'SELECT 2 + (3 * 4)',
+            tq_ast.Select(
+                [tq_ast.SelectField(
+                    tq_ast.BinaryOperator(
+                        '+',
+                        literal(2),
+                        tq_ast.BinaryOperator('*', literal(3), literal(4))
+                    ),
+                    None
+                )],
+                None,
+                None,
+                None
+            )
+        )
+
     def test_where(self):
         self.assert_parsed_select(
             'SELECT foo + 2 FROM bar WHERE foo > 3',

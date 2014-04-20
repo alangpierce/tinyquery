@@ -41,6 +41,17 @@ class TinyQueryTest(unittest.TestCase):
             )
         )
 
+    def test_precedence(self):
+        self.assert_query_result(
+            'SELECT 2 * (3 + 1) + 2 * 3',
+            tinyquery.Table(
+                'query_result',
+                collections.OrderedDict([
+                    ('f0_', tinyquery.Column(tq_types.INT, [14]))
+                ])
+            )
+        )
+
     def test_select_from_table(self):
         self.assert_query_result(
             'SELECT val1 FROM test_table',
