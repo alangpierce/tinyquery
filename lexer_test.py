@@ -97,6 +97,13 @@ class LexerTest(unittest.TestCase):
              ident('bar'), comma, ident('a'), plus, num(1), ident('baz'),
              from_tok, ident('test_table')])
 
+    def test_aggregates(self):
+        self.assert_tokens(
+            'SELECT MAX(foo) FROM bar',
+            [select, ident('max'), lparen, ident('foo'), rparen, from_tok,
+             ident('bar')]
+        )
+
     def test_group_by(self):
         self.assert_tokens(
             'SELECT foo FROM bar GROUP BY baz',

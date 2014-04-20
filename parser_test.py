@@ -166,6 +166,20 @@ class ParserTest(unittest.TestCase):
             )
         )
 
+    def test_aggregates(self):
+        self.assert_parsed_select(
+            'SELECT MAX(foo) FROM bar',
+            tq_ast.Select(
+                [tq_ast.SelectField(
+                    tq_ast.FunctionCall('max', [tq_ast.ColumnId('foo')]),
+                    None
+                )],
+                tq_ast.TableId('bar'),
+                None,
+                None
+            )
+        )
+
     def test_group_by(self):
         self.assert_parsed_select(
             'SELECT foo FROM bar GROUP BY baz',
