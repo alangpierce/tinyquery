@@ -5,7 +5,7 @@ import compiler
 
 
 class Select(collections.namedtuple(
-        'Select', ['select_fields', 'table', 'where_expr', 'groups'])):
+        'Select', ['select_fields', 'table', 'where_expr', 'group_set'])):
     """A compiled query.
 
     Fields:
@@ -15,15 +15,29 @@ class Select(collections.namedtuple(
             that this filter should always be valid; if the user didn't specify
             a WHERE clause, this is the literal true.
         groups: Either None, indicating that no grouping should be done, or a
-            list of groups to use. Even if a GROUP BY clause isn't present in
-            the original query, this list might be non-None: queries that
-            aggregate over an entire table have an empty list, which makes it
-            so there is only one group containing everything.
+            GroupSet object. If there were groups explicitly specified by
+            GROUP BY, then the GroupSet always exists and is nonempty. If there
+            was no GROUP BY but the select is an aggregate select, the GroupSet
+            exists and is empty (since grouping by nothing puts everything into
+            the same group).
     """
 
 
 class SelectField(collections.namedtuple('SelectField', ['expr', 'alias'])):
     pass
+
+
+class GroupSet(collections.namedtuple(
+        'GroupSet', ['alias_groups', 'field_groups'])):
+    """Information about the groups to use for a query.
+
+    Fields:
+        alias_groups: A set of string names of aliases for select fields that
+            we should group by. These are special because they need to be
+            compiled and evaluated differently from normal select fields.
+        field_groups: A list of ColumnRefs referencing columns in the table
+            expression of the SELECT statement.
+    """
 
 
 class TypeContext(collections.namedtuple(
@@ -47,7 +61,7 @@ class TypeContext(collections.namedtuple(
 
     """
     def column_ref_for_name(self, name):
-        """Gets the full identifier for a """
+        """Gets the full identifier for a column from any possible alias."""
         if name in self.columns:
             return ColumnRef(name, self.columns[name])
         elif name in self.aliases:

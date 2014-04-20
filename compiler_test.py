@@ -14,15 +14,21 @@ class CompilerTest(unittest.TestCase):
             'table1',
             0,
             collections.OrderedDict([
-                ('value', tinyquery.Column(tq_types.INT, []))
+                ('value', tinyquery.Column(tq_types.INT, [])),
+                ('value2', tinyquery.Column(tq_types.INT, []))
             ]))
         self.tables_by_name = {
             'table1': self.table1
         }
 
         self.table1_type_ctx = typed_ast.TypeContext(
-            collections.OrderedDict([('table1.value', tq_types.INT)]),
-            {'value': 'table1.value'},
+            collections.OrderedDict([
+                ('table1.value', tq_types.INT),
+                ('table1.value2', tq_types.INT)
+            ]), {
+                'value': 'table1.value',
+                'value2': 'table1.value2'
+            },
             [],
             None)
 
@@ -177,9 +183,7 @@ class CompilerTest(unittest.TestCase):
                     'f1_')],
                 typed_ast.Table('table1', self.table1_type_ctx),
                 typed_ast.Literal(True, tq_types.BOOL),
-                []
-            )
-        )
+                typed_ast.GroupSet(set(), [])))
 
     def mixed_aggregate_non_aggregate_not_allowed(self):
         self.assert_compile_error(
@@ -188,3 +192,38 @@ class CompilerTest(unittest.TestCase):
     def mixed_aggregate_non_aggregate_single_field_not_allowed(self):
         self.assert_compile_error(
             'SELECT value + SUM(value) FROM table1')
+
+    def test_group_by_alias(self):
+        self.assert_compiled_select(
+            'SELECT 0 AS foo FROM table1 GROUP BY foo',
+            typed_ast.Select(
+                [typed_ast.SelectField(
+                    typed_ast.Literal(0, tq_types.INT), 'foo')],
+                typed_ast.Table('table1', self.table1_type_ctx),
+                typed_ast.Literal(True, tq_types.BOOL),
+                typed_ast.GroupSet(
+                    alias_groups={'foo'},
+                    field_groups=[]
+                )
+            )
+        )
+
+    def test_group_by_field(self):
+        self.assert_compiled_select(
+            'SELECT SUM(value) FROM table1 GROUP BY value2',
+            typed_ast.Select(
+                [typed_ast.SelectField(
+                    typed_ast.FunctionCall(
+                        runtime.get_func('sum'),
+                        [typed_ast.ColumnRef('table1.value', tq_types.INT)],
+                        tq_types.INT
+                    ),
+                    'f0_')],
+                typed_ast.Table('table1', self.table1_type_ctx),
+                typed_ast.Literal(True, tq_types.BOOL),
+                typed_ast.GroupSet(
+                    alias_groups=set(),
+                    field_groups=[
+                        typed_ast.ColumnRef('table1.value2', tq_types.INT)]
+                )
+            ))

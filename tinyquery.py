@@ -34,8 +34,8 @@ class TinyQuery(object):
         mask_column = self.evaluate_expr(select_ast.where_expr, table_context)
         select_context = mask_context(table_context, mask_column)
 
-        if select_ast.groups is not None:
-            assert select_ast.groups == [], (
+        if select_ast.group_set is not None:
+            assert select_ast.group_set == typed_ast.GroupSet(set(), []), (
                 'Only the empty group list is supported for now.')
             select_context = Context(1, collections.OrderedDict(),
                                      select_context)

@@ -30,33 +30,25 @@ class Compiler(object):
         assert isinstance(select, tq_ast.Select)
         table_expr = self.compile_table_expr(select.table_expr)
         table_ctx = table_expr.type_ctx
+        aliases = self.get_aliases(select.select_fields)
 
-        is_aggregate_select = any(
-            self.expression_contains_aggregate(field.expr)
-            for field in select.select_fields)
+        group_set = self.compile_groups(select.groups, select.select_fields,
+                                        aliases, table_ctx)
 
-        # If this is a regular aggregate select (without a GROUP BY), we
-        # effectively group by nothing, and we need to set up the type context
-        # so that the table fields are only available inside aggregates.
-        if is_aggregate_select:
-            groups = []
+        if group_set is not None:
             select_field_ctx = typed_ast.TypeContext(
                 collections.OrderedDict(), {}, set(), table_ctx)
         else:
-            groups = None
             select_field_ctx = table_ctx
 
-        aliases = self.get_aliases(select.select_fields)
         select_fields = [
             self.compile_select_field(field.expr, alias, select_field_ctx)
             for field, alias in zip(select.select_fields, aliases)]
 
-        if select.where_expr:
-            where_expr = self.compile_expr(select.where_expr, table_ctx)
-        else:
-            where_expr = typed_ast.Literal(True, tq_types.BOOL)
+        where_expr = self.compile_where_expr(select.where_expr, table_ctx)
 
-        return typed_ast.Select(select_fields, table_expr, where_expr, groups)
+        return typed_ast.Select(select_fields, table_expr, where_expr,
+                                group_set)
 
     def compile_table_expr(self, table_expr):
         """Compile a table expression and determine its result type context.
@@ -84,9 +76,63 @@ class Compiler(object):
             type_context = typed_ast.TypeContext(columns, aliases, [], None)
             return typed_ast.Table(table_name, type_context)
 
+    def compile_groups(self, groups, select_fields, aliases, table_ctx):
+        """Gets the group set to use for the query.
+
+        This involves handling the special cases when no GROUP BY statement
+        exists, and also determining whether each group should be treated as an
+        alias group or a field group.
+
+        Arguments:
+            groups: Either None, indicating that no GROUP BY was specified, or
+                a list of strings from the GROUP BY.
+            select_fields: A list of tq_ast.SelectField objects for the query
+                we are compiling.
+            aliases: The aliases we will assign to the select fields.
+            table_ctx: The TypeContext from the table expression in the SELECT.
+        """
+        if groups is None:
+            # Special case: if no GROUP BY was specified, we're an aggregate
+            # query iff at least one select field has an aggregate function.
+            is_aggregate_select = any(
+                self.expression_contains_aggregate(field.expr)
+                for field in select_fields)
+
+            if is_aggregate_select:
+                # Group such that everything is in the same group.
+                return typed_ast.GroupSet(set(), [])
+            else:
+                # Don't do any grouping at all.
+                return None
+        else:
+            # At least one group was specified, so this is definitely a
+            # GROUP BY query and we need to figure out what they refer to.
+            alias_groups = set()
+            field_groups = []
+
+            alias_set = set(aliases)
+            for group in groups:
+                if group in alias_set:
+                    alias_groups.add(group)
+                else:
+                    # Will raise an exception if not found.
+                    field_groups.append(table_ctx.column_ref_for_name(group))
+            return typed_ast.GroupSet(alias_groups, field_groups)
+
+
     def compile_select_field(self, expr, alias, type_ctx):
         compiled_expr = self.compile_expr(expr, type_ctx)
         return typed_ast.SelectField(compiled_expr, alias)
+
+    def compile_where_expr(self, where_expr, table_ctx):
+        """If there is a WHERE expression, compile it.
+
+        If the WHERE expression is missing, we just use the literal true.
+        """
+        if where_expr:
+            return self.compile_expr(where_expr, table_ctx)
+        else:
+            return typed_ast.Literal(True, tq_types.BOOL)
 
     def compile_expr(self, expr, type_ctx):
         try:
