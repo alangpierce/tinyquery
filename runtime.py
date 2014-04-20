@@ -41,7 +41,25 @@ class ComparisonOperator(Function):
     def evaluate(self, arg1, arg2):
         return self.func(arg1, arg2)
 
-_OPERATORS = {
+
+class UnaryIntOperator(Function):
+    def __init__(self, func):
+        self.func = func
+
+    def check_types(self, arg):
+        assert arg == tq_types.INT
+        return tq_types.INT
+
+    def evaluate(self, arg):
+        return self.func(arg)
+
+
+_UNARY_OPERATORS = {
+    '-': UnaryIntOperator(lambda a: -a)
+}
+
+
+_BINARY_OPERATORS = {
     '+': ArithmeticOperator(lambda a, b: a + b),
     '-': ArithmeticOperator(lambda a, b: a - b),
     '*': ArithmeticOperator(lambda a, b: a * b),
@@ -56,7 +74,13 @@ _OPERATORS = {
 }
 
 
-def get_operator(name):
-    result = _OPERATORS[name]
+def get_unary_op(name):
+    result = _UNARY_OPERATORS[name]
+    assert isinstance(result, Function)
+    return result
+
+
+def get_binary_op(name):
+    result = _BINARY_OPERATORS[name]
     assert isinstance(result, Function)
     return result

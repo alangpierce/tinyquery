@@ -52,6 +52,17 @@ class TinyQueryTest(unittest.TestCase):
             )
         )
 
+    def test_negative_number(self):
+        self.assert_query_result(
+            'SELECT -3',
+            tinyquery.Table(
+                'query_result',
+                collections.OrderedDict([
+                    ('f0_', tinyquery.Column(tq_types.INT, [-3]))
+                ])
+            )
+        )
+
     def test_select_from_table(self):
         self.assert_query_result(
             'SELECT val1 FROM test_table',

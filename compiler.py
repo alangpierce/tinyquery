@@ -88,8 +88,14 @@ class Compiler(object):
         else:
             raise NotImplementedError('Only int literals supported for now.')
 
+    def compile_UnaryOperator(self, expr, type_ctx):
+        func = runtime.get_unary_op(expr.operator)
+        compiled_val = self.compile_expr(expr.expr, type_ctx)
+        result_type = func.check_types(compiled_val.type)
+        return typed_ast.FunctionCall(func, [compiled_val], result_type)
+
     def compile_BinaryOperator(self, expr, type_ctx):
-        func = runtime.get_operator(expr.operator)
+        func = runtime.get_binary_op(expr.operator)
 
         compiled_left = self.compile_expr(expr.left, type_ctx)
         compiled_right = self.compile_expr(expr.right, type_ctx)

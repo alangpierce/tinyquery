@@ -69,6 +69,12 @@ class LexerTest(unittest.TestCase):
             [select, num(2), times, lparen, num(3), plus, num(4), rparen]
         )
 
+    def test_negative_numbers(self):
+        self.assert_tokens(
+            'SELECT -5',
+            [select, minus, num(5)]
+        )
+
     def test_select_where(self):
         self.assert_tokens(
             'SELECT foo FROM bar WHERE foo > 3',

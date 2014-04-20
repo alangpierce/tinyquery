@@ -94,6 +94,19 @@ class ParserTest(unittest.TestCase):
             )
         )
 
+    def test_negative_numbers(self):
+        self.assert_parsed_select(
+            'SELECT -5',
+            tq_ast.Select(
+                [tq_ast.SelectField(
+                    tq_ast.UnaryOperator('-', literal(5)), None
+                )],
+                None,
+                None,
+                None
+            ),
+        )
+
     def test_where(self):
         self.assert_parsed_select(
             'SELECT foo + 2 FROM bar WHERE foo > 3',

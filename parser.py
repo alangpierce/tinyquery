@@ -92,6 +92,11 @@ def p_expression_parens(p):
     p[0] = p[2]
 
 
+def p_expression_unary(p):
+    """expression : MINUS expression"""
+    p[0] = tq_ast.UnaryOperator(p[1], p[2])
+
+
 def p_expression_binary(p):
     """expression : expression PLUS expression
                   | expression MINUS expression
