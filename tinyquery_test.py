@@ -135,3 +135,27 @@ class TinyQueryTest(unittest.TestCase):
                 ])
             )
         )
+
+    def test_simple_aggregate(self):
+        self.assert_query_result(
+            'SELECT SUM(val1) + MIN(val2) FROM test_table',
+            tinyquery.Table(
+                'query_result',
+                1,
+                collections.OrderedDict([
+                    ('f0_', tinyquery.Column(tq_types.INT, [17]))
+                ])
+            )
+        )
+
+    def test_aggregate_evaluation(self):
+        self.assert_query_result(
+            'SELECT 2 * SUM(val1 + 1) FROM test_table WHERE val1 < 5',
+            tinyquery.Table(
+                'query_result',
+                1,
+                collections.OrderedDict([
+                    ('f0_', tinyquery.Column(tq_types.INT, [24]))
+                ])
+            )
+        )

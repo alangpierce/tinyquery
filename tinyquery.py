@@ -34,6 +34,12 @@ class TinyQuery(object):
         mask_column = self.evaluate_expr(select_ast.where_expr, table_context)
         select_context = mask_context(table_context, mask_column)
 
+        if select_ast.groups is not None:
+            assert select_ast.groups == [], (
+                'Only the empty group list is supported for now.')
+            select_context = Context(1, collections.OrderedDict(),
+                                     select_context)
+
         result_columns = [
             self.evaluate_select_field(select_field, select_context)
             for select_field in select_ast.select_fields]
@@ -60,7 +66,7 @@ class TinyQuery(object):
     def eval_table_NoTable(self, table_expr):
         # If the user isn't selecting from any tables, just specify that there
         # is one column to return and no table accessible.
-        return Context(1, collections.OrderedDict())
+        return Context(1, collections.OrderedDict(), None)
 
     def eval_table_Table(self, table_expr):
         table = self.tables_by_name[table_expr.name]
@@ -77,6 +83,15 @@ class TinyQuery(object):
 
     def evaluate_FunctionCall(self, func_call, context):
         arg_results = [self.evaluate_expr(arg, context)
+                       for arg in func_call.args]
+        return func_call.func.evaluate(context.num_rows, *arg_results)
+
+    def evaluate_AggregateFunctionCall(self, func_call, context):
+        # Switch to the aggregate context when evaluating the arguments to the
+        # aggregate.
+        assert context.aggregate_context is not None, (
+            'Aggregate function called without a valid aggregate context.')
+        arg_results = [self.evaluate_expr(arg, context.aggregate_context)
                        for arg in func_call.args]
         return func_call.func.evaluate(context.num_rows, *arg_results)
 
@@ -103,14 +118,25 @@ class Table(collections.namedtuple('Table', ['name', 'num_rows', 'columns'])):
         super(Table, self).__init__()
 
 
-class Context(collections.namedtuple('Context', ['num_rows', 'columns'])):
-    """Represents the columns accessible when evaluating an expression."""
-    def __init__(self, num_rows, columns):
+class Context(collections.namedtuple(
+        'Context', ['num_rows', 'columns', 'aggregate_context'])):
+    """Represents the columns accessible when evaluating an expression.
+
+    Fields:
+        num_rows: The number of rows for all columns in this context.
+        columns: An OrderedDict from column name to Column.
+        aggregate_context: Either None, indicating that aggregate functions
+            aren't allowed, or another Context to use whenever we enter into an
+            aggregate function.
+    """
+    def __init__(self, num_rows, columns, aggregate_context):
         assert isinstance(columns, collections.OrderedDict)
         for name, column in columns.iteritems():
             assert len(column.values) == num_rows, (
                 'Column %s had %s rows, expected %s.' % (
                     name, len(column.values), num_rows))
+        if aggregate_context is not None:
+            assert isinstance(aggregate_context, Context)
         super(Context, self).__init__()
 
 
@@ -124,7 +150,7 @@ def context_from_table(table):
         (table.name + '.' + column_name, column)
         for (column_name, column) in table.columns.iteritems()
     ])
-    return Context(len(any_column.values), new_columns)
+    return Context(len(any_column.values), new_columns, None)
 
 
 def mask_context(context, mask):
@@ -135,9 +161,11 @@ def mask_context(context, mask):
         mask: A column of type bool. Each row in this column should be True if
             the row should be kept for the whole context and False otherwise.
     """
+    assert context.aggregate_context is None, (
+        'Cannot mask a context with an aggregate context.')
     new_columns = collections.OrderedDict([
         (column_name,
          Column(column.type, list(itertools.compress(column.values, mask))))
         for (column_name, column) in context.columns.iteritems()
     ])
-    return Context(sum(mask), new_columns)
+    return Context(sum(mask), new_columns, None)
