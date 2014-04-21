@@ -80,8 +80,5 @@ class Literal(collections.namedtuple('Literal', ['value', 'type'])):
     pass
 
 
-foo = Literal('hello', 'world')
-
-
 class ColumnRef(collections.namedtuple('ColumnRef', ['column', 'type'])):
     """References a column from the current context."""
