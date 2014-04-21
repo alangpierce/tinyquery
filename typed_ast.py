@@ -5,9 +5,21 @@ import compiler
 
 
 class Select(collections.namedtuple(
-        'Select', ['select_fields', 'table', 'where_expr'])):
-    """Currently, you can only select directly from table columns."""
-    pass
+        'Select', ['select_fields', 'table', 'where_expr', 'groups'])):
+    """A compiled query.
+
+    Fields:
+        select_fields: A list of SelectField, one for each item being selected.
+        table: The table expression to select from.
+        where_expr: A filter to apply on the selected table expression. Note
+            that this filter should always be valid; if the user didn't specify
+            a WHERE clause, this is the literal true.
+        groups: Either None, indicating that no grouping should be done, or a
+            list of groups to use. Even if a GROUP BY clause isn't present in
+            the original query, this list might be non-None: queries that
+            aggregate over an entire table have an empty list, which makes it
+            so there is only one group containing everything.
+    """
 
 
 class SelectField(collections.namedtuple('SelectField', ['expr', 'alias'])):
@@ -68,6 +80,20 @@ class Expression(object):
 class FunctionCall(collections.namedtuple(
         'FunctionCall', ['func', 'args', 'type']), Expression):
     """Expression representing a call to a built-in function.
+
+    Fields:
+        func: A runtime.Function for the function to call.
+        args: A list of expressions to pass in as the function's arguments.
+        type: The result type of the expression.
+    """
+
+
+class AggregateFunctionCall(collections.namedtuple(
+        'AggregateFunctionCall', ['func', 'args', 'type']), Expression):
+    """Expression representing a call to a built-in aggregate function.
+
+    Aggregate functions are called differently from regular functions, so we
+    need to have a special case for them in the AST format.
 
     Fields:
         func: A runtime.Function for the function to call.

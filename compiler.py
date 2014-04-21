@@ -29,6 +29,11 @@ class Compiler(object):
     def compile_select(self, select):
         assert isinstance(select, tq_ast.Select)
         table_expr = self.compile_table_expr(select.table_expr)
+
+        is_aggregate_select = any(
+            self.expression_contains_aggregate(field.expr)
+            for field in select.select_fields)
+
         aliases = self.get_aliases(select.select_fields)
         select_fields = [
             self.compile_select_field(field.expr, alias, table_expr.type_ctx)
@@ -39,7 +44,13 @@ class Compiler(object):
                                            table_expr.type_ctx)
         else:
             where_expr = typed_ast.Literal(True, tq_types.BOOL)
-        return typed_ast.Select(select_fields, table_expr, where_expr)
+
+        if is_aggregate_select:
+            groups = []
+        else:
+            groups = None
+
+        return typed_ast.Select(select_fields, table_expr, where_expr, groups)
 
     def compile_table_expr(self, table_expr):
         """Compile a table expression and determine its result type context.
@@ -106,11 +117,17 @@ class Compiler(object):
             func, [compiled_left, compiled_right], result_type)
 
     def compile_FunctionCall(self, expr, type_ctx):
-        func = runtime.get_func(expr.name)
+        if runtime.is_aggregate_func(expr.name):
+            func = runtime.get_aggregate_func(expr.name)
+            ast_type = typed_ast.AggregateFunctionCall
+        else:
+            func = runtime.get_func(expr.name)
+            ast_type = typed_ast.FunctionCall
+
         compiled_args = [self.compile_expr(sub_expr, type_ctx)
                          for sub_expr in expr.args]
         result_type = func.check_types(*(arg.type for arg in compiled_args))
-        return typed_ast.FunctionCall(func, compiled_args, result_type)
+        return ast_type(func, compiled_args, result_type)
 
     @classmethod
     def get_aliases(cls, select_field_list):
@@ -145,6 +162,30 @@ class Compiler(object):
         if isinstance(select_field.expr, tq_ast.ColumnId):
             return select_field.expr.name
         return None
+
+    @classmethod
+    def expression_contains_aggregate(cls, expr):
+        """Given a tq_ast expression, check if it does any aggregation.
+
+        We need to operate on an uncompiled AST here since we use this
+        information to figure out how to compile these expressions.
+        """
+        if isinstance(expr, tq_ast.UnaryOperator):
+            return cls.expression_contains_aggregate(expr.expr)
+        elif isinstance(expr, tq_ast.BinaryOperator):
+            return (cls.expression_contains_aggregate(expr.left) or
+                    cls.expression_contains_aggregate(expr.right))
+        elif isinstance(expr, tq_ast.FunctionCall):
+            return (runtime.is_aggregate_func(expr.name) or
+                    any(cls.expression_contains_aggregate(arg)
+                        for arg in expr.args))
+        elif isinstance(expr, tq_ast.Literal):
+            return False
+        elif isinstance(expr, tq_ast.ColumnId):
+            return False
+        else:
+            assert False, 'Unexpected expression type: %s' % (
+                expr.__class__.__name__)
 
 
 class TypeContext(collections.namedtuple('TypeContext', ['columns'])):

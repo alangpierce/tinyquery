@@ -41,7 +41,8 @@ class CompilerTest(unittest.TestCase):
                     typed_ast.ColumnRef('table1.value', tq_types.INT),
                     'value')],
                 typed_ast.Table('table1', self.table1_type_ctx),
-                typed_ast.Literal(True, tq_types.BOOL))
+                typed_ast.Literal(True, tq_types.BOOL),
+                None)
         )
 
     def test_unary_operator(self):
@@ -56,7 +57,8 @@ class CompilerTest(unittest.TestCase):
                     'f0_'
                 )],
                 typed_ast.NoTable(),
-                typed_ast.Literal(True, tq_types.BOOL)
+                typed_ast.Literal(True, tq_types.BOOL),
+                None
             )
         )
 
@@ -90,7 +92,8 @@ class CompilerTest(unittest.TestCase):
                     'f2_'
                 )],
                 typed_ast.NoTable(),
-                typed_ast.Literal(True, tq_types.BOOL)
+                typed_ast.Literal(True, tq_types.BOOL),
+                None
             )
         )
 
@@ -106,7 +109,8 @@ class CompilerTest(unittest.TestCase):
                     runtime.get_binary_op('>'),
                     [typed_ast.ColumnRef('table1.value', tq_types.INT),
                      typed_ast.Literal(3, tq_types.INT)],
-                    tq_types.BOOL)
+                    tq_types.BOOL),
+                None
             )
         )
 
@@ -143,10 +147,35 @@ class CompilerTest(unittest.TestCase):
                          tq_types.INT),
                      'f1_')],
                 typed_ast.Table('table1', self.table1_type_ctx),
-                typed_ast.Literal(True, tq_types.BOOL)
+                typed_ast.Literal(True, tq_types.BOOL),
+                None
             )
         )
 
     def test_duplicate_aliases_not_allowed(self):
         self.assert_compile_error(
             'SELECT 0 AS foo, value foo FROM table1')
+
+    def test_aggregates(self):
+        self.assert_compiled_select(
+            'SELECT MAX(value), MIN(value) FROM table1',
+            typed_ast.Select([
+                typed_ast.SelectField(
+                    typed_ast.AggregateFunctionCall(
+                        runtime.get_aggregate_func('max'),
+                        [typed_ast.ColumnRef('table1.value', tq_types.INT)],
+                        tq_types.INT
+                    ),
+                    'f0_'),
+                typed_ast.SelectField(
+                    typed_ast.AggregateFunctionCall(
+                        runtime.get_aggregate_func('min'),
+                        [typed_ast.ColumnRef('table1.value', tq_types.INT)],
+                        tq_types.INT
+                    ),
+                    'f1_')],
+                typed_ast.Table('table1', self.table1_type_ctx),
+                typed_ast.Literal(True, tq_types.BOOL),
+                []
+            )
+        )

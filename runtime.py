@@ -16,7 +16,13 @@ class Function(object):
 
     @abc.abstractmethod
     def evaluate(self, *args):
-        """Evaluates the function itself."""
+        """Evaluates the function itself.
+
+        For normal, non-aggregate function, each argument is an individual
+        value of the given type. For aggregate functions, each argument is a
+        list of values. In either case, a single value of the result type is
+        returned.
+        """
 
 
 class ArithmeticOperator(Function):
@@ -67,6 +73,18 @@ class NoArgFunction(Function):
         return self.func()
 
 
+class AggregateIntFunction(Function):
+    def __init__(self, func):
+        self.func = func
+
+    def check_types(self, arg):
+        assert arg == tq_types.INT
+        return tq_types.INT
+
+    def evaluate(self, arg_list):
+        return self.func(arg_list)
+
+
 _UNARY_OPERATORS = {
     '-': UnaryIntOperator(lambda a: -a)
 }
@@ -88,9 +106,16 @@ _BINARY_OPERATORS = {
 
 
 _FUNCTIONS = {
-    'abs': UnaryIntOperator(lambda a: abs(a)),
+    'abs': UnaryIntOperator(abs),
     'pow': ArithmeticOperator(lambda a, b: a ** b),
     'now': NoArgFunction(lambda: int(time.time() * 1000000))
+}
+
+
+_AGGREGATE_FUNCTIONS = {
+    'sum': AggregateIntFunction(sum),
+    'min': AggregateIntFunction(min),
+    'max': AggregateIntFunction(max)
 }
 
 
@@ -108,5 +133,15 @@ def get_binary_op(name):
 
 def get_func(name):
     result = _FUNCTIONS[name]
+    assert isinstance(result, Function)
+    return result
+
+
+def is_aggregate_func(name):
+    return name in _AGGREGATE_FUNCTIONS
+
+
+def get_aggregate_func(name):
+    result = _AGGREGATE_FUNCTIONS[name]
     assert isinstance(result, Function)
     return result
