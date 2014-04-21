@@ -76,15 +76,9 @@ class TinyQuery(object):
         return method(expr, context)
 
     def evaluate_FunctionCall(self, func_call, context):
-        # zip doesn't work for empty argument lists, so special-case it.
-        if not func_call.args:
-            return [func_call.func.evaluate()
-                    for _ in xrange(context.num_rows)]
-
         arg_results = [self.evaluate_expr(arg, context)
                        for arg in func_call.args]
-        return [func_call.func.evaluate(*func_args)
-                for func_args in zip(*arg_results)]
+        return func_call.func.evaluate(context.num_rows, *arg_results)
 
     def evaluate_Literal(self, literal, context):
         return [literal.value for _ in xrange(context.num_rows)]

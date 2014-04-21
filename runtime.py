@@ -15,13 +15,17 @@ class Function(object):
         """
 
     @abc.abstractmethod
-    def evaluate(self, *args):
-        """Evaluates the function itself.
+    def evaluate(self, num_rows, *arg_lists):
+        """Evaluates the function on
 
-        For normal, non-aggregate function, each argument is an individual
-        value of the given type. For aggregate functions, each argument is a
-        list of values. In either case, a single value of the result type is
-        returned.
+        Arguments:
+            num_rows: The number of rows that should be returned. This is used
+                by zero-arg functions that can't infer the number of rows from
+                the args themselves.
+            arg_lists: Each argument is a list of values for the column to
+                operate on. For normal functions, the length of each arugment
+                must be num_rows, but for aggregate functions, num_rows will be
+                1 and each arg can be any length.
         """
 
 
@@ -34,8 +38,8 @@ class ArithmeticOperator(Function):
         # TODO: Fail if types are wrong.
         return tq_types.INT
 
-    def evaluate(self, arg1, arg2):
-        return self.func(arg1, arg2)
+    def evaluate(self, num_rows, list1, list2):
+        return [self.func(arg1, arg2) for arg1, arg2 in zip(list1, list2)]
 
 
 class ComparisonOperator(Function):
@@ -46,8 +50,8 @@ class ComparisonOperator(Function):
         # TODO: Fail if types are wrong.
         return tq_types.BOOL
 
-    def evaluate(self, arg1, arg2):
-        return self.func(arg1, arg2)
+    def evaluate(self, num_rows, list1, list2):
+        return [self.func(arg1, arg2) for arg1, arg2 in zip(list1, list2)]
 
 
 class UnaryIntOperator(Function):
@@ -58,8 +62,8 @@ class UnaryIntOperator(Function):
         assert arg == tq_types.INT
         return tq_types.INT
 
-    def evaluate(self, arg):
-        return self.func(arg)
+    def evaluate(self, num_rows, arg_list):
+        return [self.func(arg) for arg in arg_list]
 
 
 class NoArgFunction(Function):
@@ -69,8 +73,8 @@ class NoArgFunction(Function):
     def check_types(self):
         return tq_types.INT
 
-    def evaluate(self):
-        return self.func()
+    def evaluate(self, num_rows):
+        return [self.func() for _ in xrange(num_rows)]
 
 
 class AggregateIntFunction(Function):
@@ -81,8 +85,8 @@ class AggregateIntFunction(Function):
         assert arg == tq_types.INT
         return tq_types.INT
 
-    def evaluate(self, arg_list):
-        return self.func(arg_list)
+    def evaluate(self, num_rows, arg_list):
+        return [self.func(arg_list)]
 
 
 _UNARY_OPERATORS = {
