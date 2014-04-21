@@ -29,7 +29,7 @@ class CompilerTest(unittest.TestCase):
                 'value': 'table1.value',
                 'value2': 'table1.value2'
             },
-            [],
+            set(),
             None)
 
     def assert_compiled_select(self, text, expected_ast):
@@ -227,3 +227,25 @@ class CompilerTest(unittest.TestCase):
                         typed_ast.ColumnRef('table1.value2', tq_types.INT)]
                 )
             ))
+
+    def test_select_grouped_and_non_grouped_fields(self):
+        self.assert_compiled_select(
+            'SELECT value, SUM(value2) FROM table1 GROUP BY value',
+            typed_ast.Select([
+                typed_ast.SelectField(
+                    typed_ast.ColumnRef('table1.value', tq_types.INT),
+                    'value'),
+                typed_ast.SelectField(
+                    typed_ast.FunctionCall(
+                        runtime.get_func('sum'),
+                        [typed_ast.ColumnRef('table1.value2', tq_types.INT)],
+                        tq_types.INT),
+                    'f0_')],
+                typed_ast.Table('table1', self.table1_type_ctx),
+                typed_ast.Literal(True, tq_types.BOOL),
+                typed_ast.GroupSet(
+                    alias_groups={'value'},
+                    field_groups=[]
+                )
+            )
+        )

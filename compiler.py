@@ -30,23 +30,40 @@ class Compiler(object):
         assert isinstance(select, tq_ast.Select)
         table_expr = self.compile_table_expr(select.table_expr)
         table_ctx = table_expr.type_ctx
+        where_expr = self.compile_where_expr(select.where_expr, table_ctx)
         aliases = self.get_aliases(select.select_fields)
-
         group_set = self.compile_groups(select.groups, select.select_fields,
                                         aliases, table_ctx)
 
+        # Build a dict from alias to compiled expression. The first pass fills
+        # in the grouped-by select fields with the regular table context, and
+        # the second pass fills in remaining fields with type context for
+        # aggregate fields.
+        compiled_field_dict = {}
+
+        # Build the type context to use for aggregate expressions.
+        group_columns = collections.OrderedDict()
+
         if group_set is not None:
-            select_field_ctx = typed_ast.TypeContext(
-                collections.OrderedDict(), {}, set(), table_ctx)
-        else:
-            select_field_ctx = table_ctx
+            for field_group in group_set.field_groups:
+                group_columns[field_group.column] = field_group.type
 
-        select_fields = [
-            self.compile_select_field(field.expr, alias, select_field_ctx)
-            for field, alias in zip(select.select_fields, aliases)]
+        for alias, select_field in zip(aliases, select.select_fields):
+            if group_set is None or alias in group_set.alias_groups:
+                compiled_field_dict[alias] = self.compile_select_field(
+                    select_field.expr, alias, table_ctx)
+                group_columns[alias] = compiled_field_dict[alias].expr.type
 
-        where_expr = self.compile_where_expr(select.where_expr, table_ctx)
+        aggregate_context = typed_ast.TypeContext.from_full_columns(
+            group_columns, table_ctx)
 
+        for alias, select_field in zip(aliases, select.select_fields):
+            if group_set is not None and alias not in group_set.alias_groups:
+                compiled_field_dict[alias] = self.compile_select_field(
+                    select_field.expr, alias, aggregate_context)
+
+        # Put the compiled select fields in the proper order.
+        select_fields = [compiled_field_dict[alias] for alias in aliases]
         return typed_ast.Select(select_fields, table_expr, where_expr,
                                 group_set)
 
@@ -66,14 +83,12 @@ class Compiler(object):
             table_name = table_expr.name
             table = self.tables_by_name[table_expr.name]
 
-            columns = collections.OrderedDict()
-            aliases = {}
-            for name, column in table.columns.iteritems():
-                full_name = table_name + '.' + name
-                columns[full_name] = column.type
-                aliases[name] = full_name
-
-            type_context = typed_ast.TypeContext(columns, aliases, [], None)
+            columns = collections.OrderedDict([
+                (table_name + '.' + name, column.type)
+                for name, column in table.columns.iteritems()
+            ])
+            type_context = typed_ast.TypeContext.from_full_columns(
+                columns, None)
             return typed_ast.Table(table_name, type_context)
 
     def compile_groups(self, groups, select_fields, aliases, table_ctx):
@@ -116,6 +131,13 @@ class Compiler(object):
                     alias_groups.add(group)
                 else:
                     # Will raise an exception if not found.
+                    # TODO: This doesn't perfectly match BigQuery's approach.
+                    # In BigQuery, grouping by my_table.my_value will make
+                    # either my_table.my_value or my_value valid ways of
+                    # referring to the group, whereas grouping by my_value will
+                    # make it so only my_value is a valid way of referring to
+                    # the group. The whole approach to implicit table
+                    # references could potentially be rethought.
                     field_groups.append(table_ctx.column_ref_for_name(group))
             return typed_ast.GroupSet(alias_groups, field_groups)
 

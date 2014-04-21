@@ -58,8 +58,26 @@ class TypeContext(collections.namedtuple(
             ambiguous. This is used for
         aggregate_context: Either None, indicating that aggregates are not
             allowed, or a TypeContext to use if we enter into an aggregate.
-
     """
+    @classmethod
+    def from_full_columns(cls, full_columns, aggregate_context):
+        """Given just the columns field, fill in alias information."""
+        aliases = {}
+        ambig_aliases = set()
+        for full_name in full_columns:
+            tokens = full_name.rsplit('.', 1)
+            if len(tokens) != 2:
+                continue
+            alias = tokens[1]
+            if alias in ambig_aliases:
+                continue
+            elif alias in aliases:
+                del aliases[alias]
+                ambig_aliases.add(alias)
+            else:
+                aliases[alias] = full_name
+        return cls(full_columns, aliases, ambig_aliases, aggregate_context)
+
     def column_ref_for_name(self, name):
         """Gets the full identifier for a column from any possible alias."""
         if name in self.columns:
