@@ -23,7 +23,8 @@ class CompilerTest(unittest.TestCase):
         self.table1_type_ctx = typed_ast.TypeContext(
             collections.OrderedDict([('table1.value', tq_types.INT)]),
             {'value': 'table1.value'},
-            [])
+            [],
+            None)
 
     def assert_compiled_select(self, text, expected_ast):
         ast = compiler.compile_text(text, self.tables_by_name)
@@ -162,14 +163,14 @@ class CompilerTest(unittest.TestCase):
             typed_ast.Select([
                 typed_ast.SelectField(
                     typed_ast.AggregateFunctionCall(
-                        runtime.get_aggregate_func('max'),
+                        runtime.get_func('max'),
                         [typed_ast.ColumnRef('table1.value', tq_types.INT)],
                         tq_types.INT
                     ),
                     'f0_'),
                 typed_ast.SelectField(
                     typed_ast.AggregateFunctionCall(
-                        runtime.get_aggregate_func('min'),
+                        runtime.get_func('min'),
                         [typed_ast.ColumnRef('table1.value', tq_types.INT)],
                         tq_types.INT
                     ),
@@ -179,3 +180,11 @@ class CompilerTest(unittest.TestCase):
                 []
             )
         )
+
+    def mixed_aggregate_non_aggregate_not_allowed(self):
+        self.assert_compile_error(
+            'SELECT value, SUM(value) FROM table1')
+
+    def mixed_aggregate_non_aggregate_single_field_not_allowed(self):
+        self.assert_compile_error(
+            'SELECT value + SUM(value) FROM table1')

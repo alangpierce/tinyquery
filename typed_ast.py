@@ -27,7 +27,8 @@ class SelectField(collections.namedtuple('SelectField', ['expr', 'alias'])):
 
 
 class TypeContext(collections.namedtuple(
-        'TypeContext', ['columns', 'aliases', 'ambig_aliases'])):
+        'TypeContext', ['columns', 'aliases', 'ambig_aliases',
+                        'aggregate_context'])):
     """Defines the types available at a point in code.
 
     This class is responsible for resolving column names into fully-qualified
@@ -41,6 +42,9 @@ class TypeContext(collections.namedtuple(
             there are no other tables with a column named "value").
         ambig_aliases: A set of aliases that cannot be used because they are
             ambiguous. This is used for
+        aggregate_context: Either None, indicating that aggregates are not
+            allowed, or a TypeContext to use if we enter into an aggregate.
+
     """
     def column_ref_for_name(self, name):
         """Gets the full identifier for a """
@@ -64,7 +68,7 @@ class TableExpression(object):
 class NoTable(collections.namedtuple('NoTable', []), TableExpression):
     @property
     def type_ctx(self):
-        return TypeContext(collections.OrderedDict(), {}, [])
+        return TypeContext(collections.OrderedDict(), {}, [], None)
 
 
 class Table(collections.namedtuple('Table', ['name', 'type_ctx'])):

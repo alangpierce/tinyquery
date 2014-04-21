@@ -1,6 +1,7 @@
 """Implementation of the standard built-in functions."""
 import abc
 import time
+import compiler
 
 import tq_types
 
@@ -136,16 +137,13 @@ def get_binary_op(name):
 
 
 def get_func(name):
-    result = _FUNCTIONS[name]
-    assert isinstance(result, Function)
-    return result
+    if name in _FUNCTIONS:
+        return _FUNCTIONS[name]
+    elif name in _AGGREGATE_FUNCTIONS:
+        return _AGGREGATE_FUNCTIONS[name]
+    else:
+        raise compiler.CompileError('Unknown function: {}'.format(name))
 
 
 def is_aggregate_func(name):
     return name in _AGGREGATE_FUNCTIONS
-
-
-def get_aggregate_func(name):
-    result = _AGGREGATE_FUNCTIONS[name]
-    assert isinstance(result, Function)
-    return result
