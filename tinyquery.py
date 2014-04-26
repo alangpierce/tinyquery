@@ -55,31 +55,82 @@ class TinyQuery(object):
         Returns:
             A context with the results.
         """
-        assert group_set.alias_groups == set(), (
-            'Alias groups are currently unsupported.')
         field_groups = group_set.field_groups
+        alias_groups = group_set.alias_groups
+        alias_group_list = sorted(alias_groups)
+
+        group_key_select_fields = [
+            f for f in select_fields if f.alias in alias_groups]
+        aggregate_select_fields = [
+            f for f in select_fields if f.alias not in alias_groups]
+
+        alias_group_result_context = self.evaluate_select_fields(
+            group_key_select_fields, select_context)
+
         # Dictionary mapping (singleton) group key context to the context of
         # values for that key.
         group_contexts = {}
+        # TODO: Seems pretty ugly and wasteful to use a whole context as a
+        # group key.
         for i in xrange(select_context.num_rows):
-            def value_from_field(field_group):
-                return field_group.column, Column(field_group.type, [
-                    select_context.columns[field_group.column].values[i]])
-            key = Context(1, collections.OrderedDict(
-                value_from_field(field) for field in field_groups), None)
+            key = self.get_group_key(
+                field_groups, alias_group_list, select_context,
+                alias_group_result_context, i)
             if key not in group_contexts:
                 new_group_context = empty_context_from_template(select_context)
                 group_contexts[key] = new_group_context
             group_context = group_contexts[key]
             append_row_to_context(src_context=select_context, index=i,
                                   dest_context=group_context)
+
         result_context = self.empty_context_from_select_fields(select_fields)
+        result_col_names = [field.alias for field in select_fields]
         for context_key, group_context in group_contexts.iteritems():
             group_eval_context = Context(1, context_key.columns, group_context)
-            group_result_context = self.evaluate_select_fields(
-                select_fields, group_eval_context)
-            append_row_to_context(group_result_context, 0, result_context)
+            group_aggregate_result_context = self.evaluate_select_fields(
+                aggregate_select_fields, group_eval_context)
+            full_result_row_context = self.merge_contexts_for_select_fields(
+                result_col_names, group_aggregate_result_context, context_key)
+            append_row_to_context(full_result_row_context, 0, result_context)
         return result_context
+
+    def merge_contexts_for_select_fields(self, col_names, context1, context2):
+        """Build a context that combines columns of two contexts.
+
+        The col_names argument is a list of strings that specifies the order of
+        the columns in the result. Note that not every column must be used, and
+        columns in context1 take precedence over context2 (this happens in
+        practice with non-alias groups that are part of the group key).
+        """
+        assert context1.num_rows == context2.num_rows
+        assert context1.aggregate_context is None
+        assert context2.aggregate_context is None
+        columns1, columns2 = context1.columns, context2.columns
+        return Context(context1.num_rows, collections.OrderedDict(
+            (col_name, columns1.get(col_name) or columns2[col_name])
+            for col_name in col_names
+        ), None)
+
+    def get_group_key(self, field_groups, alias_groups, select_context,
+                      alias_group_result_context, index):
+        """Computes a singleton context with the values for a group key.
+
+        The evaluation has already been done; this method just selects the
+        values out of the right contexts.
+        """
+        result_columns = collections.OrderedDict()
+        for field_group in field_groups:
+            column_name = field_group.column
+            source_column = select_context.columns[column_name]
+            result_columns[column_name] = Column(
+                source_column.type, [source_column.values[index]])
+        for alias_group in alias_groups:
+            column_name = alias_group
+            source_column = alias_group_result_context.columns[column_name]
+            result_columns[column_name] = Column(
+                source_column.type, [source_column.values[index]])
+        return Context(1, result_columns, None)
+
 
     def empty_context_from_select_fields(self, select_fields):
         return Context(

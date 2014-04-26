@@ -169,3 +169,20 @@ class TinyQueryTest(unittest.TestCase):
         result = self.tq.evaluate_query(
             'SELECT val1 + SUM(val2) FROM test_table GROUP BY val1')
         self.assertEqual([4, 8, 12, 12], sorted(result.columns['f0_'].values))
+
+    def test_group_by_alias(self):
+        result = self.tq.evaluate_query(
+            'SELECT val1 % 3 AS cat, MAX(val1) FROM test_table GROUP BY cat')
+        result_rows = zip(result.columns['cat'].values,
+                          result.columns['f0_'].values)
+        self.assertEqual([(1, 4), (2, 8)], sorted(result_rows))
+
+    def test_mixed_group_by(self):
+        result = self.tq.evaluate_query(
+            'SELECT val2 % 2 AS foo, SUM(val2) AS bar '
+            'FROM test_table GROUP BY val1, foo')
+        result_rows = zip(result.columns['foo'].values,
+                          result.columns['bar'].values)
+        self.assertEqual([(0, 2), (0, 4), (0, 6), (0, 8), (1, 1)],
+                         sorted(result_rows))
+
