@@ -58,11 +58,15 @@ class TinyQuery(object):
         assert group_set.alias_groups == set(), (
             'Alias groups are currently unsupported.')
         field_groups = group_set.field_groups
+        # Dictionary mapping (singleton) group key context to the context of
+        # values for that key.
         group_contexts = {}
         for i in xrange(select_context.num_rows):
-            # Group keys are tuples containing each grouped-by value.
-            key = tuple(select_context.columns[field.column].values[i]
-                        for field in field_groups)
+            def value_from_field(field_group):
+                return field_group.column, Column(field_group.type, [
+                    select_context.columns[field_group.column].values[i]])
+            key = Context(1, collections.OrderedDict(
+                value_from_field(field) for field in field_groups), None)
             if key not in group_contexts:
                 new_group_context = empty_context_from_template(select_context)
                 group_contexts[key] = new_group_context
@@ -70,9 +74,8 @@ class TinyQuery(object):
             append_row_to_context(src_context=select_context, index=i,
                                   dest_context=group_context)
         result_context = self.empty_context_from_select_fields(select_fields)
-        for group_context in group_contexts.itervalues():
-            group_eval_context = Context(1, collections.OrderedDict(),
-                                         group_context)
+        for context_key, group_context in group_contexts.iteritems():
+            group_eval_context = Context(1, context_key.columns, group_context)
             group_result_context = self.evaluate_select_fields(
                 select_fields, group_eval_context)
             append_row_to_context(group_result_context, 0, result_context)
@@ -198,6 +201,16 @@ class Context(object):
     def __repr__(self):
         return 'Context({}, {}, {})'.format(self.num_rows, self.columns,
                                             self.aggregate_context)
+
+    def __eq__(self, other):
+        return ((self.num_rows, self.columns, self.aggregate_context) ==
+                other.num_rows, other.columns, other.aggregate_context)
+
+    def __hash__(self):
+        return hash((
+            self.num_rows,
+            tuple(tuple(column.values) for column in self.columns.values()),
+            self.aggregate_context))
 
 
 class Column(collections.namedtuple('Column', ['type', 'values'])):

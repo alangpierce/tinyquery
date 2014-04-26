@@ -164,3 +164,8 @@ class TinyQueryTest(unittest.TestCase):
         result = self.tq.evaluate_query(
             'SELECT SUM(val2) FROM test_table GROUP BY val1')
         self.assertEqual([3, 4, 6, 8], sorted(result.columns['f0_'].values))
+
+    def test_group_by_used_field(self):
+        result = self.tq.evaluate_query(
+            'SELECT val1 + SUM(val2) FROM test_table GROUP BY val1')
+        self.assertEqual([4, 8, 12, 12], sorted(result.columns['f0_'].values))
