@@ -35,16 +35,71 @@ class TinyQuery(object):
         select_context = mask_context(table_context, mask_column)
 
         if select_ast.group_set is not None:
-            assert select_ast.group_set == typed_ast.GroupSet(set(), []), (
-                'Only the empty group list is supported for now.')
-            select_context = Context(1, collections.OrderedDict(),
-                                     select_context)
+            result_context = self.evaluate_groups(
+                select_ast.select_fields, select_ast.group_set, select_context)
+        else:
+            result_context = self.evaluate_select_fields(
+                select_ast.select_fields, select_context)
+        return table_from_context('query_result', result_context)
 
-        result_columns = [
-            self.evaluate_select_field(select_field, select_context)
-            for select_field in select_ast.select_fields]
-        return Table('query_result', select_context.num_rows,
-                     collections.OrderedDict(result_columns))
+    def evaluate_groups(self, select_fields, group_set, select_context):
+        """Evaluate a list of select fields, grouping by some of the values.
+
+        Arguments:
+            select_fields: A list of SelectField instances to evaluate.
+            group_set: The groups (either fields in select_context or aliases
+                referring to an element of select_fields) to group by.
+            select_context: A context with the data that the select statement
+                has access to.
+
+        Returns:
+            A context with the results.
+        """
+        assert group_set.alias_groups == set(), (
+            'Alias groups are currently unsupported.')
+        field_groups = group_set.field_groups
+        group_contexts = {}
+        for i in xrange(select_context.num_rows):
+            # Group keys are tuples containing each grouped-by value.
+            key = tuple(select_context.columns[field.column].values[i]
+                        for field in field_groups)
+            if key not in group_contexts:
+                new_group_context = empty_context_from_template(select_context)
+                group_contexts[key] = new_group_context
+            group_context = group_contexts[key]
+            append_row_to_context(src_context=select_context, index=i,
+                                  dest_context=group_context)
+        result_context = self.empty_context_from_select_fields(select_fields)
+        for group_context in group_contexts.itervalues():
+            group_eval_context = Context(1, collections.OrderedDict(),
+                                         group_context)
+            group_result_context = self.evaluate_select_fields(
+                select_fields, group_eval_context)
+            append_row_to_context(group_result_context, 0, result_context)
+        return result_context
+
+    def empty_context_from_select_fields(self, select_fields):
+        return Context(
+            0,
+            collections.OrderedDict(
+                (select_field.alias, Column(select_field.expr.type, []))
+                for select_field in select_fields
+            ),
+            None)
+
+    def evaluate_select_fields(self, select_fields, context):
+        """Evaluate a table result given the data the fields have access to.
+
+        Arguments:
+            select_fields: A list of typed_ast.SelectField values to evaluate.
+            context: The "source" context that the expressions can access when
+                being evaluated.
+        """
+        return Context(context.num_rows,
+                       collections.OrderedDict(
+                           self.evaluate_select_field(select_field, context)
+                           for select_field in select_fields),
+                       None)
 
     def evaluate_select_field(self, select_field, context):
         """Given a typed select field, return a resulting name and Column."""
@@ -118,8 +173,7 @@ class Table(collections.namedtuple('Table', ['name', 'num_rows', 'columns'])):
         super(Table, self).__init__()
 
 
-class Context(collections.namedtuple(
-        'Context', ['num_rows', 'columns', 'aggregate_context'])):
+class Context(object):
     """Represents the columns accessible when evaluating an expression.
 
     Fields:
@@ -137,11 +191,22 @@ class Context(collections.namedtuple(
                     name, len(column.values), num_rows))
         if aggregate_context is not None:
             assert isinstance(aggregate_context, Context)
-        super(Context, self).__init__()
+        self.num_rows = num_rows
+        self.columns = columns
+        self.aggregate_context = aggregate_context
+
+    def __repr__(self):
+        return 'Context({}, {}, {})'.format(self.num_rows, self.columns,
+                                            self.aggregate_context)
 
 
 class Column(collections.namedtuple('Column', ['type', 'values'])):
-    pass
+    """Represents a single column of data.
+
+    Fields:
+        type: A constant from the tq_types module.
+        values: A list of raw values for the column contents.
+    """
 
 
 def context_from_table(table):
@@ -169,3 +234,31 @@ def mask_context(context, mask):
         for (column_name, column) in context.columns.iteritems()
     ])
     return Context(sum(mask), new_columns, None)
+
+
+def empty_context_from_template(context):
+    """Returns a new context that has the same columns as the given context."""
+    return Context(num_rows=0,
+                   columns=collections.OrderedDict(
+                       (name, empty_column_from_template(column))
+                       for name, column in context.columns.iteritems()
+                   ),
+                   aggregate_context=None)
+
+
+def empty_column_from_template(column):
+    """Returns a new empty column with the same type as the given one."""
+    return Column(column.type, [])
+
+
+def append_row_to_context(src_context, index, dest_context):
+    """Take row i from src_context and append it to dest_context.
+
+    The schemas of the two contexts must match.
+    """
+    dest_context.num_rows += 1
+    for name, column in dest_context.columns.iteritems():
+        column.values.append(src_context.columns[name].values[index])
+
+def table_from_context(table_name, context):
+    return Table(table_name, context.num_rows, context.columns)
