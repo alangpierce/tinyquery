@@ -10,6 +10,8 @@ reserved_words = {
     'as': 'AS',
     'from': 'FROM',
     'where': 'WHERE',
+    'join': 'JOIN',
+    'on': 'ON',
     'group': 'GROUP',
     'by': 'BY'
 }
@@ -29,6 +31,7 @@ tokens = [
     'LPAREN',
     'RPAREN',
     'COMMA',
+    'DOT',
     'NUMBER',
     'ID'
 ] + reserved_words.values()
@@ -48,6 +51,7 @@ t_LESS_THAN_OR_EQUAL = r'<='
 t_LPAREN = r'\('
 t_RPAREN = r'\)'
 t_COMMA = r','
+t_DOT = r'\.'
 
 
 def t_NUMBER(token):

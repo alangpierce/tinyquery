@@ -18,11 +18,14 @@ select = ('SELECT', 'select')
 as_tok = ('AS', 'as')
 from_tok = ('FROM', 'from')
 where = ('WHERE', 'where')
+join = ('JOIN', 'join')
+on = ('ON', 'on')
 group = ('GROUP', 'group')
 by = ('BY', 'by')
 lparen = ('LPAREN', '(')
 rparen = ('RPAREN', ')')
 comma = ('COMMA', ',')
+dot = ('DOT', '.')
 
 
 def num(n):
@@ -122,4 +125,12 @@ class LexerTest(unittest.TestCase):
             [select, ident('foo'), from_tok, lparen, select, ident('val'),
              plus, num(1), as_tok, ident('foo'), from_tok, ident('test_table'),
              rparen]
+        )
+
+    def test_join(self):
+        self.assert_tokens(
+            'SELECT foo FROM table1 JOIN table2 ON table1.bar = table2.bar',
+            [select, ident('foo'), from_tok, ident('table1'), join,
+             ident('table2'), on, ident('table1'), dot, ident('bar'), equals,
+             ident('table2'), dot, ident('bar')]
         )
