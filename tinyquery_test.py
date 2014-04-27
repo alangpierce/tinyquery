@@ -28,143 +28,94 @@ class TinyQueryTest(unittest.TestCase):
         result = self.tq.evaluate_query(query)
         self.assertEqual(expected_result, result)
 
+    def make_context(self, name_type_values_triples):
+        num_rows = len(name_type_values_triples[0][2])
+        # The constructor does all relevant invariant checks, so we don't have
+        # to do that here.
+        return tinyquery.Context(
+            num_rows,
+            collections.OrderedDict(
+                ((name, tinyquery.Column(type, values))
+                 for name, type, values in name_type_values_triples)
+            ),
+            None)
+
     def test_select_literal(self):
         self.assert_query_result(
             'SELECT 0',
-            tinyquery.Table(
-                'query_result',
-                1,
-                collections.OrderedDict([
-                    ('f0_', tinyquery.Column(tq_types.INT, [0]))
-                ])
-            )
+            self.make_context([('f0_', tq_types.INT, [0])])
         )
 
     def test_simple_arithmetic(self):
         self.assert_query_result(
             'SELECT 1 + 2',
-            tinyquery.Table(
-                'query_result',
-                1,
-                collections.OrderedDict([
-                    ('f0_', tinyquery.Column(tq_types.INT, [3]))
-                ])
-            )
+            self.make_context([('f0_', tq_types.INT, [3])])
         )
 
     def test_precedence(self):
         self.assert_query_result(
             'SELECT 2 * (3 + 1) + 2 * 3',
-            tinyquery.Table(
-                'query_result',
-                1,
-                collections.OrderedDict([
-                    ('f0_', tinyquery.Column(tq_types.INT, [14]))
-                ])
-            )
+            self.make_context([('f0_', tq_types.INT, [14])])
         )
 
     def test_negative_number(self):
         self.assert_query_result(
             'SELECT -3',
-            tinyquery.Table(
-                'query_result',
-                1,
-                collections.OrderedDict([
-                    ('f0_', tinyquery.Column(tq_types.INT, [-3]))
-                ])
-            )
+            self.make_context([('f0_', tq_types.INT, [-3])])
         )
 
     def test_function_calls(self):
         with mock.patch('time.time', lambda: 15):
             self.assert_query_result(
                 'SELECT ABS(-2), POW(2, 3), NOW()',
-                tinyquery.Table(
-                    'query_result',
-                    1,
-                    collections.OrderedDict([
-                        ('f0_', tinyquery.Column(tq_types.INT, [2])),
-                        ('f1_', tinyquery.Column(tq_types.INT, [8])),
-                        ('f2_', tinyquery.Column(tq_types.INT, [15000000])),
-                    ])
-                )
+                self.make_context([
+                    ('f0_', tq_types.INT, [2]),
+                    ('f1_', tq_types.INT, [8]),
+                    ('f2_', tq_types.INT, [15000000]),
+                ])
             )
 
     def test_select_from_table(self):
         self.assert_query_result(
             'SELECT val1 FROM test_table',
-            tinyquery.Table(
-                'query_result',
-                5,
-                collections.OrderedDict([
-                    ('val1', tinyquery.Column(tq_types.INT, [4, 1, 8, 1, 2]))
-                ])
-            )
+            self.make_context([('val1', tq_types.INT, [4, 1, 8, 1, 2])])
         )
 
     def test_select_comparison(self):
         self.assert_query_result(
             'SELECT val1 = val2 FROM test_table',
-            tinyquery.Table(
-                'query_result',
-                5,
-                collections.OrderedDict([
-                    ('f0_', tinyquery.Column(
-                        tq_types.BOOL, [False, False, False, True, False]))
-                ])
-            )
+            self.make_context([
+                ('f0_', tq_types.BOOL, [False, False, False, True, False])
+            ])
         )
 
     def test_where(self):
         self.assert_query_result(
             'SELECT val1 + 2 FROM test_table WHERE val2 > 3',
-            tinyquery.Table(
-                'query_result',
-                3,
-                collections.OrderedDict([
-                    ('f0_', tinyquery.Column(tq_types.INT, [6, 10, 4]))
-                ])
-            )
+            self.make_context([('f0_', tq_types.INT, [6, 10, 4])])
         )
 
     def test_multiple_select(self):
         self.assert_query_result(
             'SELECT val1 + 1 foo, val2, val2 * 2'
             'FROM test_table WHERE val1 < 5',
-            tinyquery.Table(
-                'query_result',
-                4,
-                collections.OrderedDict([
-                    ('foo', tinyquery.Column(tq_types.INT, [5, 2, 2, 3])),
-                    ('val2', tinyquery.Column(tq_types.INT, [8, 2, 1, 6])),
-                    ('f0_', tinyquery.Column(tq_types.INT, [16, 4, 2, 12]))
-                ])
-            )
+            self.make_context([
+                ('foo', tq_types.INT, [5, 2, 2, 3]),
+                ('foo', tq_types.INT, [8, 2, 1, 6]),
+                ('foo', tq_types.INT, [16, 4, 2, 12]),
+            ])
         )
 
     def test_simple_aggregate(self):
         self.assert_query_result(
             'SELECT SUM(val1) + MIN(val2) FROM test_table',
-            tinyquery.Table(
-                'query_result',
-                1,
-                collections.OrderedDict([
-                    ('f0_', tinyquery.Column(tq_types.INT, [17]))
-                ])
-            )
+            self.make_context([('f0_', tq_types.INT, [17])])
         )
 
     def test_aggregate_evaluation(self):
         self.assert_query_result(
             'SELECT 2 * SUM(val1 + 1) FROM test_table WHERE val1 < 5',
-            tinyquery.Table(
-                'query_result',
-                1,
-                collections.OrderedDict([
-                    ('f0_', tinyquery.Column(tq_types.INT, [24]))
-                ])
-            )
+            self.make_context([('f0_', tq_types.INT, [24])])
         )
 
     def test_group_by_field(self):
@@ -196,17 +147,19 @@ class TinyQueryTest(unittest.TestCase):
     def test_select_multiple_tables(self):
         self.assert_query_result(
             'SELECT val1, val2, val3 FROM test_table, test_table_2',
-            tinyquery.Table(
-                'query_result',
-                7,
-                collections.OrderedDict([
-                    ('val1', tinyquery.Column(
-                        tq_types.INT, [4, 1, 8, 1, 2, None, None])),
-                    ('val2', tinyquery.Column(
-                        tq_types.INT, [8, 2, 4, 1, 6, 2, 7])),
-                    ('val3', tinyquery.Column(
-                        tq_types.INT, [None, None, None, None, None, 3, 8]))
-                ])
-            )
+            self.make_context([
+                ('val1', tq_types.INT, [4, 1, 8, 1, 2, None, None]),
+                ('val2', tq_types.INT, [8, 2, 4, 1, 6, 2, 7]),
+                ('val3', tq_types.INT, [None, None, None, None, None, 3, 8]),
+            ])
         )
 
+    def test_subquery(self):
+        self.assert_query_result(
+            'SELECT foo * 2, foo + 1 '
+            'FROM (SELECT val1 + val2 AS foo FROM test_table)',
+            self.make_context([
+                ('f0_', tq_types.INT, [24, 6, 24, 4, 16]),
+                ('f1_', tq_types.INT, [13, 4, 13, 3, 13]),
+            ])
+        )

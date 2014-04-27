@@ -27,7 +27,7 @@ class TinyQuery(object):
         return self.evaluate_select(select_ast)
 
     def evaluate_select(self, select_ast):
-        """Given a typed select statement, return a Table with the results."""
+        """Given a select statement, return a Context with the results."""
         assert isinstance(select_ast, typed_ast.Select)
 
         table_context = self.evaluate_table_expr(select_ast.table)
@@ -35,12 +35,11 @@ class TinyQuery(object):
         select_context = mask_context(table_context, mask_column)
 
         if select_ast.group_set is not None:
-            result_context = self.evaluate_groups(
+            return self.evaluate_groups(
                 select_ast.select_fields, select_ast.group_set, select_context)
         else:
-            result_context = self.evaluate_select_fields(
+            return self.evaluate_select_fields(
                 select_ast.select_fields, select_context)
-        return table_from_context('query_result', result_context)
 
     def evaluate_groups(self, select_fields, group_set, select_context):
         """Evaluate a list of select fields, grouping by some of the values.
@@ -189,6 +188,8 @@ class TinyQuery(object):
         append_partial_context_to_context(table2_result, result_context)
         return result_context
 
+    def eval_table_Select(self, table_expr):
+        return self.evaluate_select(table_expr)
 
     def evaluate_expr(self, expr, context):
         """Computes the raw data for the output column for the expression."""
@@ -365,7 +366,3 @@ def append_partial_context_to_context(src_context, dest_context):
             dest_column.values.extend([None] * src_context.num_rows)
         else:
             dest_column.values.extend(src_column_values)
-
-
-def table_from_context(table_name, context):
-    return Table(table_name, context.num_rows, context.columns)
