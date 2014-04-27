@@ -271,7 +271,7 @@ class CompilerTest(unittest.TestCase):
         )
 
     def test_select_multiple_tables(self):
-        #
+        # Union of columns should be taken, with no aliases.
         unioned_type_ctx = typed_ast.TypeContext(
             collections.OrderedDict([
                 ('value', tq_types.INT),

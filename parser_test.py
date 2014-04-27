@@ -204,3 +204,19 @@ class ParserTest(unittest.TestCase):
                 None
             )
         )
+
+    def test_subquery(self):
+        self.assert_parsed_select(
+            'SELECT foo FROM (SELECT val AS foo FROM table)',
+            tq_ast.Select(
+                [tq_ast.SelectField(tq_ast.ColumnId('foo'), None)],
+                tq_ast.Select(
+                    [tq_ast.SelectField(tq_ast.ColumnId('val'), 'foo')],
+                    tq_ast.TableId('table'),
+                    None,
+                    None
+                ),
+                None,
+                None
+            )
+        )

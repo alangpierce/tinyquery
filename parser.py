@@ -69,6 +69,16 @@ def p_table_union(p):
     p[0] = tq_ast.TableUnion(p[1], p[3])
 
 
+def p_select_table_expression(p):
+    """table_expr : select"""
+    p[0] = p[1]
+
+
+def p_table_expression_parens(p):
+    """table_expr : LPAREN table_expr RPAREN"""
+    p[0] = p[2]
+
+
 def p_select_field_list(p):
     """select_field_list : select_field
                          | select_field_list COMMA select_field

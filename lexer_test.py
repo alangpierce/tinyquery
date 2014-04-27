@@ -115,3 +115,11 @@ class LexerTest(unittest.TestCase):
             'SELECT foo FROM table1, table2',
             [select, ident('foo'), from_tok, ident('table1'), comma,
              ident('table2')])
+
+    def test_subquery(self):
+        self.assert_tokens(
+            'SELECT foo FROM (SELECT val + 1 AS foo FROM test_table)',
+            [select, ident('foo'), from_tok, lparen, select, ident('val'),
+             plus, num(1), as_tok, ident('foo'), from_tok, ident('test_table'),
+             rparen]
+        )
