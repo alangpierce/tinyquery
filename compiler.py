@@ -64,8 +64,12 @@ class Compiler(object):
 
         # Put the compiled select fields in the proper order.
         select_fields = [compiled_field_dict[alias] for alias in aliases]
+        result_context = typed_ast.TypeContext.from_full_columns(
+            collections.OrderedDict(
+                (field.alias, field.expr.type) for field in select_fields),
+            None)
         return typed_ast.Select(select_fields, table_expr, where_expr,
-                                group_set)
+                                group_set, result_context)
 
     def compile_table_expr(self, table_expr):
         """Compile a table expression and determine its result type context.
@@ -106,6 +110,9 @@ class Compiler(object):
         type_ctx = typed_ast.TypeContext.union_contexts(
             compiled_table1.type_ctx, compiled_table2.type_ctx)
         return typed_ast.TableUnion(compiled_table1, compiled_table2, type_ctx)
+
+    def compile_table_expr_Select(self, table_expr):
+        return self.compile_select(table_expr)
 
     def compile_groups(self, groups, select_fields, aliases, table_ctx):
         """Gets the group set to use for the query.

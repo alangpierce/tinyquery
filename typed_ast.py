@@ -5,7 +5,8 @@ import compiler
 
 
 class Select(collections.namedtuple(
-        'Select', ['select_fields', 'table', 'where_expr', 'group_set'])):
+        'Select', ['select_fields', 'table', 'where_expr', 'group_set',
+                   'type_ctx'])):
     """A compiled query.
 
     Fields:
