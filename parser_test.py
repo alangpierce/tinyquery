@@ -190,3 +190,17 @@ class ParserTest(unittest.TestCase):
                 ['baz']
             )
         )
+
+    def test_multiple_table_select(self):
+        self.assert_parsed_select(
+            'SELECT foo FROM table1, table2',
+            tq_ast.Select(
+                [tq_ast.SelectField(tq_ast.ColumnId('foo'), None)],
+                tq_ast.TableUnion(
+                    tq_ast.TableId('table1'),
+                    tq_ast.TableId('table2'),
+                ),
+                None,
+                None
+            )
+        )

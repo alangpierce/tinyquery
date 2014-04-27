@@ -59,9 +59,14 @@ def p_id_list(p):
         p[0] = p[1]
 
 
-def p_table_expr_id(p):
+def p_table_id(p):
     """table_expr : ID"""
     p[0] = tq_ast.TableId(p[1])
+
+
+def p_table_union(p):
+    """table_expr : table_expr COMMA table_expr"""
+    p[0] = tq_ast.TableUnion(p[1], p[3])
 
 
 def p_select_field_list(p):

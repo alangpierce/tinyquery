@@ -109,3 +109,9 @@ class LexerTest(unittest.TestCase):
             'SELECT foo FROM bar GROUP BY baz',
             [select, ident('foo'), from_tok, ident('bar'), group, by,
              ident('baz')])
+
+    def test_select_multiple_tales(self):
+        self.assert_tokens(
+            'SELECT foo FROM table1, table2',
+            [select, ident('foo'), from_tok, ident('table1'), comma,
+             ident('table2')])

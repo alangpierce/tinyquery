@@ -324,5 +324,6 @@ def append_row_to_context(src_context, index, dest_context):
     for name, column in dest_context.columns.iteritems():
         column.values.append(src_context.columns[name].values[index])
 
+
 def table_from_context(table_name, context):
     return Table(table_name, context.num_rows, context.columns)

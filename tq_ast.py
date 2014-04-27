@@ -1,4 +1,8 @@
-"""A set of AST classes that correspond to the code."""
+"""A set of AST classes that correspond to the code.
+
+This AST format is desinged to be easy to parse into. See typed_ast for the AST
+format that is used during the evaluation step.
+"""
 
 import collections
 
@@ -66,3 +70,12 @@ class ColumnId(collections.namedtuple('ColumnId', ['name'])):
 class TableId(collections.namedtuple('TableId', ['name'])):
     def __str__(self):
         return self.name
+
+
+class TableUnion(collections.namedtuple('TableUnion', ['table1', 'table2'])):
+    """Table expression for a union of two tables (the comma operator).
+
+    table1 and table2 can be arbitrary table expressions.
+    """
+    def __str__(self):
+        return '{}, {}'.format(self.table1, self.table2)
