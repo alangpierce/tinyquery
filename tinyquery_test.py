@@ -13,8 +13,15 @@ class TinyQueryTest(unittest.TestCase):
             'test_table',
             5,
             collections.OrderedDict([
-                ('val1', tinyquery.Column('int', [4, 1, 8, 1, 2])),
-                ('val2', tinyquery.Column('int', [8, 2, 4, 1, 6]))
+                ('val1', tinyquery.Column(tq_types.INT, [4, 1, 8, 1, 2])),
+                ('val2', tinyquery.Column(tq_types.INT, [8, 2, 4, 1, 6]))
+            ])))
+        self.tq.load_table(tinyquery.Table(
+            'test_table_2',
+            2,
+            collections.OrderedDict([
+                ('val3', tinyquery.Column(tq_types.INT, [3, 8])),
+                ('val2', tinyquery.Column(tq_types.INT, [2, 7])),
             ])))
 
     def assert_query_result(self, query, expected_result):
@@ -185,4 +192,21 @@ class TinyQueryTest(unittest.TestCase):
                           result.columns['bar'].values)
         self.assertEqual([(0, 2), (0, 4), (0, 6), (0, 8), (1, 1)],
                          sorted(result_rows))
+
+    def test_select_multiple_tables(self):
+        self.assert_query_result(
+            'SELECT val1, val2, val3 FROM test_table, test_table_2',
+            tinyquery.Table(
+                'query_result',
+                7,
+                collections.OrderedDict([
+                    ('val1', tinyquery.Column(
+                        tq_types.INT, [4, 1, 8, 1, 2, None, None])),
+                    ('val2', tinyquery.Column(
+                        tq_types.INT, [8, 2, 4, 1, 6, 2, 7])),
+                    ('val3', tinyquery.Column(
+                        tq_types.INT, [None, None, None, None, None, 3, 8]))
+                ])
+            )
+        )
 

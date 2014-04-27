@@ -181,6 +181,15 @@ class TinyQuery(object):
         table = self.tables_by_name[table_expr.name]
         return context_from_table(table)
 
+    def eval_table_TableUnion(self, table_expr):
+        result_context = empty_context_from_type_context(table_expr.type_ctx)
+        table1_result = self.evaluate_table_expr(table_expr.table1)
+        append_partial_context_to_context(table1_result, result_context)
+        table2_result = self.evaluate_table_expr(table_expr.table2)
+        append_partial_context_to_context(table2_result, result_context)
+        return result_context
+
+
     def evaluate_expr(self, expr, context):
         """Computes the raw data for the output column for the expression."""
         try:
@@ -282,6 +291,15 @@ def context_from_table(table):
     return Context(len(any_column.values), new_columns, None)
 
 
+def empty_context_from_type_context(type_context):
+    assert type_context.aggregate_context is None
+    result_columns = collections.OrderedDict(
+        (col_name, Column(col_type, []))
+        for col_name, col_type in type_context.columns.iteritems()
+    )
+    return Context(0, result_columns, None)
+
+
 def mask_context(context, mask):
     """Apply a row filter to a given context.
 
@@ -323,6 +341,30 @@ def append_row_to_context(src_context, index, dest_context):
     dest_context.num_rows += 1
     for name, column in dest_context.columns.iteritems():
         column.values.append(src_context.columns[name].values[index])
+
+
+def append_partial_context_to_context(src_context, dest_context):
+    """Modifies dest_context to include all rows in src_context.
+
+    The schemas don't need to match exactly; src_context just needs to have a
+    subset, and all other columns will be given a null value.
+
+    Also, it is assumed that the destination context only uses short column
+    names rather than fully-qualified names.
+    """
+    dest_context.num_rows += src_context.num_rows
+    # Ignore fully-qualified names for this operation.
+    short_named_src_column_values = {
+        typed_ast.TypeContext.short_column_name(col_name): column.values
+        for col_name, column in src_context.columns.iteritems()}
+
+    for col_name, dest_column in dest_context.columns.iteritems():
+        src_column_values = short_named_src_column_values.get(col_name)
+        print ''
+        if src_column_values is None:
+            dest_column.values.extend([None] * src_context.num_rows)
+        else:
+            dest_column.values.extend(src_column_values)
 
 
 def table_from_context(table_name, context):
