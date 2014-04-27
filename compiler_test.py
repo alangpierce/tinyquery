@@ -17,10 +17,6 @@ class CompilerTest(unittest.TestCase):
                 ('value', tinyquery.Column(tq_types.INT, [])),
                 ('value2', tinyquery.Column(tq_types.INT, []))
             ]))
-        self.tables_by_name = {
-            'table1': self.table1
-        }
-
         self.table1_type_ctx = typed_ast.TypeContext(
             collections.OrderedDict([
                 ('table1.value', tq_types.INT),
@@ -31,6 +27,30 @@ class CompilerTest(unittest.TestCase):
             },
             set(),
             None)
+
+        self.table2 = tinyquery.Table(
+            'table2',
+            0,
+            collections.OrderedDict([
+                ('value', tinyquery.Column(tq_types.INT, [])),
+                ('value3', tinyquery.Column(tq_types.INT, []))
+            ])
+        )
+        self.table2_type_ctx = typed_ast.TypeContext(
+            collections.OrderedDict([
+                ('table2.value', tq_types.INT),
+                ('table2.value3', tq_types.INT)
+            ]), {
+                'value': 'table2.value',
+                'value3': 'table2.value3'
+            },
+            set(),
+            None)
+
+        self.tables_by_name = {
+            'table1': self.table1,
+            'table2': self.table2
+        }
 
     def assert_compiled_select(self, text, expected_ast):
         ast = compiler.compile_text(text, self.tables_by_name)
@@ -247,5 +267,36 @@ class CompilerTest(unittest.TestCase):
                     alias_groups={'value'},
                     field_groups=[]
                 )
+            )
+        )
+
+    def test_select_multiple_tables(self):
+        #
+        unioned_type_ctx = typed_ast.TypeContext(
+            collections.OrderedDict([
+                ('value', tq_types.INT),
+                ('value2', tq_types.INT),
+                ('value3', tq_types.INT)
+            ]),
+            {},
+            set(),
+            None)
+
+        self.assert_compiled_select(
+            'SELECT value, value2, value3 FROM table1, table2',
+            typed_ast.Select([
+                typed_ast.SelectField(
+                    typed_ast.ColumnRef('value', tq_types.INT), 'value'),
+                typed_ast.SelectField(
+                    typed_ast.ColumnRef('value2', tq_types.INT), 'value2'),
+                typed_ast.SelectField(
+                    typed_ast.ColumnRef('value3', tq_types.INT), 'value3')],
+                typed_ast.TableUnion(
+                    typed_ast.Table('table1', self.table1_type_ctx),
+                    typed_ast.Table('table2', self.table2_type_ctx),
+                    unioned_type_ctx
+                ),
+                typed_ast.Literal(True, tq_types.BOOL),
+                None
             )
         )

@@ -65,18 +65,53 @@ class TypeContext(collections.namedtuple(
         aliases = {}
         ambig_aliases = set()
         for full_name in full_columns:
-            tokens = full_name.rsplit('.', 1)
-            if len(tokens) != 2:
+            short_name = cls.short_column_name(full_name)
+            if short_name == full_name:
                 continue
-            alias = tokens[1]
-            if alias in ambig_aliases:
+            if short_name in ambig_aliases:
                 continue
-            elif alias in aliases:
-                del aliases[alias]
-                ambig_aliases.add(alias)
+            elif short_name in aliases:
+                del aliases[short_name]
+                ambig_aliases.add(short_name)
             else:
-                aliases[alias] = full_name
+                aliases[short_name] = full_name
         return cls(full_columns, aliases, ambig_aliases, aggregate_context)
+
+    @classmethod
+    def union_contexts(cls, context1, context2):
+        """Creates a type context from the union of two others.
+
+        This follows the semantics of the comma operator:
+        -The columns in the first table are used first, and any columns in the
+            second table are added to the end, but only if they weren't in the
+            first table.
+        -All fully-qualified names are removed; columns can only be referenced
+            by their direct names.
+        TODO: Do better error handling with things like conflicting types.
+        """
+        result_columns = collections.OrderedDict()
+        assert context1.aggregate_context is None
+        assert context2.aggregate_context is None
+        for column_name, col_type in context1.columns.iteritems():
+            short_name = cls.short_column_name(column_name)
+            result_columns[short_name] = col_type
+        for column_name, col_type in context2.columns.iteritems():
+            short_name = cls.short_column_name(column_name)
+            if short_name in result_columns:
+                if result_columns[short_name] != col_type:
+                    raise compiler.CompileError(
+                        'Incompatible types when performing union on field '
+                        '{}: {} vs. {}'.format(
+                            short_name, result_columns[short_name], col_type))
+            else:
+                result_columns[short_name] = col_type
+        return cls(result_columns, aliases={}, ambig_aliases=set(),
+                   aggregate_context=None)
+
+    @staticmethod
+    def short_column_name(full_column_name):
+        tokens = full_column_name.rsplit('.', 1)
+        return tokens[-1]
 
     def column_ref_for_name(self, name):
         """Gets the full identifier for a column from any possible alias."""
@@ -93,7 +128,7 @@ class TypeContext(collections.namedtuple(
 
 class TableExpression(object):
     """Abstract class for all table expression ASTs."""
-    def __init__(self):
+    def __init__(self, *_):
         assert hasattr(self, 'type_ctx')
 
 
@@ -103,7 +138,14 @@ class NoTable(collections.namedtuple('NoTable', []), TableExpression):
         return TypeContext(collections.OrderedDict(), {}, [], None)
 
 
-class Table(collections.namedtuple('Table', ['name', 'type_ctx'])):
+class Table(collections.namedtuple('Table', ['name', 'type_ctx']),
+            TableExpression):
+    pass
+
+
+class TableUnion(collections.namedtuple('TableUnion',
+                                        ['table1', 'table2', 'type_ctx']),
+                 TableExpression):
     pass
 
 

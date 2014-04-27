@@ -79,17 +79,33 @@ class Compiler(object):
         if table_expr is None:
             return typed_ast.NoTable()
         else:
-            assert isinstance(table_expr, tq_ast.TableId)
-            table_name = table_expr.name
-            table = self.tables_by_name[table_expr.name]
+            try:
+                method = getattr(self, 'compile_table_expr_' +
+                                 table_expr.__class__.__name__)
+            except AttributeError:
+                raise NotImplementedError('Missing handler for type {}'.format(
+                    table_expr.__class__.__name__
+                ))
+            return method(table_expr)
 
-            columns = collections.OrderedDict([
-                (table_name + '.' + name, column.type)
-                for name, column in table.columns.iteritems()
-            ])
-            type_context = typed_ast.TypeContext.from_full_columns(
-                columns, None)
-            return typed_ast.Table(table_name, type_context)
+    def compile_table_expr_TableId(self, table_expr):
+        table_name = table_expr.name
+        table = self.tables_by_name[table_expr.name]
+
+        columns = collections.OrderedDict([
+            (table_name + '.' + name, column.type)
+            for name, column in table.columns.iteritems()
+        ])
+        type_context = typed_ast.TypeContext.from_full_columns(
+            columns, None)
+        return typed_ast.Table(table_name, type_context)
+
+    def compile_table_expr_TableUnion(self, table_expr):
+        compiled_table1 = self.compile_table_expr(table_expr.table1)
+        compiled_table2 = self.compile_table_expr(table_expr.table2)
+        type_ctx = typed_ast.TypeContext.union_contexts(
+            compiled_table1.type_ctx, compiled_table2.type_ctx)
+        return typed_ast.TableUnion(compiled_table1, compiled_table2, type_ctx)
 
     def compile_groups(self, groups, select_fields, aliases, table_ctx):
         """Gets the group set to use for the query.
