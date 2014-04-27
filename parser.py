@@ -17,7 +17,7 @@ precedence = (
 
 def p_select(p):
     """select : SELECT select_field_list
-              | SELECT select_field_list FROM table_expr optional_where \
+              | SELECT select_field_list FROM full_table_expr optional_where \
                     optional_group_by
     """
     if len(p) == 3:
@@ -59,14 +59,30 @@ def p_id_list(p):
         p[0] = p[1]
 
 
+def p_full_table_expr(p):
+    """full_table_expr : table_expr_list"""
+    # Unions are special in their naming rules, so we only call a table list a
+    # union if it has at least two tables. Otherwise, it's just a table.
+    if len(p[1]) == 1:
+        p[0] = p[1][0]
+    else:
+        p[0] = tq_ast.TableUnion(p[1])
+
+
+def p_table_expr_list(p):
+    """table_expr_list : table_expr
+                       | table_expr_list COMMA table_expr
+    """
+    if len(p) == 2:
+        p[0] = [p[1]]
+    else:
+        p[1].append(p[3])
+        p[0] = p[1]
+
+
 def p_table_id(p):
     """table_expr : ID"""
     p[0] = tq_ast.TableId(p[1])
-
-
-def p_table_union(p):
-    """table_expr : table_expr COMMA table_expr"""
-    p[0] = tq_ast.TableUnion(p[1], p[3])
 
 
 def p_select_table_expression(p):

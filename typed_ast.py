@@ -79,33 +79,31 @@ class TypeContext(collections.namedtuple(
         return cls(full_columns, aliases, ambig_aliases, aggregate_context)
 
     @classmethod
-    def union_contexts(cls, context1, context2):
-        """Creates a type context from the union of two others.
+    def union_contexts(cls, contexts):
+        """Creates a type context from the union of others.
 
         This follows the semantics of the comma operator:
-        -The columns in the first table are used first, and any columns in the
-            second table are added to the end, but only if they weren't in the
-            first table.
+        -Columns are added in order, and columns already added from previous
+            tables are kept in their original place.
         -All fully-qualified names are removed; columns can only be referenced
             by their direct names.
         TODO: Do better error handling with things like conflicting types.
         """
         result_columns = collections.OrderedDict()
-        assert context1.aggregate_context is None
-        assert context2.aggregate_context is None
-        for column_name, col_type in context1.columns.iteritems():
-            short_name = cls.short_column_name(column_name)
-            result_columns[short_name] = col_type
-        for column_name, col_type in context2.columns.iteritems():
-            short_name = cls.short_column_name(column_name)
-            if short_name in result_columns:
-                if result_columns[short_name] != col_type:
+        for context in contexts:
+            assert context.aggregate_context is None
+
+            for column_name, col_type in context.columns.iteritems():
+                short_name = cls.short_column_name(column_name)
+                if short_name in result_columns:
+                    if result_columns[short_name] == col_type:
+                        continue
                     raise compiler.CompileError(
                         'Incompatible types when performing union on field '
                         '{}: {} vs. {}'.format(
                             short_name, result_columns[short_name], col_type))
-            else:
-                result_columns[short_name] = col_type
+                else:
+                    result_columns[short_name] = col_type
         return cls(result_columns, aliases={}, ambig_aliases=set(),
                    aggregate_context=None)
 
@@ -144,8 +142,7 @@ class Table(collections.namedtuple('Table', ['name', 'type_ctx']),
     pass
 
 
-class TableUnion(collections.namedtuple('TableUnion',
-                                        ['table1', 'table2', 'type_ctx']),
+class TableUnion(collections.namedtuple('TableUnion', ['tables', 'type_ctx']),
                  TableExpression):
     pass
 

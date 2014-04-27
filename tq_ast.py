@@ -72,10 +72,10 @@ class TableId(collections.namedtuple('TableId', ['name'])):
         return self.name
 
 
-class TableUnion(collections.namedtuple('TableUnion', ['table1', 'table2'])):
+class TableUnion(collections.namedtuple('TableUnion', ['tables'])):
     """Table expression for a union of two tables (the comma operator).
 
     table1 and table2 can be arbitrary table expressions.
     """
     def __str__(self):
-        return '{}, {}'.format(self.table1, self.table2)
+        return ', '.join(str(table) for table in self.tables)

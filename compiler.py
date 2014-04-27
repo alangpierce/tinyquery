@@ -105,11 +105,11 @@ class Compiler(object):
         return typed_ast.Table(table_name, type_context)
 
     def compile_table_expr_TableUnion(self, table_expr):
-        compiled_table1 = self.compile_table_expr(table_expr.table1)
-        compiled_table2 = self.compile_table_expr(table_expr.table2)
+        compiled_tables = [
+            self.compile_table_expr(table) for table in table_expr.tables]
         type_ctx = typed_ast.TypeContext.union_contexts(
-            compiled_table1.type_ctx, compiled_table2.type_ctx)
-        return typed_ast.TableUnion(compiled_table1, compiled_table2, type_ctx)
+            table.type_ctx for table in compiled_tables)
+        return typed_ast.TableUnion(compiled_tables, type_ctx)
 
     def compile_table_expr_Select(self, table_expr):
         return self.compile_select(table_expr)

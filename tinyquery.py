@@ -182,10 +182,9 @@ class TinyQuery(object):
 
     def eval_table_TableUnion(self, table_expr):
         result_context = empty_context_from_type_context(table_expr.type_ctx)
-        table1_result = self.evaluate_table_expr(table_expr.table1)
-        append_partial_context_to_context(table1_result, result_context)
-        table2_result = self.evaluate_table_expr(table_expr.table2)
-        append_partial_context_to_context(table2_result, result_context)
+        for table in table_expr.tables:
+            table_result = self.evaluate_table_expr(table)
+            append_partial_context_to_context(table_result, result_context)
         return result_context
 
     def eval_table_Select(self, table_expr):
@@ -361,7 +360,6 @@ def append_partial_context_to_context(src_context, dest_context):
 
     for col_name, dest_column in dest_context.columns.iteritems():
         src_column_values = short_named_src_column_values.get(col_name)
-        print ''
         if src_column_values is None:
             dest_column.values.extend([None] * src_context.num_rows)
         else:

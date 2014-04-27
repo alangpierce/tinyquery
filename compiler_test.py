@@ -291,9 +291,9 @@ class CompilerTest(unittest.TestCase):
                     typed_ast.ColumnRef('value2', tq_types.INT), 'value2'),
                 typed_ast.SelectField(
                     typed_ast.ColumnRef('value3', tq_types.INT), 'value3')],
-                typed_ast.TableUnion(
+                typed_ast.TableUnion([
                     typed_ast.Table('table1', self.table1_type_ctx),
-                    typed_ast.Table('table2', self.table2_type_ctx),
+                    typed_ast.Table('table2', self.table2_type_ctx)],
                     unioned_type_ctx
                 ),
                 typed_ast.Literal(True, tq_types.BOOL),
