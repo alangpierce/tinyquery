@@ -163,3 +163,10 @@ class TinyQueryTest(unittest.TestCase):
                 ('f1_', tq_types.INT, [13, 4, 13, 3, 13]),
             ])
         )
+
+    def test_fully_qualified_name(self):
+        self.assert_query_result(
+            'SELECT test_table.val1 FROM test_table',
+            self.make_context([
+                ('test_table.val1', tq_types.INT, [4, 1, 8, 1, 2])])
+        )

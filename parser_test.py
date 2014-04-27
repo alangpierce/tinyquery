@@ -224,3 +224,14 @@ class ParserTest(unittest.TestCase):
     def test_parenthesized_union_not_allowed(self):
         self.assertRaises(SyntaxError, parser.parse_text,
                           'SELECT foo FROM (table1, table2)')
+
+    def test_fully_qualified_name(self):
+        self.assert_parsed_select(
+            'SELECT table.foo FROM table',
+            tq_ast.Select(
+                [tq_ast.SelectField(tq_ast.ColumnId('table.foo'), None)],
+                tq_ast.TableId('table'),
+                None,
+                None
+            )
+        )

@@ -170,8 +170,19 @@ def p_int_literal(p):
 
 
 def p_expr_id(p):
-    """expression : ID"""
+    """expression : id_component_list"""
     p[0] = tq_ast.ColumnId(p[1])
+
+
+def p_id_component_list(p):
+    """id_component_list : ID
+                         | id_component_list DOT ID"""
+    # TODO: We'll eventually need to actually return the components, but a
+    # string is good enough for now.
+    if len(p) == 2:
+        p[0] = p[1]
+    else:
+        p[0] = p[1] + '.' + p[3]
 
 
 def p_error(p):
