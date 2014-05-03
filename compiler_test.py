@@ -5,6 +5,7 @@ import compiler
 import runtime
 import tinyquery
 import tq_types
+import type_context
 import typed_ast
 
 
@@ -47,7 +48,7 @@ class CompilerTest(unittest.TestCase):
                           text, self.tables_by_name)
 
     def make_type_context(self, name_type_pairs):
-        return typed_ast.TypeContext.from_full_columns(
+        return type_context.TypeContext.from_full_columns(
             collections.OrderedDict(name_type_pairs), None)
 
     def test_compile_simple_select(self):

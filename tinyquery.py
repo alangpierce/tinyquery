@@ -3,6 +3,7 @@ import collections
 import itertools
 
 import compiler
+import type_context
 import typed_ast
 
 
@@ -366,7 +367,7 @@ def append_partial_context_to_context(src_context, dest_context):
     dest_context.num_rows += src_context.num_rows
     # Ignore fully-qualified names for this operation.
     short_named_src_column_values = {
-        typed_ast.TypeContext.short_column_name(col_name): column.values
+        type_context.TypeContext.short_column_name(col_name): column.values
         for col_name, column in src_context.columns.iteritems()}
 
     for col_name, dest_column in dest_context.columns.iteritems():

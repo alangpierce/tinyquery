@@ -10,6 +10,7 @@ import parser
 import runtime
 import tq_ast
 import typed_ast
+import type_context
 import tq_types
 
 
@@ -54,7 +55,7 @@ class Compiler(object):
                     select_field.expr, alias, table_ctx)
                 group_columns[alias] = compiled_field_dict[alias].expr.type
 
-        aggregate_context = typed_ast.TypeContext.from_full_columns(
+        aggregate_context = type_context.TypeContext.from_full_columns(
             group_columns, table_ctx)
 
         for alias, select_field in zip(aliases, select.select_fields):
@@ -65,7 +66,7 @@ class Compiler(object):
         # Put the compiled select fields in the proper order.
         select_fields = [compiled_field_dict[alias] for alias in aliases]
         column_prefix = '' if select.alias is None else select.alias + '.'
-        result_context = typed_ast.TypeContext.from_full_columns(
+        result_context = type_context.TypeContext.from_full_columns(
             collections.OrderedDict(
                 (column_prefix + field.alias, field.expr.type)
                 for field in select_fields),
@@ -103,14 +104,14 @@ class Compiler(object):
             (alias + '.' + name, column.type)
             for name, column in table.columns.iteritems()
         ])
-        type_context = typed_ast.TypeContext.from_full_columns(
+        type_ctx = type_context.TypeContext.from_full_columns(
             columns, None)
-        return typed_ast.Table(table_name, type_context)
+        return typed_ast.Table(table_name, type_ctx)
 
     def compile_table_expr_TableUnion(self, table_expr):
         compiled_tables = [
             self.compile_table_expr(table) for table in table_expr.tables]
-        type_ctx = typed_ast.TypeContext.union_contexts(
+        type_ctx = type_context.TypeContext.union_contexts(
             table.type_ctx for table in compiled_tables)
         return typed_ast.TableUnion(compiled_tables, type_ctx)
 
