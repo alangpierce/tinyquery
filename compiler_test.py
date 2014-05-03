@@ -48,7 +48,7 @@ class CompilerTest(unittest.TestCase):
                           text, self.tables_by_name)
 
     def make_type_context(self, name_type_pairs):
-        return type_context.TypeContext.from_full_columns(
+        return type_context.TypeContext.from_columns(
             collections.OrderedDict(name_type_pairs), None)
 
     def test_compile_simple_select(self):

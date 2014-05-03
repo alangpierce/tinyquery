@@ -50,8 +50,8 @@ class TableExpression(object):
 class NoTable(collections.namedtuple('NoTable', []), TableExpression):
     @property
     def type_ctx(self):
-        return type_context.TypeContext(collections.OrderedDict(), {}, [],
-                                        None)
+        return type_context.TypeContext.from_columns(collections.OrderedDict(),
+                                                     None)
 
 
 class Table(collections.namedtuple('Table', ['name', 'type_ctx']),

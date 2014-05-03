@@ -55,7 +55,7 @@ class Compiler(object):
                     select_field.expr, alias, table_ctx)
                 group_columns[alias] = compiled_field_dict[alias].expr.type
 
-        aggregate_context = type_context.TypeContext.from_full_columns(
+        aggregate_context = type_context.TypeContext.from_columns(
             group_columns, table_ctx)
 
         for alias, select_field in zip(aliases, select.select_fields):
@@ -66,7 +66,7 @@ class Compiler(object):
         # Put the compiled select fields in the proper order.
         select_fields = [compiled_field_dict[alias] for alias in aliases]
         column_prefix = '' if select.alias is None else select.alias + '.'
-        result_context = type_context.TypeContext.from_full_columns(
+        result_context = type_context.TypeContext.from_columns(
             collections.OrderedDict(
                 (column_prefix + field.alias, field.expr.type)
                 for field in select_fields),
@@ -104,8 +104,7 @@ class Compiler(object):
             (alias + '.' + name, column.type)
             for name, column in table.columns.iteritems()
         ])
-        type_ctx = type_context.TypeContext.from_full_columns(
-            columns, None)
+        type_ctx = type_context.TypeContext.from_columns(columns, None)
         return typed_ast.Table(table_name, type_ctx)
 
     def compile_table_expr_TableUnion(self, table_expr):

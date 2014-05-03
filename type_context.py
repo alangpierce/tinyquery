@@ -7,13 +7,14 @@ import typed_ast
 class TypeContext(collections.namedtuple(
         'TypeContext', ['columns', 'aliases', 'ambig_aliases',
                         'aggregate_context'])):
-    """Defines the types available at a point in code.
+    """Defines the set of valid fields in a point in code, and their types.
 
-    This class is responsible for resolving column names into fully-qualified
-    names. For example, if table1 and table2 are joined
+    Type contexts maintain the order of their fields, which isn't needed for
+    typical evaluation, but is useful in a few cases, such as SELECT * and when
+    determining the final names to use for a query result.
 
     Fields:
-        columns: An OrderedDict mapping from column name to type.
+        columns: An OrderedDict mapping from (table name, column name) to type.
         aliases: A dict mapping any allowed aliases to their values. For
             example, the "value" column on a table "table" has full name
             "table.value" but the alias "value" also refers to it (as long as
@@ -24,7 +25,7 @@ class TypeContext(collections.namedtuple(
             allowed, or a TypeContext to use if we enter into an aggregate.
     """
     @classmethod
-    def from_full_columns(cls, full_columns, aggregate_context):
+    def from_columns(cls, full_columns, aggregate_context):
         """Given just the columns field, fill in alias information."""
         aliases = {}
         ambig_aliases = set()
