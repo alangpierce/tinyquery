@@ -64,9 +64,11 @@ class Compiler(object):
 
         # Put the compiled select fields in the proper order.
         select_fields = [compiled_field_dict[alias] for alias in aliases]
+        column_prefix = '' if select.alias is None else select.alias + '.'
         result_context = typed_ast.TypeContext.from_full_columns(
             collections.OrderedDict(
-                (field.alias, field.expr.type) for field in select_fields),
+                (column_prefix + field.alias, field.expr.type)
+                for field in select_fields),
             None)
         return typed_ast.Select(select_fields, table_expr, where_expr,
                                 group_set, result_context)
@@ -96,8 +98,9 @@ class Compiler(object):
         table_name = table_expr.name
         table = self.tables_by_name[table_expr.name]
 
+        alias = table_expr.alias or table_name
         columns = collections.OrderedDict([
-            (table_name + '.' + name, column.type)
+            (alias + '.' + name, column.type)
             for name, column in table.columns.iteritems()
         ])
         type_context = typed_ast.TypeContext.from_full_columns(

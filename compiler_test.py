@@ -339,3 +339,38 @@ class CompilerTest(unittest.TestCase):
                     [('foo', tq_types.INT), ('f0_', tq_types.INT)])
             )
         )
+
+    def test_table_aliases(self):
+        self.assert_compiled_select(
+            'SELECT t.value FROM table1 t',
+            typed_ast.Select([
+                typed_ast.SelectField(
+                    typed_ast.ColumnRef('t.value', tq_types.INT), 't.value')],
+                typed_ast.Table('table1', self.make_type_context(
+                    [('t.value', tq_types.INT), ('t.value2', tq_types.INT)])),
+                typed_ast.Literal(True, tq_types.BOOL),
+                None,
+                self.make_type_context([('t.value', tq_types.INT)])
+            )
+        )
+
+    def test_subquery_aliases(self):
+        self.assert_compiled_select(
+            'SELECT t.value FROM (SELECT value FROM table1) t',
+            typed_ast.Select([
+                typed_ast.SelectField(
+                    typed_ast.ColumnRef('t.value', tq_types.INT), 't.value')],
+                typed_ast.Select([
+                    typed_ast.SelectField(
+                        typed_ast.ColumnRef('table1.value', tq_types.INT),
+                        'value')],
+                    typed_ast.Table('table1', self.table1_type_ctx),
+                    typed_ast.Literal(True, tq_types.BOOL),
+                    None,
+                    self.make_type_context([('t.value', tq_types.INT)])
+                ),
+                typed_ast.Literal(True, tq_types.BOOL),
+                None,
+                self.make_type_context([('t.value', tq_types.INT),])
+            )
+        )

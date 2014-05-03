@@ -21,9 +21,9 @@ def p_select(p):
                     optional_group_by
     """
     if len(p) == 3:
-        p[0] = tq_ast.Select(p[2], None, None, None)
+        p[0] = tq_ast.Select(p[2], None, None, None, None)
     elif len(p) == 7:
-        p[0] = tq_ast.Select(p[2], p[4], p[5], p[6])
+        p[0] = tq_ast.Select(p[2], p[4], p[5], p[6], None)
     else:
         assert False, 'Unexpected number of captured tokens.'
 
@@ -60,7 +60,7 @@ def p_id_list(p):
 
 
 def p_full_table_expr(p):
-    """full_table_expr : table_expr_list"""
+    """full_table_expr : aliased_table_expr_list"""
     # Unions are special in their naming rules, so we only call a table list a
     # union if it has at least two tables. Otherwise, it's just a table.
     if len(p[1]) == 1:
@@ -69,9 +69,10 @@ def p_full_table_expr(p):
         p[0] = tq_ast.TableUnion(p[1])
 
 
-def p_table_expr_list(p):
-    """table_expr_list : table_expr
-                       | table_expr_list COMMA table_expr
+def p_aliased_table_expr_list(p):
+    """aliased_table_expr_list : aliased_table_expr
+                               | aliased_table_expr_list COMMA \
+                                    aliased_table_expr
     """
     if len(p) == 2:
         p[0] = [p[1]]
@@ -80,9 +81,25 @@ def p_table_expr_list(p):
         p[0] = p[1]
 
 
+def p_aliased_table_expr(p):
+    """aliased_table_expr : table_expr
+                          | table_expr ID
+                          | table_expr AS ID"""
+    if len(p) == 2:
+        p[0] = p[1]
+    else:
+        if isinstance(p[1], tq_ast.TableId):
+            p[0] = tq_ast.TableId(p[1].name, p[len(p) - 1])
+        elif isinstance(p[1], tq_ast.Select):
+            p[0] = tq_ast.Select(p[1].select_fields, p[1].table_expr,
+                                 p[1].where_expr, p[1].groups, p[len(p) - 1])
+        else:
+            assert False, 'Unexpected table_expr type: %s' % type(p[1])
+
+
 def p_table_id(p):
     """table_expr : ID"""
-    p[0] = tq_ast.TableId(p[1])
+    p[0] = tq_ast.TableId(p[1], None)
 
 
 def p_select_table_expression(p):

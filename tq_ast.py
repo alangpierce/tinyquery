@@ -8,7 +8,8 @@ import collections
 
 
 class Select(collections.namedtuple(
-        'Select', ['select_fields', 'table_expr', 'where_expr', 'groups'])):
+        'Select', ['select_fields', 'table_expr', 'where_expr', 'groups',
+                   'alias'])):
     """Represents a top-level select statement.
 
     Fields:
@@ -19,6 +20,8 @@ class Select(collections.namedtuple(
             no WHERE filter.
         groups: A list of strings for fields to group by, or None if there is
             no GROUP BY clause.
+        alias: For subqueries, a name given to the subquery, or None if no name
+            was given (or if this is an outermost query).
     """
     def __str__(self):
         result = 'SELECT {}'.format(
@@ -67,7 +70,14 @@ class ColumnId(collections.namedtuple('ColumnId', ['name'])):
         return self.name
 
 
-class TableId(collections.namedtuple('TableId', ['name'])):
+class TableId(collections.namedtuple('TableId', ['name', 'alias'])):
+    """Table expression referencing a table to select from.
+
+    Fields:
+        name: The name of the table to select from.
+        alias: An alias to assign to use for this table, or None if no alias
+            was specified.
+    """
     def __str__(self):
         return self.name
 

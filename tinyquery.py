@@ -177,8 +177,13 @@ class TinyQuery(object):
         return Context(1, collections.OrderedDict(), None)
 
     def eval_table_Table(self, table_expr):
+        """Get the values from the table.
+
+        The type context in the table expression determines the actual column
+        names to output, since that accounts for any alias on the table.
+        """
         table = self.tables_by_name[table_expr.name]
-        return context_from_table(table)
+        return context_from_table(table, table_expr.type_ctx)
 
     def eval_table_TableUnion(self, table_expr):
         result_context = empty_context_from_type_context(table_expr.type_ctx)
@@ -282,11 +287,17 @@ class Column(collections.namedtuple('Column', ['type', 'values'])):
     """
 
 
-def context_from_table(table):
+def context_from_table(table, type_context):
+    """Given a table and a type context, build a context with those values.
+
+    The order of the columns in the type context must match the order of the
+    columns in the table.
+    """
     any_column = table.columns.itervalues().next()
     new_columns = collections.OrderedDict([
-        (table.name + '.' + column_name, column)
-        for (column_name, column) in table.columns.iteritems()
+        (column_name, column)
+        for (column_name, column) in zip(type_context.columns.iterkeys(),
+                                         table.columns.itervalues())
     ])
     return Context(len(any_column.values), new_columns, None)
 

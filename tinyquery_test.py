@@ -170,3 +170,8 @@ class TinyQueryTest(unittest.TestCase):
             self.make_context([
                 ('test_table.val1', tq_types.INT, [4, 1, 8, 1, 2])])
         )
+
+    def test_table_alias(self):
+        self.assert_query_result(
+            'SELECT t.val1 FROM test_table t',
+            self.make_context([('t.val1', tq_types.INT, [4, 1, 8, 1, 2])]))
