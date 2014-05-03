@@ -277,6 +277,10 @@ class CompilerTest(unittest.TestCase):
             )
         )
 
+    def test_grouped_fields_require_aggregates(self):
+        self.assert_compile_error(
+            'SELECT value + 1 AS foo, foo FROM table1 GROUP BY foo')
+
     def test_select_multiple_tables(self):
         # Union of columns should be taken, with no aliases.
         unioned_type_ctx = self.make_type_context(
