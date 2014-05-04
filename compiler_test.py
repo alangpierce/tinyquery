@@ -469,32 +469,3 @@ class CompilerTest(unittest.TestCase):
                         [('t', 'value', tq_types.INT)]))
             )
         )
-
-    @unittest.skip('TODO')
-    def test_good_aliased_field_group_1(self):
-        self.assert_compiled_select(
-            'SELECT value + MAX(0) FROM table1 t GROUP BY value',
-            "TODO"
-        )
-
-    @unittest.skip('TODO')
-    def test_good_aliased_field_group_2(self):
-        self.assert_compiled_select(
-            'SELECT t.value + MAX(0) FROM table1 t GROUP BY t.value',
-            "TODO"
-        )
-
-    @unittest.skip('TODO')
-    def test_good_aliased_field_group_3(self):
-        self.assert_compiled_select(
-            'SELECT value + MAX(0) FROM table1 t GROUP BY t.value',
-            "TODO"
-        )
-
-    @unittest.skip('TODO')
-    def test_bad_aliased_field_group(self):
-        # The type context available in the top-level of aggregate expressions
-        # has all table aliases removed, even if it's field group.
-        self.assert_compile_error(
-            'SELECT t.value + MAX(0) FROM table1 t GROUP BY value')
-
