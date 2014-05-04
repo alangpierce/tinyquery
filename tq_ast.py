@@ -85,7 +85,14 @@ class TableId(collections.namedtuple('TableId', ['name', 'alias'])):
 class TableUnion(collections.namedtuple('TableUnion', ['tables'])):
     """Table expression for a union of two tables (the comma operator).
 
-    table1 and table2 can be arbitrary table expressions.
+    The tables can be arbitrary table expressions.
     """
     def __str__(self):
         return ', '.join(str(table) for table in self.tables)
+
+
+class Join(collections.namedtuple('Join', ['table1', 'table2', 'condition'])):
+    """Table expression for a join of two tables.
+
+    Joining more than two tables currently isn't supported.
+    """

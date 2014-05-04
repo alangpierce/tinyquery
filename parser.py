@@ -59,7 +59,7 @@ def p_id_list(p):
         p[0] = p[1]
 
 
-def p_full_table_expr(p):
+def p_table_expr_table_or_union(p):
     """full_table_expr : aliased_table_expr_list"""
     # Unions are special in their naming rules, so we only call a table list a
     # union if it has at least two tables. Otherwise, it's just a table.
@@ -67,6 +67,13 @@ def p_full_table_expr(p):
         p[0] = p[1][0]
     else:
         p[0] = tq_ast.TableUnion(p[1])
+
+
+def p_table_expr_join(p):
+    """full_table_expr : aliased_table_expr JOIN aliased_table_expr \
+                            ON expression
+    """
+    p[0] = tq_ast.Join(p[1], p[3], p[5])
 
 
 def p_aliased_table_expr_list(p):
@@ -194,8 +201,6 @@ def p_expr_id(p):
 def p_id_component_list(p):
     """id_component_list : ID
                          | id_component_list DOT ID"""
-    # TODO: We'll eventually need to actually return the components, but a
-    # string is good enough for now.
     if len(p) == 2:
         p[0] = p[1]
     else:
