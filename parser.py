@@ -164,6 +164,8 @@ def p_expression_binary(p):
                   | expression LESS_THAN expression
                   | expression GREATER_THAN_OR_EQUAL expression
                   | expression LESS_THAN_OR_EQUAL expression
+                  | expression AND expression
+                  | expression OR expression
     """
     p[0] = tq_ast.BinaryOperator(p[2], p[1], p[3])
 

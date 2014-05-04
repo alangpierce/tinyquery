@@ -13,7 +13,9 @@ reserved_words = {
     'join': 'JOIN',
     'on': 'ON',
     'group': 'GROUP',
-    'by': 'BY'
+    'by': 'BY',
+    'and': 'AND',
+    'or': 'OR',
 }
 
 tokens = [

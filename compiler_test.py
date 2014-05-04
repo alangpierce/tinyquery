@@ -509,3 +509,44 @@ class CompilerTest(unittest.TestCase):
                 )
             )
         )
+
+    def test_join_multiple_fields(self):
+        self.assert_compiled_select(
+            'SELECT 0 '
+            'FROM table1 t1 JOIN table2 t2 '
+            'ON t1.value = t2.value AND t2.value3 = t1.value2',
+            typed_ast.Select(
+                [typed_ast.SelectField(
+                    typed_ast.Literal(0, tq_types.INT), 'f0_')],
+                typed_ast.Join(
+                    typed_ast.Table('table1',
+                                    self.make_type_context([
+                                        ('t1', 'value', tq_types.INT),
+                                        ('t1', 'value2', tq_types.INT),
+                                    ])),
+                    typed_ast.Table('table2',
+                                    self.make_type_context([
+                                        ('t2', 'value', tq_types.INT),
+                                        ('t2', 'value3', tq_types.INT),
+                                    ])),
+                    [typed_ast.JoinFields(
+                        typed_ast.ColumnRef('t1', 'value', tq_types.INT),
+                        typed_ast.ColumnRef('t2', 'value', tq_types.INT)
+                    ), typed_ast.JoinFields(
+                        typed_ast.ColumnRef('t1', 'value2', tq_types.INT),
+                        typed_ast.ColumnRef('t2', 'value3', tq_types.INT)
+                    )],
+                    self.make_type_context([
+                        ('t1', 'value', tq_types.INT),
+                        ('t1', 'value2', tq_types.INT),
+                        ('t2', 'value', tq_types.INT),
+                        ('t2', 'value3', tq_types.INT),
+                    ])
+                ),
+                typed_ast.Literal(True, tq_types.BOOL),
+                None,
+                self.make_type_context(
+                    [(None, 'f0_', tq_types.INT)],
+                    self.make_type_context([]))
+            )
+        )

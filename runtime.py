@@ -55,6 +55,18 @@ class ComparisonOperator(Function):
         return [self.func(arg1, arg2) for arg1, arg2 in zip(list1, list2)]
 
 
+class BooleanOperator(Function):
+    def __init__(self, func):
+        self.func = func
+
+    def check_types(self, type1, type2):
+        # TODO: Fail if types are wrong.
+        return tq_types.BOOL
+
+    def evaluate(self, num_rows, list1, list2):
+        return [self.func(arg1, arg2) for arg1, arg2 in zip(list1, list2)]
+
+
 class UnaryIntOperator(Function):
     def __init__(self, func):
         self.func = func
@@ -107,6 +119,8 @@ _BINARY_OPERATORS = {
     '<': ComparisonOperator(lambda a, b: a < b),
     '>=': ComparisonOperator(lambda a, b: a >= b),
     '<=': ComparisonOperator(lambda a, b: a <= b),
+    'and': BooleanOperator(lambda a, b: a and b),
+    'or': BooleanOperator(lambda a, b: a or b),
 }
 
 

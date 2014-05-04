@@ -192,22 +192,27 @@ class Compiler(object):
 
         Returns: A list of JoinFields instances for the expression.
         """
-        if (isinstance(expr, tq_ast.BinaryOperator) and
-                isinstance(expr.left, tq_ast.ColumnId) and
-                isinstance(expr.right, tq_ast.ColumnId)):
-            column_id1, column_id2 = expr.left, expr.right
-            # By default, the left side of the equality corresponds to the left
-            # side of the join, but this can be overridden if any aliases
-            # suggest that the reverse order should be used.
-            if (column_id1.name.startswith(alias2 + '.') or
-                    column_id2.name.startswith(alias1 + '.')):
-                column_id1, column_id2 = column_id2, column_id1
-            column_ref1 = self.compile_ColumnId(column_id1, type_ctx1)
-            column_ref2 = self.compile_ColumnId(column_id2, type_ctx2)
-            return [typed_ast.JoinFields(column_ref1, column_ref2)]
-        else:
-            raise CompileError('JOIN conditions must only consist of = '
-                               'comparisons.')
+        if isinstance(expr, tq_ast.BinaryOperator):
+            if expr.operator == 'and':
+                return (self.compile_join_fields(
+                    type_ctx1, type_ctx2, alias1, alias2, expr.left) +
+                    self.compile_join_fields(
+                        type_ctx1, type_ctx2, alias1, alias2, expr.right))
+            elif (expr.operator == '=' and
+                    isinstance(expr.left, tq_ast.ColumnId) and
+                    isinstance(expr.right, tq_ast.ColumnId)):
+                column_id1, column_id2 = expr.left, expr.right
+                # By default, the left side of the equality corresponds to the
+                # left side of the join, but this can be overridden if any
+                # aliases suggest that the reverse order should be used.
+                if (column_id1.name.startswith(alias2 + '.') or
+                        column_id2.name.startswith(alias1 + '.')):
+                    column_id1, column_id2 = column_id2, column_id1
+                column_ref1 = self.compile_ColumnId(column_id1, type_ctx1)
+                column_ref2 = self.compile_ColumnId(column_id2, type_ctx2)
+                return [typed_ast.JoinFields(column_ref1, column_ref2)]
+        raise CompileError('JOIN conditions must consist of an AND of = '
+                           'comparisons. Got expression {}'.format(expr))
 
     def get_table_expression_alias(self, table_expr):
         """Get the alias of a table expression, or crash if there is none."""
