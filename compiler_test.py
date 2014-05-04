@@ -2,6 +2,7 @@ import collections
 import unittest
 
 import compiler
+import context
 import runtime
 import tinyquery
 import tq_types
@@ -11,27 +12,29 @@ import typed_ast
 
 class CompilerTest(unittest.TestCase):
     def setUp(self):
-        self.table1 = tinyquery.Table(
+        self.table1 = context.Table(
             'table1',
             0,
             collections.OrderedDict([
-                ('value', tinyquery.Column(tq_types.INT, [])),
-                ('value2', tinyquery.Column(tq_types.INT, []))
+                ('value', context.Column(tq_types.INT, [])),
+                ('value2', context.Column(tq_types.INT, []))
             ]))
         self.table1_type_ctx = self.make_type_context(
-            [('table1.value', tq_types.INT), ('table1.value2', tq_types.INT)]
+            [('table1', 'value', tq_types.INT),
+             ('table1', 'value2', tq_types.INT)]
         )
 
-        self.table2 = tinyquery.Table(
+        self.table2 = context.Table(
             'table2',
             0,
             collections.OrderedDict([
-                ('value', tinyquery.Column(tq_types.INT, [])),
-                ('value3', tinyquery.Column(tq_types.INT, []))
+                ('value', context.Column(tq_types.INT, [])),
+                ('value3', context.Column(tq_types.INT, []))
             ])
         )
         self.table2_type_ctx = self.make_type_context(
-            [('table2.value', tq_types.INT), ('table2.value3', tq_types.INT)]
+            [('table2', 'value', tq_types.INT),
+             ('table2', 'value3', tq_types.INT)]
         )
 
         self.tables_by_name = {
@@ -47,21 +50,28 @@ class CompilerTest(unittest.TestCase):
         self.assertRaises(compiler.CompileError, compiler.compile_text,
                           text, self.tables_by_name)
 
-    def make_type_context(self, name_type_pairs):
-        return type_context.TypeContext.from_columns(
-            collections.OrderedDict(name_type_pairs), None)
+    def make_type_context(self, table_column_type_triples,
+                          implicit_column_context=None):
+        return type_context.TypeContext.from_full_columns(
+            collections.OrderedDict(
+                ((table, column), col_type)
+                for table, column, col_type in table_column_type_triples
+            ), implicit_column_context)
 
     def test_compile_simple_select(self):
         self.assert_compiled_select(
             'SELECT value FROM table1',
             typed_ast.Select(
                 [typed_ast.SelectField(
-                    typed_ast.ColumnRef('table1.value', tq_types.INT),
+                    typed_ast.ColumnRef('table1', 'value', tq_types.INT),
                     'value')],
                 typed_ast.Table('table1', self.table1_type_ctx),
                 typed_ast.Literal(True, tq_types.BOOL),
                 None,
-                self.make_type_context([('value', tq_types.INT)]))
+                self.make_type_context(
+                    [(None, 'value', tq_types.INT)],
+                    self.make_type_context([('table1', 'value', tq_types.INT)])
+                ))
         )
 
     def test_unary_operator(self):
@@ -78,7 +88,9 @@ class CompilerTest(unittest.TestCase):
                 typed_ast.NoTable(),
                 typed_ast.Literal(True, tq_types.BOOL),
                 None,
-                self.make_type_context([('f0_', tq_types.INT)])
+                self.make_type_context(
+                    [(None, 'f0_', tq_types.INT)],
+                    self.make_type_context([]))
             )
         )
 
@@ -115,8 +127,9 @@ class CompilerTest(unittest.TestCase):
                 typed_ast.Literal(True, tq_types.BOOL),
                 None,
                 self.make_type_context([
-                    ('f0_', tq_types.INT), ('f1_', tq_types.INT),
-                    ('f2_', tq_types.INT)])
+                    (None, 'f0_', tq_types.INT), (None, 'f1_', tq_types.INT),
+                    (None, 'f2_', tq_types.INT)],
+                    self.make_type_context([]))
             )
         )
 
@@ -125,16 +138,19 @@ class CompilerTest(unittest.TestCase):
             'SELECT value FROM table1 WHERE value > 3',
             typed_ast.Select(
                 [typed_ast.SelectField(
-                    typed_ast.ColumnRef('table1.value', tq_types.INT),
+                    typed_ast.ColumnRef('table1', 'value', tq_types.INT),
                     'value')],
                 typed_ast.Table('table1', self.table1_type_ctx),
                 typed_ast.FunctionCall(
                     runtime.get_binary_op('>'),
-                    [typed_ast.ColumnRef('table1.value', tq_types.INT),
+                    [typed_ast.ColumnRef('table1', 'value', tq_types.INT),
                      typed_ast.Literal(3, tq_types.INT)],
                     tq_types.BOOL),
                 None,
-                self.make_type_context([('value', tq_types.INT)])
+                self.make_type_context(
+                    [(None, 'value', tq_types.INT)],
+                    self.make_type_context(
+                        [('table1', 'value', tq_types.INT)]))
             )
         )
 
@@ -146,27 +162,27 @@ class CompilerTest(unittest.TestCase):
                 [typed_ast.SelectField(
                     typed_ast.FunctionCall(
                         runtime.get_binary_op('*'),
-                        [typed_ast.ColumnRef('table1.value', tq_types.INT),
+                        [typed_ast.ColumnRef('table1', 'value', tq_types.INT),
                          typed_ast.Literal(3, tq_types.INT)],
                         tq_types.INT),
                     'foo'),
                  typed_ast.SelectField(
-                     typed_ast.ColumnRef('table1.value', tq_types.INT),
+                     typed_ast.ColumnRef('table1', 'value', tq_types.INT),
                      'value'),
                  typed_ast.SelectField(
                      typed_ast.FunctionCall(
                          runtime.get_binary_op('+'),
-                         [typed_ast.ColumnRef('table1.value', tq_types.INT),
+                         [typed_ast.ColumnRef('table1', 'value', tq_types.INT),
                           typed_ast.Literal(1, tq_types.INT)],
                          tq_types.INT),
                      'f0_'),
                  typed_ast.SelectField(
-                     typed_ast.ColumnRef('table1.value', tq_types.INT),
+                     typed_ast.ColumnRef('table1', 'value', tq_types.INT),
                      'bar'),
                  typed_ast.SelectField(
                      typed_ast.FunctionCall(
                          runtime.get_binary_op('-'),
-                         [typed_ast.ColumnRef('table1.value', tq_types.INT),
+                         [typed_ast.ColumnRef('table1', 'value', tq_types.INT),
                           typed_ast.Literal(1, tq_types.INT)],
                          tq_types.INT),
                      'f1_')],
@@ -174,9 +190,13 @@ class CompilerTest(unittest.TestCase):
                 typed_ast.Literal(True, tq_types.BOOL),
                 None,
                 self.make_type_context([
-                    ('foo', tq_types.INT), ('value', tq_types.INT),
-                    ('f0_', tq_types.INT), ('bar', tq_types.INT),
-                    ('f1_', tq_types.INT)])
+                    (None, 'foo', tq_types.INT),
+                    (None, 'value', tq_types.INT),
+                    (None, 'f0_', tq_types.INT), (None, 'bar', tq_types.INT),
+                    (None, 'f1_', tq_types.INT)],
+                    self.make_type_context(
+                        [('table1', 'value', tq_types.INT)]
+                    ))
             )
         )
 
@@ -191,14 +211,14 @@ class CompilerTest(unittest.TestCase):
                 typed_ast.SelectField(
                     typed_ast.AggregateFunctionCall(
                         runtime.get_func('max'),
-                        [typed_ast.ColumnRef('table1.value', tq_types.INT)],
+                        [typed_ast.ColumnRef('table1', 'value', tq_types.INT)],
                         tq_types.INT
                     ),
                     'f0_'),
                 typed_ast.SelectField(
                     typed_ast.AggregateFunctionCall(
                         runtime.get_func('min'),
-                        [typed_ast.ColumnRef('table1.value', tq_types.INT)],
+                        [typed_ast.ColumnRef('table1', 'value', tq_types.INT)],
                         tq_types.INT
                     ),
                     'f1_')],
@@ -206,7 +226,9 @@ class CompilerTest(unittest.TestCase):
                 typed_ast.Literal(True, tq_types.BOOL),
                 typed_ast.GroupSet(set(), []),
                 self.make_type_context([
-                    ('f0_', tq_types.INT), ('f1_', tq_types.INT)])))
+                    (None, 'f0_', tq_types.INT),
+                    (None, 'f1_', tq_types.INT)],
+                    self.make_type_context([]))))
 
     def mixed_aggregate_non_aggregate_not_allowed(self):
         self.assert_compile_error(
@@ -228,7 +250,9 @@ class CompilerTest(unittest.TestCase):
                     alias_groups={'foo'},
                     field_groups=[]
                 ),
-                self.make_type_context([('foo', tq_types.INT)])
+                self.make_type_context(
+                    [(None, 'foo', tq_types.INT)],
+                    self.make_type_context([]))
             )
         )
 
@@ -239,7 +263,7 @@ class CompilerTest(unittest.TestCase):
                 [typed_ast.SelectField(
                     typed_ast.FunctionCall(
                         runtime.get_func('sum'),
-                        [typed_ast.ColumnRef('table1.value', tq_types.INT)],
+                        [typed_ast.ColumnRef('table1', 'value', tq_types.INT)],
                         tq_types.INT
                     ),
                     'f0_')],
@@ -248,9 +272,11 @@ class CompilerTest(unittest.TestCase):
                 typed_ast.GroupSet(
                     alias_groups=set(),
                     field_groups=[
-                        typed_ast.ColumnRef('table1.value2', tq_types.INT)]
+                        typed_ast.ColumnRef('table1', 'value2', tq_types.INT)]
                 ),
-                self.make_type_context([('f0_', tq_types.INT)])
+                self.make_type_context(
+                    [(None, 'f0_', tq_types.INT)],
+                    self.make_type_context([]))
             ))
 
     def test_select_grouped_and_non_grouped_fields(self):
@@ -258,12 +284,13 @@ class CompilerTest(unittest.TestCase):
             'SELECT value, SUM(value2) FROM table1 GROUP BY value',
             typed_ast.Select([
                 typed_ast.SelectField(
-                    typed_ast.ColumnRef('table1.value', tq_types.INT),
+                    typed_ast.ColumnRef('table1', 'value', tq_types.INT),
                     'value'),
                 typed_ast.SelectField(
                     typed_ast.FunctionCall(
                         runtime.get_func('sum'),
-                        [typed_ast.ColumnRef('table1.value2', tq_types.INT)],
+                        [typed_ast.ColumnRef('table1', 'value2',
+                                             tq_types.INT)],
                         tq_types.INT),
                     'f0_')],
                 typed_ast.Table('table1', self.table1_type_ctx),
@@ -273,7 +300,10 @@ class CompilerTest(unittest.TestCase):
                     field_groups=[]
                 ),
                 self.make_type_context(
-                    [('value', tq_types.INT), ('f0_', tq_types.INT)])
+                    [(None, 'value', tq_types.INT),
+                     (None, 'f0_', tq_types.INT)],
+                    self.make_type_context(
+                        [('table1', 'value', tq_types.INT)]))
             )
         )
 
@@ -284,18 +314,21 @@ class CompilerTest(unittest.TestCase):
     def test_select_multiple_tables(self):
         # Union of columns should be taken, with no aliases.
         unioned_type_ctx = self.make_type_context(
-            [('value', tq_types.INT), ('value2', tq_types.INT),
-             ('value3', tq_types.INT)])
+            [(None, 'value', tq_types.INT), (None, 'value2', tq_types.INT),
+             (None, 'value3', tq_types.INT)])
 
         self.assert_compiled_select(
             'SELECT value, value2, value3 FROM table1, table2',
             typed_ast.Select([
                 typed_ast.SelectField(
-                    typed_ast.ColumnRef('value', tq_types.INT), 'value'),
+                    typed_ast.ColumnRef(None, 'value', tq_types.INT),
+                    'value'),
                 typed_ast.SelectField(
-                    typed_ast.ColumnRef('value2', tq_types.INT), 'value2'),
+                    typed_ast.ColumnRef(None, 'value2', tq_types.INT),
+                    'value2'),
                 typed_ast.SelectField(
-                    typed_ast.ColumnRef('value3', tq_types.INT), 'value3')],
+                    typed_ast.ColumnRef(None, 'value3', tq_types.INT),
+                    'value3')],
                 typed_ast.TableUnion([
                     typed_ast.Table('table1', self.table1_type_ctx),
                     typed_ast.Table('table2', self.table2_type_ctx)],
@@ -304,8 +337,13 @@ class CompilerTest(unittest.TestCase):
                 typed_ast.Literal(True, tq_types.BOOL),
                 None,
                 self.make_type_context(
-                    [('value', tq_types.INT), ('value2', tq_types.INT),
-                     ('value3', tq_types.INT)])
+                    [(None, 'value', tq_types.INT),
+                     (None, 'value2', tq_types.INT),
+                     (None, 'value3', tq_types.INT)],
+                    self.make_type_context(
+                        [(None, 'value', tq_types.INT),
+                         (None, 'value2', tq_types.INT),
+                         (None, 'value3', tq_types.INT)]))
             )
         )
 
@@ -314,11 +352,11 @@ class CompilerTest(unittest.TestCase):
             'SELECT foo, foo + 1 FROM (SELECT value + 1 AS foo FROM table1)',
             typed_ast.Select([
                 typed_ast.SelectField(
-                    typed_ast.ColumnRef('foo', tq_types.INT), 'foo'),
+                    typed_ast.ColumnRef(None, 'foo', tq_types.INT), 'foo'),
                 typed_ast.SelectField(
                     typed_ast.FunctionCall(
                         runtime.get_binary_op('+'), [
-                            typed_ast.ColumnRef('foo', tq_types.INT),
+                            typed_ast.ColumnRef(None, 'foo', tq_types.INT),
                             typed_ast.Literal(1, tq_types.INT)],
                         tq_types.INT),
                     'f0_'
@@ -327,7 +365,7 @@ class CompilerTest(unittest.TestCase):
                     [typed_ast.SelectField(
                         typed_ast.FunctionCall(
                             runtime.get_binary_op('+'), [
-                                typed_ast.ColumnRef('table1.value',
+                                typed_ast.ColumnRef('table1', 'value',
                                                     tq_types.INT),
                                 typed_ast.Literal(1, tq_types.INT)],
                             tq_types.INT),
@@ -336,12 +374,17 @@ class CompilerTest(unittest.TestCase):
                     typed_ast.Table('table1', self.table1_type_ctx),
                     typed_ast.Literal(True, tq_types.BOOL),
                     None,
-                    self.make_type_context([('foo', tq_types.INT)])
+                    self.make_type_context(
+                        [(None, 'foo', tq_types.INT)],
+                        self.make_type_context(
+                            [('table1', 'value', tq_types.INT)]
+                        ))
                 ),
                 typed_ast.Literal(True, tq_types.BOOL),
                 None,
                 self.make_type_context(
-                    [('foo', tq_types.INT), ('f0_', tq_types.INT)])
+                    [(None, 'foo', tq_types.INT), (None, 'f0_', tq_types.INT)],
+                    self.make_type_context([(None, 'foo', tq_types.INT)]))
             )
         )
 
@@ -350,32 +393,103 @@ class CompilerTest(unittest.TestCase):
             'SELECT t.value FROM table1 t',
             typed_ast.Select([
                 typed_ast.SelectField(
-                    typed_ast.ColumnRef('t.value', tq_types.INT), 't.value')],
+                    typed_ast.ColumnRef('t', 'value', tq_types.INT),
+                    't.value')],
                 typed_ast.Table('table1', self.make_type_context(
-                    [('t.value', tq_types.INT), ('t.value2', tq_types.INT)])),
+                    [('t', 'value', tq_types.INT),
+                     ('t', 'value2', tq_types.INT)])),
                 typed_ast.Literal(True, tq_types.BOOL),
                 None,
-                self.make_type_context([('t.value', tq_types.INT)])
+                self.make_type_context(
+                    [(None, 't.value', tq_types.INT)],
+                    self.make_type_context(
+                        [('t', 'value', tq_types.INT)]
+                    ))
             )
         )
 
+    def test_implicitly_accessed_column(self):
+        self.assert_compiled_select(
+            'SELECT table1.value FROM (SELECT value + 1 AS foo FROM table1)',
+            typed_ast.Select([
+                typed_ast.SelectField(
+                    typed_ast.ColumnRef('table1', 'value', tq_types.INT),
+                    'table1.value')],
+                typed_ast.Select([
+                    typed_ast.SelectField(
+                        typed_ast.FunctionCall(
+                            runtime.get_binary_op('+'), [
+                                typed_ast.ColumnRef('table1', 'value',
+                                                    tq_types.INT),
+                                typed_ast.Literal(1, tq_types.INT)
+                            ],
+                            tq_types.INT
+                        ),
+                        'foo')],
+                    typed_ast.Table('table1', self.table1_type_ctx),
+                    typed_ast.Literal(True, tq_types.BOOL),
+                    None,
+                    self.make_type_context(
+                        [(None, 'foo', tq_types.INT)],
+                        self.make_type_context(
+                            [('table1', 'value', tq_types.INT)]))),
+                typed_ast.Literal(True, tq_types.BOOL),
+                None,
+                self.make_type_context(
+                    [(None, 'table1.value', tq_types.INT)],
+                    self.make_type_context(
+                        [('table1', 'value', tq_types.INT)]
+                    )))
+        )
+
+    @unittest.skip('Need to implement implicitly-accessed columns and transformations for them.')
     def test_subquery_aliases(self):
         self.assert_compiled_select(
             'SELECT t.value FROM (SELECT value FROM table1) t',
             typed_ast.Select([
                 typed_ast.SelectField(
-                    typed_ast.ColumnRef('t.value', tq_types.INT), 't.value')],
+                    typed_ast.ColumnRef('t', 'value', tq_types.INT),
+                    't.value')],
                 typed_ast.Select([
                     typed_ast.SelectField(
-                        typed_ast.ColumnRef('table1.value', tq_types.INT),
+                        typed_ast.ColumnRef('table1', 'value', tq_types.INT),
                         'value')],
                     typed_ast.Table('table1', self.table1_type_ctx),
                     typed_ast.Literal(True, tq_types.BOOL),
                     None,
-                    self.make_type_context([('t.value', tq_types.INT)])
+                    self.make_type_context([(None, 'value', tq_types.INT)])
                 ),
                 typed_ast.Literal(True, tq_types.BOOL),
                 None,
-                self.make_type_context([('t.value', tq_types.INT),])
+                self.make_type_context([('t', 'value', tq_types.INT)])
             )
         )
+
+    @unittest.skip('TODO')
+    def test_good_aliased_field_group_1(self):
+        self.assert_compiled_select(
+            'SELECT value + MAX(0) FROM table1 t GROUP BY value',
+            "TODO"
+        )
+
+    @unittest.skip('TODO')
+    def test_good_aliased_field_group_2(self):
+        self.assert_compiled_select(
+            'SELECT t.value + MAX(0) FROM table1 t GROUP BY t.value',
+            "TODO"
+        )
+
+    @unittest.skip('TODO')
+    def test_good_aliased_field_group_3(self):
+        self.assert_compiled_select(
+            'SELECT value + MAX(0) FROM table1 t GROUP BY t.value',
+            "TODO"
+        )
+
+    @unittest.skip('TODO')
+    def test_bad_aliased_field_group(self):
+        # The type context available in the top-level of aggregate expressions
+        # has all table aliases removed, even if it's field group.
+        self.assert_compile_error(
+            'SELECT t.value + MAX(0) FROM table1 t GROUP BY value')
+

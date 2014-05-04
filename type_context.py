@@ -1,12 +1,14 @@
 import collections
+import re
 
 import compiler
+import tq_types
 import typed_ast
 
 
 class TypeContext(collections.namedtuple(
         'TypeContext', ['columns', 'aliases', 'ambig_aliases',
-                        'aggregate_context'])):
+                        'implicit_column_context', 'aggregate_context'])):
     """Defines the set of valid fields in a point in code, and their types.
 
     Type contexts maintain the order of their fields, which isn't needed for
@@ -15,32 +17,57 @@ class TypeContext(collections.namedtuple(
 
     Fields:
         columns: An OrderedDict mapping from (table name, column name) to type.
-        aliases: A dict mapping any allowed aliases to their values. For
-            example, the "value" column on a table "table" has full name
-            "table.value" but the alias "value" also refers to it (as long as
-            there are no other tables with a column named "value").
+        aliases: A dict mapping any allowed aliases to their (table, column)
+            pair. For example, the "value" column on a table "table" has full
+            name "table.value" but the alias "value" also refers to it (as long
+            as there are no other tables with a column named "value").
         ambig_aliases: A set of aliases that cannot be used because they are
-            ambiguous. This is used for
+            ambiguous.
+        implicit_column_context: If present, a set of columns that are allowed
+            to be accessed, but aren't part of the "regular" context. For
+            example, if the expression "value + 1" is used in a subquery, the
+            outer query can use "value".
         aggregate_context: Either None, indicating that aggregates are not
             allowed, or a TypeContext to use if we enter into an aggregate.
     """
     @classmethod
-    def from_columns(cls, full_columns, aggregate_context):
+    def from_table_and_columns(cls, table_name, full_columns,
+                               implicit_column_context=None,
+                               aggregate_context=None):
+        return cls.from_full_columns(
+            collections.OrderedDict(
+                ((table_name, column_name), type)
+                for column_name, type in full_columns.iteritems()),
+            implicit_column_context, aggregate_context)
+
+    @staticmethod
+    def assert_type(value, expected_type):
+        assert isinstance(value, expected_type), (
+            'Expected %s to have type %s, but was %s.' % (
+                value, expected_type, type(value)))
+
+    @classmethod
+    def from_full_columns(cls, full_columns, implicit_column_context=None,
+                          aggregate_context=None):
         """Given just the columns field, fill in alias information."""
+        for (table_name, col_name), col_type in full_columns.iteritems():
+            if table_name is not None:
+                cls.assert_type(table_name, basestring)
+            cls.assert_type(col_name, basestring)
+            cls.assert_type(col_type, tq_types.TYPE_TYPE)
+
         aliases = {}
         ambig_aliases = set()
-        for full_name in full_columns:
-            short_name = cls.short_column_name(full_name)
-            if short_name == full_name:
+        for table_name, column_name in full_columns:
+            if column_name in ambig_aliases:
                 continue
-            if short_name in ambig_aliases:
-                continue
-            elif short_name in aliases:
-                del aliases[short_name]
-                ambig_aliases.add(short_name)
+            elif column_name in aliases:
+                del aliases[column_name]
+                ambig_aliases.add(column_name)
             else:
-                aliases[short_name] = full_name
-        return cls(full_columns, aliases, ambig_aliases, aggregate_context)
+                aliases[column_name] = (table_name, column_name)
+        return cls(full_columns, aliases, ambig_aliases,
+                   implicit_column_context, aggregate_context)
 
     @classmethod
     def union_contexts(cls, contexts):
@@ -57,33 +84,48 @@ class TypeContext(collections.namedtuple(
         for context in contexts:
             assert context.aggregate_context is None
 
-            for column_name, col_type in context.columns.iteritems():
-                short_name = cls.short_column_name(column_name)
-                if short_name in result_columns:
-                    if result_columns[short_name] == col_type:
+            for (_, column_name), col_type in context.columns.iteritems():
+                full_column = (None, column_name)
+                if full_column in result_columns:
+                    if result_columns[full_column] == col_type:
                         continue
                     raise compiler.CompileError(
                         'Incompatible types when performing union on field '
-                        '{}: {} vs. {}'.format(
-                            short_name, result_columns[short_name], col_type))
+                        '{}: {} vs. {}'.format(full_column,
+                                               result_columns[full_column],
+                                               col_type))
                 else:
-                    result_columns[short_name] = col_type
-        return cls(result_columns, aliases={}, ambig_aliases=set(),
-                   aggregate_context=None)
-
-    @staticmethod
-    def short_column_name(full_column_name):
-        tokens = full_column_name.rsplit('.', 1)
-        return tokens[-1]
+                    result_columns[full_column] = col_type
+        return cls.from_full_columns(result_columns)
 
     def column_ref_for_name(self, name):
         """Gets the full identifier for a column from any possible alias."""
         if name in self.columns:
             return typed_ast.ColumnRef(name, self.columns[name])
-        elif name in self.aliases:
-            full_name = self.aliases[name]
-            return typed_ast.ColumnRef(full_name, self.columns[full_name])
-        elif name in self.ambig_aliases:
+
+        possible_results = []
+
+        # Try all possible ways of splitting a dot-separated string.
+        for match in re.finditer('\.', name):
+            left_side = name[:match.start()]
+            right_side = name[match.end():]
+            result_type = self.columns.get((left_side, right_side))
+            if result_type is not None:
+                possible_results.append(
+                    typed_ast.ColumnRef(left_side, right_side, result_type))
+
+        if name in self.aliases:
+            table, column = self.aliases[name]
+            result_type = self.columns[(table, column)]
+            possible_results.append(
+                typed_ast.ColumnRef(table, column, result_type))
+
+        if len(possible_results) == 1:
+            return possible_results[0]
+        elif len(possible_results) > 1:
             raise compiler.CompileError('Ambiguous field: {}'.format(name))
         else:
-            raise compiler.CompileError('Field not found: {}'.format(name))
+            if self.implicit_column_context is not None:
+                return self.implicit_column_context.column_ref_for_name(name)
+            else:
+                raise compiler.CompileError('Field not found: {}'.format(name))

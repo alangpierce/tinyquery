@@ -2,3 +2,5 @@
 
 INT = 'int'
 BOOL = 'bool'
+
+TYPE_TYPE = basestring

@@ -36,27 +36,12 @@ class Compiler(object):
         group_set = self.compile_groups(select.groups, select.select_fields,
                                         aliases, table_ctx)
 
-        # Build a dict from alias to compiled expression. The first pass fills
-        # in the grouped-by select fields with the regular table context, and
-        # the second pass fills in remaining fields with type context for
-        # aggregate fields.
-        compiled_field_dict = {}
+        compiled_field_dict, aggregate_context = self.compile_group_fields(
+            select.select_fields, aliases, group_set, table_ctx)
 
-        # Build the type context to use for aggregate expressions.
-        group_columns = collections.OrderedDict()
-
-        if group_set is not None:
-            for field_group in group_set.field_groups:
-                group_columns[field_group.column] = field_group.type
-
-        for alias, select_field in zip(aliases, select.select_fields):
-            if group_set is None or alias in group_set.alias_groups:
-                compiled_field_dict[alias] = self.compile_select_field(
-                    select_field.expr, alias, table_ctx)
-                group_columns[alias] = compiled_field_dict[alias].expr.type
-
-        aggregate_context = type_context.TypeContext.from_columns(
-            group_columns, table_ctx)
+        # Implicit columns can only show up in non-aggregate select fields.
+        implicit_column_context = self.find_used_column_context(
+            compiled_field_dict.values())
 
         for alias, select_field in zip(aliases, select.select_fields):
             if group_set is not None and alias not in group_set.alias_groups:
@@ -65,14 +50,82 @@ class Compiler(object):
 
         # Put the compiled select fields in the proper order.
         select_fields = [compiled_field_dict[alias] for alias in aliases]
-        column_prefix = '' if select.alias is None else select.alias + '.'
-        result_context = type_context.TypeContext.from_columns(
+        result_context = type_context.TypeContext.from_table_and_columns(
+            None,
             collections.OrderedDict(
-                (column_prefix + field.alias, field.expr.type)
-                for field in select_fields),
-            None)
+                (field.alias, field.expr.type) for field in select_fields),
+            implicit_column_context=implicit_column_context)
         return typed_ast.Select(select_fields, table_expr, where_expr,
                                 group_set, result_context)
+
+    def compile_group_fields(self, select_fields, aliases, group_set,
+                             table_ctx):
+        """Compile grouped select fields and compute a type context to use.
+
+        Arguments:
+            select_fields: A list of uncompiled select fields.
+            aliases: A list of aliases that matches with select_fields.
+            group_set: A GroupSet for the groups to use.
+            table_ctx: A type context for the table being selected.
+
+        Returns:
+            compiled_field_dict: An OrderedDict from alias to compiled select
+                field for the grouped-by select fields. We use an OrderedDict
+                so the order is predictable to make testing easier.
+            aggregate_context: A type context that can be used when evaluating
+                aggregate select fields.
+        """
+        compiled_field_dict = collections.OrderedDict()
+
+        group_columns = collections.OrderedDict()
+
+        if group_set is not None:
+            for field_group in group_set.field_groups:
+                group_columns[
+                    (field_group.table, field_group.column)] = field_group.type
+
+        for alias, select_field in zip(aliases, select_fields):
+            if group_set is None or alias in group_set.alias_groups:
+                compiled_field_dict[alias] = self.compile_select_field(
+                    select_field.expr, alias, table_ctx)
+                group_columns[
+                    (None, alias)] = compiled_field_dict[alias].expr.type
+
+        aggregate_context = type_context.TypeContext.from_full_columns(
+            group_columns, aggregate_context=table_ctx)
+        return compiled_field_dict, aggregate_context
+
+    def find_used_column_context(self, select_field_list):
+        """Given a list of compiled SelectFields, find the used columns.
+
+        The return value is a TypeContext for the columns accessed, so that
+        these columns can be used in outer selects, but at lower precedence
+        than normal select fields.
+
+        This may also be used in the future to determine which fields to
+        actually take from the table.
+        """
+        column_references = collections.OrderedDict()
+        for select_field in select_field_list:
+            column_references.update(
+                self.find_column_references(select_field.expr))
+        return type_context.TypeContext.from_full_columns(column_references)
+
+    def find_column_references(self, expr):
+        """Return an OrderedDict of (table, column) -> type."""
+        if (isinstance(expr, typed_ast.FunctionCall) or
+                isinstance(expr, typed_ast.AggregateFunctionCall)):
+            result = collections.OrderedDict()
+            for arg in expr.args:
+                result.update(self.find_column_references(arg))
+            return result
+        elif isinstance(expr, typed_ast.ColumnRef):
+            return collections.OrderedDict(
+                [((expr.table, expr.column), expr.type)])
+        elif isinstance(expr, typed_ast.Literal):
+            return collections.OrderedDict()
+        else:
+            assert False, 'Unexpected type: %s' % type(expr)
 
     def compile_table_expr(self, table_expr):
         """Compile a table expression and determine its result type context.
@@ -101,10 +154,10 @@ class Compiler(object):
 
         alias = table_expr.alias or table_name
         columns = collections.OrderedDict([
-            (alias + '.' + name, column.type)
-            for name, column in table.columns.iteritems()
+            (name, column.type) for name, column in table.columns.iteritems()
         ])
-        type_ctx = type_context.TypeContext.from_columns(columns, None)
+        type_ctx = type_context.TypeContext.from_table_and_columns(
+            alias, columns, None)
         return typed_ast.Table(table_name, type_ctx)
 
     def compile_table_expr_TableUnion(self, table_expr):

@@ -2,6 +2,7 @@ import collections
 import mock
 import unittest
 
+import context
 import tinyquery
 import tq_types
 
@@ -9,19 +10,19 @@ import tq_types
 class TinyQueryTest(unittest.TestCase):
     def setUp(self):
         self.tq = tinyquery.TinyQuery()
-        self.tq.load_table(tinyquery.Table(
+        self.tq.load_table(context.Table(
             'test_table',
             5,
             collections.OrderedDict([
-                ('val1', tinyquery.Column(tq_types.INT, [4, 1, 8, 1, 2])),
-                ('val2', tinyquery.Column(tq_types.INT, [8, 2, 4, 1, 6]))
+                ('val1', context.Column(tq_types.INT, [4, 1, 8, 1, 2])),
+                ('val2', context.Column(tq_types.INT, [8, 2, 4, 1, 6]))
             ])))
-        self.tq.load_table(tinyquery.Table(
+        self.tq.load_table(context.Table(
             'test_table_2',
             2,
             collections.OrderedDict([
-                ('val3', tinyquery.Column(tq_types.INT, [3, 8])),
-                ('val2', tinyquery.Column(tq_types.INT, [2, 7])),
+                ('val3', context.Column(tq_types.INT, [3, 8])),
+                ('val2', context.Column(tq_types.INT, [2, 7])),
             ])))
 
     def assert_query_result(self, query, expected_result):
@@ -32,12 +33,11 @@ class TinyQueryTest(unittest.TestCase):
         num_rows = len(name_type_values_triples[0][2])
         # The constructor does all relevant invariant checks, so we don't have
         # to do that here.
-        return tinyquery.Context(
+        return context.Context(
             num_rows,
             collections.OrderedDict(
-                ((name, tinyquery.Column(type, values))
-                 for name, type, values in name_type_values_triples)
-            ),
+                ((None, name), context.Column(col_type, values))
+                for name, col_type, values in name_type_values_triples),
             None)
 
     def test_select_literal(self):
@@ -121,26 +121,28 @@ class TinyQueryTest(unittest.TestCase):
     def test_group_by_field(self):
         result = self.tq.evaluate_query(
             'SELECT SUM(val2) FROM test_table GROUP BY val1')
-        self.assertEqual([3, 4, 6, 8], sorted(result.columns['f0_'].values))
+        self.assertEqual([3, 4, 6, 8],
+                         sorted(result.columns[(None, 'f0_')].values))
 
     def test_group_by_used_field(self):
         result = self.tq.evaluate_query(
             'SELECT val1 + SUM(val2) FROM test_table GROUP BY val1')
-        self.assertEqual([4, 8, 12, 12], sorted(result.columns['f0_'].values))
+        self.assertEqual([4, 8, 12, 12],
+                         sorted(result.columns[(None, 'f0_')].values))
 
     def test_group_by_alias(self):
         result = self.tq.evaluate_query(
             'SELECT val1 % 3 AS cat, MAX(val1) FROM test_table GROUP BY cat')
-        result_rows = zip(result.columns['cat'].values,
-                          result.columns['f0_'].values)
+        result_rows = zip(result.columns[(None, 'cat')].values,
+                          result.columns[(None, 'f0_')].values)
         self.assertEqual([(1, 4), (2, 8)], sorted(result_rows))
 
     def test_mixed_group_by(self):
         result = self.tq.evaluate_query(
             'SELECT val2 % 2 AS foo, SUM(val2) AS bar '
             'FROM test_table GROUP BY val1, foo')
-        result_rows = zip(result.columns['foo'].values,
-                          result.columns['bar'].values)
+        result_rows = zip(result.columns[(None, 'foo')].values,
+                          result.columns[(None, 'bar')].values)
         self.assertEqual([(0, 2), (0, 4), (0, 6), (0, 8), (1, 1)],
                          sorted(result_rows))
 

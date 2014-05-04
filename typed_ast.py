@@ -50,8 +50,8 @@ class TableExpression(object):
 class NoTable(collections.namedtuple('NoTable', []), TableExpression):
     @property
     def type_ctx(self):
-        return type_context.TypeContext.from_columns(collections.OrderedDict(),
-                                                     None)
+        return type_context.TypeContext.from_full_columns(
+            collections.OrderedDict())
 
 
 class Table(collections.namedtuple('Table', ['name', 'type_ctx']),
@@ -95,9 +95,11 @@ class AggregateFunctionCall(collections.namedtuple(
     """
 
 
-class Literal(collections.namedtuple('Literal', ['value', 'type'])):
+class Literal(collections.namedtuple(
+        'Literal', ['value', 'type']), Expression):
     pass
 
 
-class ColumnRef(collections.namedtuple('ColumnRef', ['column', 'type'])):
+class ColumnRef(collections.namedtuple(
+        'ColumnRef', ['table', 'column', 'type']), Expression):
     """References a column from the current context."""
