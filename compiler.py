@@ -167,6 +167,56 @@ class Compiler(object):
             table.type_ctx for table in compiled_tables)
         return typed_ast.TableUnion(compiled_tables, type_ctx)
 
+    def compile_table_expr_Join(self, table_expr):
+        compiled_table1 = self.compile_table_expr(table_expr.table1)
+        compiled_table2 = self.compile_table_expr(table_expr.table2)
+        alias1 = self.get_table_expression_alias(table_expr.table1)
+        alias2 = self.get_table_expression_alias(table_expr.table2)
+        result_fields = self.compile_join_fields(
+            compiled_table1.type_ctx, compiled_table2.type_ctx, alias1, alias2,
+            table_expr.condition)
+        result_type_ctx = type_context.TypeContext.join_contexts(
+            [compiled_table1.type_ctx, compiled_table2.type_ctx])
+        return typed_ast.Join(compiled_table1, compiled_table2, result_fields,
+                              result_type_ctx)
+
+    def compile_join_fields(self, type_ctx1, type_ctx2, alias1, alias2, expr):
+        """Traverse a join condition to find the joined fields.
+
+        Arguments:
+            type_ctx1: A TypeContext for the first table being joined.
+            type_ctx2: A TypeContext for the second table being joined.
+            alias1: The alias for the first table.
+            alias2: The alias for the second table.
+            expr: An uncompiled tq_ast expression to traverse.
+
+        Returns: A list of JoinFields instances for the expression.
+        """
+        if (isinstance(expr, tq_ast.BinaryOperator) and
+                isinstance(expr.left, tq_ast.ColumnId) and
+                isinstance(expr.right, tq_ast.ColumnId)):
+            column_id1, column_id2 = expr.left, expr.right
+            # By default, the left side of the equality corresponds to the left
+            # side of the join, but this can be overridden if any aliases
+            # suggest that the reverse order should be used.
+            if (column_id1.name.startswith(alias2 + '.') or
+                    column_id2.name.startswith(alias1 + '.')):
+                column_id1, column_id2 = column_id2, column_id1
+            column_ref1 = self.compile_ColumnId(column_id1, type_ctx1)
+            column_ref2 = self.compile_ColumnId(column_id2, type_ctx2)
+            return [typed_ast.JoinFields(column_ref1, column_ref2)]
+        else:
+            raise CompileError('JOIN conditions must only consist of = '
+                               'comparisons.')
+
+    def get_table_expression_alias(self, table_expr):
+        """Get the alias of a table expression, or crash if there is none."""
+        if table_expr.alias is not None:
+            return table_expr.alias
+        if isinstance(table_expr, tq_ast.TableId):
+            return table_expr.name
+        raise CompileError('Table expression must have an alias name.')
+
     def compile_table_expr_Select(self, table_expr):
         select_result = self.compile_select(table_expr)
         if table_expr.alias is not None:

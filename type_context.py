@@ -98,6 +98,13 @@ class TypeContext(collections.namedtuple(
                     result_columns[full_column] = col_type
         return cls.from_full_columns(result_columns)
 
+    @classmethod
+    def join_contexts(cls, contexts):
+        result_columns = collections.OrderedDict()
+        for context in contexts:
+            result_columns.update(context.columns)
+        return cls.from_full_columns(result_columns)
+
     def column_ref_for_name(self, name):
         """Gets the full identifier for a column from any possible alias."""
         if name in self.columns:

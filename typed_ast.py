@@ -64,6 +64,29 @@ class TableUnion(collections.namedtuple('TableUnion', ['tables', 'type_ctx']),
     pass
 
 
+class Join(collections.namedtuple('Join', ['table1', 'table2',
+                                           'conditions', 'type_ctx']),
+           TableExpression):
+    """Table expression for a join operation.
+
+    Fields:
+        table1: A table expression on the left side of the join.
+        table2: A table expression on the right side of the join.
+        conditions: A list of JoinFields objects, each of which specifies a
+            field from table1 joined on a field from table2.
+        type_ctx: The resulting type context.
+    """
+
+
+class JoinFields(collections.namedtuple('JoinFields', ['column1', 'column2'])):
+    """A single pair of fields to join on.
+
+    Fields:
+        column1: A ColumnRef referencing table1.
+        column2: A ColumnRef referencing table2.
+    """
+
+
 class Expression(object):
     """Abstract interface for all expression ASTs."""
     def __init__(self, *args):

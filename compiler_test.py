@@ -469,3 +469,43 @@ class CompilerTest(unittest.TestCase):
                         [('t', 'value', tq_types.INT)]))
             )
         )
+
+    def test_simple_join(self):
+        self.assert_compiled_select(
+            'SELECT value2 '
+            'FROM table1 t1 JOIN table2 t2 ON t1.value = t2.value',
+            typed_ast.Select([
+                typed_ast.SelectField(
+                    typed_ast.ColumnRef('t1', 'value2', tq_types.INT),
+                    'value2'
+                )],
+                typed_ast.Join(
+                    typed_ast.Table('table1',
+                                    self.make_type_context([
+                                        ('t1', 'value', tq_types.INT),
+                                        ('t1', 'value2', tq_types.INT),
+                                    ])),
+                    typed_ast.Table('table2',
+                                    self.make_type_context([
+                                        ('t2', 'value', tq_types.INT),
+                                        ('t2', 'value3', tq_types.INT),
+                                    ])),
+                    [typed_ast.JoinFields(
+                        typed_ast.ColumnRef('t1', 'value', tq_types.INT),
+                        typed_ast.ColumnRef('t2', 'value', tq_types.INT)
+                    )],
+                    self.make_type_context([
+                        ('t1', 'value', tq_types.INT),
+                        ('t1', 'value2', tq_types.INT),
+                        ('t2', 'value', tq_types.INT),
+                        ('t2', 'value3', tq_types.INT),
+                    ])
+                ),
+                typed_ast.Literal(True, tq_types.BOOL),
+                None,
+                self.make_type_context(
+                    [(None, 'value2', tq_types.INT)],
+                    self.make_type_context([('t1', 'value2', tq_types.INT)])
+                )
+            )
+        )
