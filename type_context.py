@@ -129,3 +129,21 @@ class TypeContext(collections.namedtuple(
                 return self.implicit_column_context.column_ref_for_name(name)
             else:
                 raise compiler.CompileError('Field not found: {}'.format(name))
+
+    def context_with_subquery_alias(self, subquery_alias):
+        """Handle the case where a subquery has an alias.
+
+        In this case, it looks like the right approach is to only assign the
+        alias to the implicit column context, not the full context.
+        """
+        if self.implicit_column_context is None:
+            return self
+        new_implicit_column_context = TypeContext.from_full_columns(
+            collections.OrderedDict(
+                ((subquery_alias, col_name), col_type)
+                for (_, col_name), col_type
+                in self.implicit_column_context.columns.iteritems()
+            )
+        )
+        return TypeContext(self.columns, self.aliases, self.ambig_aliases,
+                           new_implicit_column_context, self.aggregate_context)

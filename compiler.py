@@ -168,7 +168,15 @@ class Compiler(object):
         return typed_ast.TableUnion(compiled_tables, type_ctx)
 
     def compile_table_expr_Select(self, table_expr):
-        return self.compile_select(table_expr)
+        select_result = self.compile_select(table_expr)
+        if table_expr.alias is not None:
+            new_type_context = (select_result.type_ctx.
+                                context_with_subquery_alias(table_expr.alias))
+            select_result = typed_ast.Select(
+                select_result.select_fields, select_result.table,
+                select_result.where_expr, select_result.group_set,
+                new_type_context)
+        return select_result
 
     def compile_groups(self, groups, select_fields, aliases, table_ctx):
         """Gets the group set to use for the query.

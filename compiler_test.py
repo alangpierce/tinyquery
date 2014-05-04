@@ -442,7 +442,6 @@ class CompilerTest(unittest.TestCase):
                     )))
         )
 
-    @unittest.skip('Need to implement implicitly-accessed columns and transformations for them.')
     def test_subquery_aliases(self):
         self.assert_compiled_select(
             'SELECT t.value FROM (SELECT value FROM table1) t',
@@ -457,11 +456,17 @@ class CompilerTest(unittest.TestCase):
                     typed_ast.Table('table1', self.table1_type_ctx),
                     typed_ast.Literal(True, tq_types.BOOL),
                     None,
-                    self.make_type_context([(None, 'value', tq_types.INT)])
+                    self.make_type_context(
+                        [(None, 'value', tq_types.INT)],
+                        self.make_type_context(
+                            [('t', 'value', tq_types.INT)]))
                 ),
                 typed_ast.Literal(True, tq_types.BOOL),
                 None,
-                self.make_type_context([('t', 'value', tq_types.INT)])
+                self.make_type_context(
+                    [(None, 't.value', tq_types.INT)],
+                    self.make_type_context(
+                        [('t', 'value', tq_types.INT)]))
             )
         )
 
