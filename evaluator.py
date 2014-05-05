@@ -1,6 +1,5 @@
 import collections
 
-import compiler
 import context
 import typed_ast
 

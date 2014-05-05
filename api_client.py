@@ -113,7 +113,41 @@ class JobServiceApiClient(object):
 
     @http_request_provider
     def insert(self, projectId, body):
-        return self.tq_service.create_job(projectId, 'DONE')
+        if 'query' in body['configuration']:
+            config = body['configuration']['query']
+            query = config['query']
+            dest_dataset, dest_table = self.get_config_table(
+                config, 'destinationTable')
+            create_disposition = config.get('createDisposition',
+                                            'CREATE_IF_NEEDED')
+            write_disposition = config.get('writeDisposition', 'WRITE_EMPTY')
+            return self.tq_service.run_query_job(
+                projectId, query, dest_dataset, dest_table, create_disposition,
+                write_disposition)
+        elif 'copy' in body['configuration']:
+            config = body['configuration']['copy']
+            src_dataset, src_table = self.get_config_table(
+                config, 'sourceTable')
+            dest_dataset, dest_table = self.get_config_table(
+                config, 'destinationTable')
+            create_disposition = config.get('createDisposition',
+                                            'CREATE_IF_NEEDED')
+            write_disposition = config.get('writeDisposition', 'WRITE_EMPTY')
+            return self.tq_service.run_copy_job(
+                projectId, src_dataset, src_table, dest_dataset, dest_table,
+                create_disposition, write_disposition)
+        else:
+            assert False, 'Unknown job type: {}'.format(
+                body['configuration'].keys())
+
+    @staticmethod
+    def get_config_table(config, key):
+        """Return the dataset_id, table_id, if any."""
+        dest_table_config = config.get(key)
+        if dest_table_config:
+            return dest_table_config['datasetId'], dest_table_config['tableId']
+        else:
+            return None, None
 
     @http_request_provider
     def get(self, projectId, jobId):
@@ -121,4 +155,16 @@ class JobServiceApiClient(object):
 
     @http_request_provider
     def getQueryResults(self, projectId, jobId):
-        pass
+        result_table = self.tq_service.get_query_result_table(jobId)
+        result_rows = []
+        for i in xrange(result_table.num_rows):
+            field_values = [{'v': str(col.values[i])}
+                            for col in result_table.columns.itervalues()]
+            result_rows.append({
+                'f': field_values
+            })
+
+        # TODO: Also add the schema.
+        return {
+            'rows': result_rows
+        }

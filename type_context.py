@@ -31,13 +31,14 @@ class TypeContext(collections.namedtuple(
             allowed, or a TypeContext to use if we enter into an aggregate.
     """
     @classmethod
-    def from_table_and_columns(cls, table_name, full_columns,
+    def from_table_and_columns(cls, table_name, columns_without_table,
                                implicit_column_context=None,
                                aggregate_context=None):
         return cls.from_full_columns(
             collections.OrderedDict(
-                ((table_name, column_name), type)
-                for column_name, type in full_columns.iteritems()),
+                ((table_name, column_name), col_type)
+                for column_name, col_type
+                in columns_without_table.iteritems()),
             implicit_column_context, aggregate_context)
 
     @staticmethod

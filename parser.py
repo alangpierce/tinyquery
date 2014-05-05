@@ -105,7 +105,7 @@ def p_aliased_table_expr(p):
 
 
 def p_table_id(p):
-    """table_expr : ID"""
+    """table_expr : id_component_list"""
     p[0] = tq_ast.TableId(p[1], None)
 
 

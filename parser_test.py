@@ -272,3 +272,13 @@ class ParserTest(unittest.TestCase):
                 None
             )
         )
+
+    def test_dot_separated_table_name(self):
+        self.assert_parsed_select(
+            'SELECT foo FROM dataset.table',
+            tq_ast.Select([
+                tq_ast.SelectField(tq_ast.ColumnId('foo'), None)],
+                tq_ast.TableId('dataset.table', None),
+                None,
+                None,
+                None))
