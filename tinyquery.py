@@ -210,6 +210,62 @@ class TinyQuery(object):
                                                       result_context)
         return result_context
 
+    def eval_table_Join(self, table_expr):
+        result_context_1 = self.evaluate_table_expr(table_expr.table1)
+        result_context_2 = self.evaluate_table_expr(table_expr.table2)
+
+        table_1_key_refs = [cond.column1 for cond in table_expr.conditions]
+        table_2_key_refs = [cond.column2 for cond in table_expr.conditions]
+
+        # Build a map from table 2 key to value.
+        table_2_key_contexts = {}
+        for i in xrange(result_context_2.num_rows):
+            key = self.get_join_key(result_context_2, table_2_key_refs, i)
+            if key not in table_2_key_contexts:
+                new_group_context = context.empty_context_from_template(
+                    result_context_2)
+                table_2_key_contexts[key] = new_group_context
+            context.append_row_to_context(
+                src_context=result_context_2, index=i,
+                dest_context=table_2_key_contexts[key])
+
+        result_context = context.cross_join_contexts(
+            context.empty_context_from_template(result_context_1),
+            context.empty_context_from_template(result_context_2),
+        )
+        for i in xrange(result_context_1.num_rows):
+            key = self.get_join_key(result_context_1, table_1_key_refs, i)
+            if key not in table_2_key_contexts:
+                continue
+            row_context = context.row_context_from_context(result_context_1, i)
+            new_rows = context.cross_join_contexts(row_context,
+                                                   table_2_key_contexts[key])
+            context.append_partial_context_to_context(new_rows, result_context)
+
+        return result_context
+
+    def get_join_key(self, table_context, key_column_refs, index):
+        """Get the join key for a row in a table that is part of a join.
+
+        Note that, while this code is similar to the code that computes group
+        keys, groups are different because they need to be specifically
+        selected from later (so we build a context for them), whereas join keys
+        can have different column names.
+
+        Arguments:
+            table_context: A Context containing the data in one of the tables
+                being joined.
+            key_column_refs: A list of ColumnRef specifying the columns to use
+                in the key and their order.
+            index: The index of the row to compute the key for.
+
+        Returns: A tuple of values for the key for this row.
+        """
+        return tuple(
+            table_context.column_from_ref(col_ref).values[index]
+            for col_ref in key_column_refs)
+
+
     def eval_table_Select(self, table_expr):
         return self.evaluate_select(table_expr)
 

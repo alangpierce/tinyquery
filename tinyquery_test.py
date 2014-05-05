@@ -24,6 +24,13 @@ class TinyQueryTest(unittest.TestCase):
                 ('val3', context.Column(tq_types.INT, [3, 8])),
                 ('val2', context.Column(tq_types.INT, [2, 7])),
             ])))
+        self.tq.load_table(context.Table(
+            'test_table_3',
+            5,
+            collections.OrderedDict([
+                ('foo', context.Column(tq_types.INT, [1, 2, 4, 5, 1])),
+                ('bar', context.Column(tq_types.INT, [2, 7, 3, 1, 1])),
+            ])))
 
     def assert_query_result(self, query, expected_result):
         result = self.tq.evaluate_query(query)
@@ -177,3 +184,13 @@ class TinyQueryTest(unittest.TestCase):
         self.assert_query_result(
             'SELECT t.val1 FROM test_table t',
             self.make_context([('t.val1', tq_types.INT, [4, 1, 8, 1, 2])]))
+
+    def test_join(self):
+        result = self.tq.evaluate_query(
+            'SELECT bar'
+            '    FROM test_table'
+            '    JOIN test_table_3'
+            '    ON test_table.val1 = test_table_3.foo')
+        result_rows = result.columns[(None, 'bar')].values
+        # Four results for the 1 key, then one each for 2 and 4.
+        self.assertEqual([1, 1, 2, 2, 3, 7], sorted(result_rows))

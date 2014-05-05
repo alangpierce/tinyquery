@@ -31,6 +31,10 @@ class Context(object):
         self.columns = columns
         self.aggregate_context = aggregate_context
 
+    def column_from_ref(self, column_ref):
+        """Given a ColumnRef, return the corresponding column."""
+        return self.columns[(column_ref.table, column_ref.column)]
+
     def __repr__(self):
         return 'Context({}, {}, {})'.format(self.num_rows, self.columns,
                                             self.aggregate_context)
@@ -159,3 +163,31 @@ def append_partial_context_to_context(src_context, dest_context):
             dest_column.values.extend([None] * src_context.num_rows)
         else:
             dest_column.values.extend(src_column_values)
+
+
+def row_context_from_context(src_context, index):
+    """Pull a specific row out of a context as its own context."""
+    assert src_context.aggregate_context is None
+    columns = collections.OrderedDict(
+        (col_name, Column(col.type, [col.values[index]]))
+        for col_name, col in src_context.columns.iteritems()
+    )
+    return Context(1, columns, None)
+
+
+def cross_join_contexts(context1, context2):
+    assert context1.aggregate_context is None
+    assert context2.aggregate_context is None
+    result_columns = collections.OrderedDict(
+        [(col_name, Column(col.type, []))
+         for col_name, col in context1.columns.iteritems()] +
+        [(col_name, Column(col.type, []))
+         for col_name, col in context2.columns.iteritems()])
+
+    for index1 in xrange(context1.num_rows):
+        for index2 in xrange(context2.num_rows):
+            for col_name, column in context1.columns.iteritems():
+                result_columns[col_name].values.append(column.values[index1])
+            for col_name, column in context2.columns.iteritems():
+                result_columns[col_name].values.append(column.values[index2])
+    return Context(context1.num_rows * context2.num_rows, result_columns, None)
