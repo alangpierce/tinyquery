@@ -348,7 +348,12 @@ class Compiler(object):
         func = runtime.get_func(expr.name)
         compiled_args = [self.compile_expr(sub_expr, sub_expr_ctx)
                          for sub_expr in expr.args]
-        result_type = func.check_types(*(arg.type for arg in compiled_args))
+        try:
+            result_type = func.check_types(
+                *(arg.type for arg in compiled_args))
+        except TypeError:
+            raise CompileError('Invalid types for function {}: {}'.format(
+                expr.name, [arg.type for arg in compiled_args]))
         return ast_type(func, compiled_args, result_type)
 
     @classmethod

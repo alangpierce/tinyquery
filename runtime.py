@@ -5,6 +5,7 @@ import compiler
 
 import tq_types
 
+
 class Function(object):
     __metaclass__ = abc.ABCMeta
 
@@ -72,7 +73,8 @@ class UnaryIntOperator(Function):
         self.func = func
 
     def check_types(self, arg):
-        assert arg == tq_types.INT
+        if arg != tq_types.INT:
+            raise TypeError('Expected int type')
         return tq_types.INT
 
     def evaluate(self, num_rows, arg_list):
@@ -106,7 +108,8 @@ class AggregateIntFunction(Function):
         self.func = func
 
     def check_types(self, arg):
-        assert arg == tq_types.INT
+        if not (arg in (tq_types.INT, tq_types.FLOAT)):
+            raise TypeError('Expected int type')
         return tq_types.INT
 
     def evaluate(self, num_rows, arg_list):
