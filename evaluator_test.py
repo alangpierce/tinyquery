@@ -269,3 +269,16 @@ class EvaluatorTest(unittest.TestCase):
                 ('t2.val', tq_types.INT, [1, 1])
             ])
         )
+
+    def test_count(self):
+        self.assert_query_result(
+            'SELECT COUNT(1) FROM test_table WHERE val1 = 1',
+            self.make_context([
+                ('f0_', tq_types.INT, [2])]))
+
+    def test_count_distinct(self):
+        self.assert_query_result(
+            'SELECT COUNT(DISTINCT val1) FROM test_table',
+            self.make_context([
+                ('f0_', tq_types.INT, [4])
+            ]))

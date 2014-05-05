@@ -193,6 +193,16 @@ def p_expression_func_call(p):
     p[0] = tq_ast.FunctionCall(p[1].lower(), p[3])
 
 
+def p_expression_count(p):
+    """expression : COUNT LPAREN arg_list RPAREN"""
+    p[0] = tq_ast.FunctionCall('count', p[3])
+
+
+def p_expression_count_distinct(p):
+    """expression : COUNT LPAREN DISTINCT arg_list RPAREN"""
+    p[0] = tq_ast.FunctionCall('count_distinct', p[4])
+
+
 def p_arg_list(p):
     """arg_list :
                 | expression

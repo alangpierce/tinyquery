@@ -22,7 +22,9 @@ reserved_words = {
     'null': 'NULL',
     'true': 'TRUE',
     'false': 'FALSE',
-    'in': 'IN'
+    'in': 'IN',
+    'count': 'COUNT',
+    'distinct': 'DISTINCT',
 }
 
 tokens = [

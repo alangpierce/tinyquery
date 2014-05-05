@@ -175,6 +175,22 @@ class SumFunction(Function):
         return [sum(arg_list)]
 
 
+class CountFunction(Function):
+    def check_types(self, arg):
+        return tq_types.INT
+
+    def evaluate(self, num_rows, arg_list):
+        return [len([0 for arg in arg_list if arg is not None])]
+
+
+class CountDistinctFunction(Function):
+    def check_types(self, arg):
+        return tq_types.INT
+
+    def evaluate(self, num_rows, arg_list):
+        return [len(set(arg_list))]
+
+
 _UNARY_OPERATORS = {
     '-': UnaryIntOperator(lambda a: -a),
     'is_null': UnaryBoolOperator(lambda a: a is None),
@@ -213,7 +229,9 @@ _FUNCTIONS = {
 _AGGREGATE_FUNCTIONS = {
     'sum': SumFunction(),
     'min': MinMaxFunction(min),
-    'max': MinMaxFunction(max)
+    'max': MinMaxFunction(max),
+    'count': CountFunction(),
+    'count_distinct': CountDistinctFunction()
 }
 
 
