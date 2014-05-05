@@ -282,3 +282,21 @@ class ParserTest(unittest.TestCase):
                 None,
                 None,
                 None))
+
+    def test_null_comparison_functions(self):
+        self.assert_parsed_select(
+            'SELECT foo IS NULL, bar IS NOT NULL FROM table',
+            tq_ast.Select([
+                tq_ast.SelectField(
+                    tq_ast.UnaryOperator('is_null', tq_ast.ColumnId('foo')),
+                    None
+                ),
+                tq_ast.SelectField(
+                    tq_ast.UnaryOperator('is_not_null',
+                                         tq_ast.ColumnId('bar')),
+                    None
+                )],
+                tq_ast.TableId('table', None),
+                None,
+                None,
+                None))

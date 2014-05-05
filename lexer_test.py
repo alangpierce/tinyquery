@@ -14,6 +14,9 @@ greater_than = ('GREATER_THAN', '>')
 less_than = ('LESS_THAN', '<')
 greater_than_or_equal = ('GREATER_THAN_OR_EQUAL', '>=')
 less_than_or_equal = ('LESS_THAN_OR_EQUAL', '<=')
+not_tok = ('NOT', 'not')
+is_tok = ('IS', 'is')
+null_tok = ('NULL', 'null')
 select = ('SELECT', 'select')
 as_tok = ('AS', 'as')
 from_tok = ('FROM', 'from')
@@ -133,4 +136,11 @@ class LexerTest(unittest.TestCase):
             [select, ident('foo'), from_tok, ident('table1'), join,
              ident('table2'), on, ident('table1'), dot, ident('bar'), equals,
              ident('table2'), dot, ident('bar')]
+        )
+
+    def test_null_comparisons(self):
+        self.assert_tokens(
+            'SELECT foo IS NULL, bar IS NOT NULL FROM table1',
+            [select, ident('foo'), is_tok, null_tok, comma, ident('bar'),
+             is_tok, not_tok, null_tok, from_tok, ident('table1')]
         )

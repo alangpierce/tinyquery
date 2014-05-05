@@ -79,6 +79,17 @@ class UnaryIntOperator(Function):
         return [self.func(arg) for arg in arg_list]
 
 
+class UnaryBoolOperator(Function):
+    def __init__(self, func):
+        self.func = func
+
+    def check_types(self, arg):
+        return tq_types.BOOL
+
+    def evaluate(self, num_rows, arg_list):
+        return [self.func(arg) for arg in arg_list]
+
+
 class NoArgFunction(Function):
     def __init__(self, func):
         self.func = func
@@ -103,7 +114,9 @@ class AggregateIntFunction(Function):
 
 
 _UNARY_OPERATORS = {
-    '-': UnaryIntOperator(lambda a: -a)
+    '-': UnaryIntOperator(lambda a: -a),
+    'is_null': UnaryBoolOperator(lambda a: a is None),
+    'is_not_null': UnaryBoolOperator(lambda a: a is not None),
 }
 
 

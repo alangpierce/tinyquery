@@ -31,6 +31,12 @@ class EvaluatorTest(unittest.TestCase):
                 ('foo', context.Column(tq_types.INT, [1, 2, 4, 5, 1])),
                 ('bar', context.Column(tq_types.INT, [2, 7, 3, 1, 1])),
             ])))
+        self.tq.load_table(tinyquery.Table(
+            'null_table',
+            4,
+            collections.OrderedDict([
+                ('foo', context.Column(tq_types.INT, [1, None, None, 5])),
+            ])))
 
     def assert_query_result(self, query, expected_result):
         result = self.tq.evaluate_query(query)
@@ -202,3 +208,11 @@ class EvaluatorTest(unittest.TestCase):
         result_rows = zip(result.columns[(None, 'foo')].values,
                           result.columns[(None, 'bar')].values)
         self.assertEqual([(1, 1), (1, 2)], sorted(result_rows))
+
+    def test_null_comparisons(self):
+        self.assert_query_result(
+            'SELECT foo IS NULL, foo IS NOT NULL FROM null_table',
+            self.make_context([
+                ('f0_', tq_types.INT, [False, True, True, False]),
+                ('f1_', tq_types.INT, [True, False, False, True]),
+            ]))

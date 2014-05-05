@@ -16,6 +16,9 @@ reserved_words = {
     'by': 'BY',
     'and': 'AND',
     'or': 'OR',
+    'not': 'NOT',
+    'is': 'IS',
+    'null': 'NULL'
 }
 
 tokens = [
