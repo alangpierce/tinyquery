@@ -188,9 +188,17 @@ class TinyQueryTest(unittest.TestCase):
     def test_join(self):
         result = self.tq.evaluate_query(
             'SELECT bar'
-            '    FROM test_table'
-            '    JOIN test_table_3'
+            '    FROM test_table JOIN test_table_3'
             '    ON test_table.val1 = test_table_3.foo')
         result_rows = result.columns[(None, 'bar')].values
         # Four results for the 1 key, then one each for 2 and 4.
         self.assertEqual([1, 1, 2, 2, 3, 7], sorted(result_rows))
+
+    def test_multiple_join(self):
+        result = self.tq.evaluate_query(
+            'SELECT foo, bar'
+            '    FROM test_table t1 JOIN test_table_3 t2'
+            '    ON t1.val1 = t2.foo AND t2.bar = t1.val2')
+        result_rows = zip(result.columns[(None, 'foo')].values,
+                          result.columns[(None, 'bar')].values)
+        self.assertEqual([(1, 1), (1, 2)], sorted(result_rows))
