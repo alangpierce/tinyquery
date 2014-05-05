@@ -92,6 +92,32 @@ class UnaryBoolOperator(Function):
         return [self.func(arg) for arg in arg_list]
 
 
+class IfFunction(Function):
+    def check_types(self, cond, arg1, arg2):
+        if cond != tq_types.BOOL:
+            raise TypeError('Expected bool type.')
+        if arg1 == tq_types.NONETYPE:
+            return arg2
+        if arg2 == tq_types.NONETYPE:
+            return arg1
+        if arg1 != arg2:
+            raise TypeError('Expected types to be the same.')
+        return arg1
+
+    def evaluate(self, num_rows, cond_list, arg1_list, arg2_list):
+        return [arg1 if cond else arg2
+                for cond, arg1, arg2 in zip(cond_list, arg1_list, arg2_list)]
+
+
+class HashFunction(Function):
+    def check_types(self, arg):
+        return tq_types.INT
+
+    def evaluate(self, num_rows, arg_list):
+        # TODO: Use CityHash.
+        return [hash(arg) for arg in arg_list]
+
+
 class NoArgFunction(Function):
     def __init__(self, func):
         self.func = func
@@ -152,7 +178,9 @@ _FUNCTIONS = {
     'abs': UnaryIntOperator(abs),
     'pow': ArithmeticOperator(lambda a, b: a ** b),
     'now': NoArgFunction(lambda: int(time.time() * 1000000)),
-    'in': InFunction()
+    'in': InFunction(),
+    'if': IfFunction(),
+    'hash': HashFunction(),
 }
 
 

@@ -253,3 +253,10 @@ class EvaluatorTest(unittest.TestCase):
                 ('f1_', tq_types.BOOL, [False]),
             ])
         )
+
+    def test_if(self):
+        self.assert_query_result(
+            'SELECT IF(val1 % 2 = 0, "a", "b") FROM test_table',
+            self.make_context([
+                ('f0_', tq_types.STRING, ['a', 'b', 'a', 'b', 'a'])
+            ]))
