@@ -7,7 +7,7 @@ import tinyquery
 import tq_types
 
 
-class TinyQueryTest(unittest.TestCase):
+class EvaluatorTest(unittest.TestCase):
     def setUp(self):
         self.tq = tinyquery.TinyQuery()
         self.tq.load_table(context.Table(
