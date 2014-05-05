@@ -12,7 +12,7 @@ import typed_ast
 
 class CompilerTest(unittest.TestCase):
     def setUp(self):
-        self.table1 = context.Table(
+        self.table1 = tinyquery.Table(
             'table1',
             0,
             collections.OrderedDict([
@@ -24,7 +24,7 @@ class CompilerTest(unittest.TestCase):
              ('table1', 'value2', tq_types.INT)]
         )
 
-        self.table2 = context.Table(
+        self.table2 = tinyquery.Table(
             'table2',
             0,
             collections.OrderedDict([

@@ -1,6 +1,6 @@
 """Defines the valid types. Currently we just uses strings to identify them."""
 
-INT = 'int'
-BOOL = 'bool'
+INT = 'INTEGER'
+BOOL = 'BOOLEAN'
 
 TYPE_TYPE = basestring

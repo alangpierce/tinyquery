@@ -50,21 +50,6 @@ class Context(object):
             self.aggregate_context))
 
 
-class Table(collections.namedtuple('Table', ['name', 'num_rows', 'columns'])):
-    """Information containing metadata and contents of a table.
-
-    Fields:
-        columns: A dict mapping column name to column.
-    """
-    def __init__(self, name, num_rows, columns):
-        assert isinstance(columns, collections.OrderedDict)
-        for name, column in columns.iteritems():
-            assert len(column.values) == num_rows, (
-                'Column %s had %s rows, expected %s.' % (
-                    name, len(column.values), num_rows))
-        super(Table, self).__init__()
-
-
 class Column(collections.namedtuple('Column', ['type', 'values'])):
     """Represents a single column of data.
 
