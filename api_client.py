@@ -2,8 +2,11 @@
 
 This can be used in place of the value returned by apiclient.discovery.build().
 """
+import collections
 import functools
 import json
+import context
+import tinyquery
 
 
 class TinyQueryApiClient(object):
@@ -58,7 +61,22 @@ class TableServiceApiClient(object):
 
     @http_request_provider
     def insert(self, projectId, datasetId, body):
-        pass
+        """Create an empty table."""
+        table_reference = body['tableReference']
+        raw_schema = body['schema']
+
+        columns = collections.OrderedDict()
+        for field in raw_schema['fields']:
+            # TODO: Handle the mode here. We should default to NULLABLE, but
+            # allow other specifiers.
+            # TODO: Validate that the type is legal. Currently we take
+            # advantage of the fact that type names match the types defined in
+            # tq_types.py.
+            columns[field['name']] = context.Column(field['type'], [])
+
+        table = tinyquery.Table(table_reference['datasetId'] + '.' +
+                                table_reference['tableId'], 0, columns)
+        self.tq_service.load_table(table)
 
     @http_request_provider
     def get(self, projectId, datasetId, tableId):
@@ -74,7 +92,15 @@ class TableServiceApiClient(object):
 
     @http_request_provider
     def delete(self, projectId, datasetId, tableId):
-        pass
+        try:
+            return self.tq_service.delete_table(datasetId, tableId)
+        except KeyError:
+            raise FakeHttpError(None, json.dumps({
+                'error': {
+                    'code': 404,
+                    'message': 'Table not found: %s.%s' % (datasetId, tableId)
+                }
+            }))
 
 
 class JobServiceApiClient(object):

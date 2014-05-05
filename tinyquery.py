@@ -36,11 +36,12 @@ class TinyQuery(object):
 
         return {
             'schema': {
-                'fields': {
-                    schema_fields
-                }
+                'fields': schema_fields
             }
         }
+
+    def delete_table(self, dataset, table_name):
+        del self.tables_by_name[dataset + '.' + table_name]
 
     def evaluate_query(self, query):
         select_ast = compiler.compile_text(query, self.tables_by_name)
