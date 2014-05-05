@@ -14,6 +14,7 @@ reserved_words = {
     'on': 'ON',
     'group': 'GROUP',
     'by': 'BY',
+    'each': 'EACH',
     'and': 'AND',
     'or': 'OR',
     'not': 'NOT',

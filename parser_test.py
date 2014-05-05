@@ -300,3 +300,30 @@ class ParserTest(unittest.TestCase):
                 None,
                 None,
                 None))
+
+    def test_group_each_by(self):
+        self.assert_parsed_select(
+            'SELECT 0 FROM table GROUP EACH BY foo',
+            tq_ast.Select([
+                tq_ast.SelectField(tq_ast.Literal(0), None)],
+                tq_ast.TableId('table', None),
+                None,
+                ['foo'],
+                None))
+
+    def test_join_each(self):
+        self.assert_parsed_select(
+            'SELECT 0 FROM table1 t1 JOIN EACH table2 t2 ON t1.foo = t2.bar',
+            tq_ast.Select([
+                tq_ast.SelectField(tq_ast.Literal(0), None)],
+                tq_ast.Join(
+                    tq_ast.TableId('table1', 't1'),
+                    tq_ast.TableId('table2', 't2'),
+                    tq_ast.BinaryOperator(
+                        '=',
+                        tq_ast.ColumnId('t1.foo'),
+                        tq_ast.ColumnId('t2.bar')
+                    )),
+                None,
+                None,
+                None))

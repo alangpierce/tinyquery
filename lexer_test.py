@@ -25,6 +25,7 @@ join = ('JOIN', 'join')
 on = ('ON', 'on')
 group = ('GROUP', 'group')
 by = ('BY', 'by')
+each = ('EACH', 'each')
 lparen = ('LPAREN', '(')
 rparen = ('RPAREN', ')')
 comma = ('COMMA', ',')
@@ -143,4 +144,11 @@ class LexerTest(unittest.TestCase):
             'SELECT foo IS NULL, bar IS NOT NULL FROM table1',
             [select, ident('foo'), is_tok, null_tok, comma, ident('bar'),
              is_tok, not_tok, null_tok, from_tok, ident('table1')]
+        )
+
+    def test_group_each_by(self):
+        self.assert_tokens(
+            'SELECT 0 FROM table GROUP EACH BY foo',
+            [select, num(0), from_tok, ident('table'), group, each, by,
+             ident('foo')]
         )

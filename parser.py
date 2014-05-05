@@ -41,11 +41,12 @@ def p_optional_where(p):
 def p_optional_group_by(p):
     """optional_group_by :
                          | GROUP BY id_list
+                         | GROUP EACH BY id_list
     """
     if len(p) == 1:
         p[0] = None
     else:
-        p[0] = p[3]
+        p[0] = p[len(p) - 1]
 
 
 def p_id_list(p):
@@ -74,6 +75,13 @@ def p_table_expr_join(p):
                             ON expression
     """
     p[0] = tq_ast.Join(p[1], p[3], p[5])
+
+
+def p_table_expr_join_each(p):
+    """full_table_expr : aliased_table_expr JOIN EACH aliased_table_expr \
+                            ON expression
+    """
+    p[0] = tq_ast.Join(p[1], p[4], p[6])
 
 
 def p_aliased_table_expr_list(p):
