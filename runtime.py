@@ -143,8 +143,8 @@ class AggregateIntFunction(Function):
 
     def check_types(self, arg):
         if not (arg in (tq_types.INT, tq_types.FLOAT)):
-            raise TypeError('Expected int type')
-        return tq_types.INT
+            raise TypeError('Expected int or float type.')
+        return arg
 
     def evaluate(self, num_rows, arg_list):
         return [self.func(arg_list)]
