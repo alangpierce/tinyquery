@@ -172,11 +172,12 @@ class Compiler(object):
         compiled_table2 = self.compile_table_expr(table_expr.table2)
         alias1 = self.get_table_expression_alias(table_expr.table1)
         alias2 = self.get_table_expression_alias(table_expr.table2)
+        result_ctx_1 = compiled_table1.type_ctx.context_with_full_alias(alias1)
+        result_ctx_2 = compiled_table2.type_ctx.context_with_full_alias(alias2)
         result_fields = self.compile_join_fields(
-            compiled_table1.type_ctx, compiled_table2.type_ctx, alias1, alias2,
-            table_expr.condition)
+            result_ctx_1, result_ctx_2, alias1, alias2, table_expr.condition)
         result_type_ctx = type_context.TypeContext.join_contexts(
-            [compiled_table1.type_ctx, compiled_table2.type_ctx])
+            [result_ctx_1, result_ctx_2])
         return typed_ast.Join(compiled_table1, compiled_table2, result_fields,
                               result_type_ctx)
 

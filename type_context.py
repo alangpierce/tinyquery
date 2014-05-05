@@ -155,3 +155,17 @@ class TypeContext(collections.namedtuple(
         )
         return TypeContext(self.columns, self.aliases, self.ambig_aliases,
                            new_implicit_column_context, self.aggregate_context)
+
+    def context_with_full_alias(self, alias):
+        assert self.aggregate_context is None
+        new_columns = collections.OrderedDict(
+            ((alias, col_name), col_type)
+            for (_, col_name), col_type in self.columns.iteritems()
+        )
+        if self.implicit_column_context:
+            new_implicit_column_context = (
+                self.implicit_column_context.context_with_full_alias(alias))
+        else:
+            new_implicit_column_context = None
+        return TypeContext.from_full_columns(new_columns,
+                                             new_implicit_column_context)
