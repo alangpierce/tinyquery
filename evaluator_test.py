@@ -260,3 +260,12 @@ class EvaluatorTest(unittest.TestCase):
             self.make_context([
                 ('f0_', tq_types.STRING, ['a', 'b', 'a', 'b', 'a'])
             ]))
+
+    def test_join_subquery(self):
+        self.assert_query_result(
+            'SELECT t2.val '
+            'FROM test_table t1 JOIN (SELECT 1 AS val) t2 ON t1.val1 = t2.val',
+            self.make_context([
+                ('t2.val', tq_types.INT, [1, 1])
+            ])
+        )

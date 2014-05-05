@@ -174,6 +174,9 @@ class Compiler(object):
         alias2 = self.get_table_expression_alias(table_expr.table2)
         result_ctx_1 = compiled_table1.type_ctx.context_with_full_alias(alias1)
         result_ctx_2 = compiled_table2.type_ctx.context_with_full_alias(alias2)
+        # Modify the resulting table expressions to account for aliases.
+        compiled_table1 = compiled_table1.with_type_ctx(result_ctx_1)
+        compiled_table2 = compiled_table2.with_type_ctx(result_ctx_2)
         result_fields = self.compile_join_fields(
             result_ctx_1, result_ctx_2, alias1, alias2, table_expr.condition)
         result_type_ctx = type_context.TypeContext.join_contexts(
@@ -228,10 +231,7 @@ class Compiler(object):
         if table_expr.alias is not None:
             new_type_context = (select_result.type_ctx.
                                 context_with_subquery_alias(table_expr.alias))
-            select_result = typed_ast.Select(
-                select_result.select_fields, select_result.table,
-                select_result.where_expr, select_result.group_set,
-                new_type_context)
+            select_result = select_result.with_type_ctx(new_type_context)
         return select_result
 
     def compile_groups(self, groups, select_fields, aliases, table_ctx):

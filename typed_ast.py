@@ -22,6 +22,9 @@ class Select(collections.namedtuple(
             exists and is empty (since grouping by nothing puts everything into
             the same group).
     """
+    def with_type_ctx(self, type_ctx):
+        return Select(self.select_fields, self.table, self.where_expr,
+                      self.group_set, type_ctx)
 
 
 class SelectField(collections.namedtuple('SelectField', ['expr', 'alias'])):
@@ -56,7 +59,8 @@ class NoTable(collections.namedtuple('NoTable', []), TableExpression):
 
 class Table(collections.namedtuple('Table', ['name', 'type_ctx']),
             TableExpression):
-    pass
+    def with_type_ctx(self, type_ctx):
+        return Table(self.name, type_ctx)
 
 
 class TableUnion(collections.namedtuple('TableUnion', ['tables', 'type_ctx']),

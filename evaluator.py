@@ -249,7 +249,15 @@ class Evaluator(object):
 
 
     def eval_table_Select(self, table_expr):
-        return self.evaluate_select(table_expr)
+        """Evaluate a select table expression.
+
+        The output matches the type context on the select rather than the
+        directly-evaluated type context so that we account for any alias that
+        might have been assigned.
+        """
+        result_context = self.evaluate_select(table_expr)
+        return context.context_with_overlayed_type_context(result_context,
+                                                           table_expr.type_ctx)
 
     def evaluate_expr(self, expr, context):
         """Computes the raw data for the output column for the expression."""

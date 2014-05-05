@@ -74,6 +74,17 @@ def context_from_table(table, type_context):
     return Context(len(any_column.values), new_columns, None)
 
 
+def context_with_overlayed_type_context(context, type_context):
+    """Given a context, use the given type context for all column names."""
+    any_column = context.columns.itervalues().next()
+    new_columns = collections.OrderedDict([
+        (column_name, column)
+        for (column_name, column) in zip(type_context.columns.iterkeys(),
+                                         context.columns.itervalues())
+    ])
+    return Context(len(any_column.values), new_columns, None)
+
+
 def empty_context_from_type_context(type_context):
     assert type_context.aggregate_context is None
     result_columns = collections.OrderedDict(
