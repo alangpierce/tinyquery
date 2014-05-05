@@ -310,13 +310,17 @@ class Compiler(object):
         return type_ctx.column_ref_for_name(expr.name)
 
     def compile_Literal(self, expr, type_ctx):
+        if isinstance(expr.value, bool):
+            return typed_ast.Literal(expr.value, tq_types.BOOL)
         if isinstance(expr.value, int):
             return typed_ast.Literal(expr.value, tq_types.INT)
         elif isinstance(expr.value, basestring):
             return typed_ast.Literal(expr.value, tq_types.STRING)
+        elif expr.value is None:
+            return typed_ast.Literal(expr.value, tq_types.NONETYPE)
         else:
-            raise NotImplementedError('Only int and string literals supported '
-                                      'for now.')
+            raise NotImplementedError('Unrecognized type: {}'.format(
+                type(expr.value)))
 
     def compile_UnaryOperator(self, expr, type_ctx):
         func = runtime.get_unary_op(expr.operator)

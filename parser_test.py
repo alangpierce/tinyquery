@@ -337,3 +337,16 @@ class ParserTest(unittest.TestCase):
                 None,
                 None,
                 None))
+
+    def test_other_literals(self):
+        self.assert_parsed_select(
+            'SELECT true, false, null',
+            tq_ast.Select([
+                tq_ast.SelectField(tq_ast.Literal(True), None),
+                tq_ast.SelectField(tq_ast.Literal(False), None),
+                tq_ast.SelectField(tq_ast.Literal(None), None)],
+                None,
+                None,
+                None,
+                None)
+        )

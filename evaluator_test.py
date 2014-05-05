@@ -228,3 +228,19 @@ class EvaluatorTest(unittest.TestCase):
             'SELECT str = "hello" FROM string_table',
             self.make_context([
                 ('f0_', tq_types.STRING, [True, False])]))
+
+    def test_boolean_literals(self):
+        self.assert_query_result(
+            'SELECT false OR true',
+            self.make_context([
+                ('f0_', tq_types.BOOL, [True])
+            ])
+        )
+
+    def test_null_literal(self):
+        self.assert_query_result(
+            'SELECT NULL IS NULL',
+            self.make_context([
+                ('f0_', tq_types.BOOL, [True])
+            ])
+        )

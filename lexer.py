@@ -19,7 +19,9 @@ reserved_words = {
     'or': 'OR',
     'not': 'NOT',
     'is': 'IS',
-    'null': 'NULL'
+    'null': 'NULL',
+    'true': 'TRUE',
+    'false': 'FALSE'
 }
 
 tokens = [

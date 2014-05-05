@@ -218,6 +218,21 @@ def p_string_literal(p):
     p[0] = tq_ast.Literal(p[1])
 
 
+def p_true_literal(p):
+    """expression : TRUE"""
+    p[0] = tq_ast.Literal(True)
+
+
+def p_false_literal(p):
+    """expression : FALSE"""
+    p[0] = tq_ast.Literal(False)
+
+
+def p_null_literal(p):
+    """expression : NULL"""
+    p[0] = tq_ast.Literal(None)
+
+
 def p_expr_id(p):
     """expression : id_component_list"""
     p[0] = tq_ast.ColumnId(p[1])

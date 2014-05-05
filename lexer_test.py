@@ -17,6 +17,8 @@ less_than_or_equal = ('LESS_THAN_OR_EQUAL', '<=')
 not_tok = ('NOT', 'not')
 is_tok = ('IS', 'is')
 null_tok = ('NULL', 'null')
+true_tok = ('TRUE', 'true')
+false_tok = ('FALSE', 'false')
 select = ('SELECT', 'select')
 as_tok = ('AS', 'as')
 from_tok = ('FROM', 'from')
@@ -164,3 +166,8 @@ class LexerTest(unittest.TestCase):
             [select, ident('foo'), equals, string('hello'), comma,
              ident('bar'), equals, string('world'), from_tok, ident('table')]
         )
+
+    def test_other_literals(self):
+        self.assert_tokens(
+            'SELECT true, false, null',
+            [select, true_tok, comma, false_tok, comma, null_tok])
