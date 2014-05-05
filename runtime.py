@@ -172,7 +172,7 @@ class SumFunction(Function):
             raise TypeError('Unexpected type.')
 
     def evaluate(self, num_rows, arg_list):
-        return [sum(arg_list)]
+        return [sum([0 if arg is None else arg for arg in arg_list])]
 
 
 class CountFunction(Function):

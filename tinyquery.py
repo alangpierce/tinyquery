@@ -4,6 +4,7 @@ import collections
 import compiler
 import context
 import evaluator
+import tq_types
 
 
 class TinyQueryError(Exception):
@@ -20,6 +21,39 @@ class TinyQuery(object):
     def load_table(self, table):
         """Create a table."""
         self.tables_by_name[table.name] = table
+
+    def load_table_from_csv(self, table_name, raw_schema, filename):
+        result_table = self.make_empty_table(table_name, raw_schema)
+        with open(filename, 'r') as f:
+            for line in f:
+                if line[-1] == '\n':
+                    line = line[:-1]
+                tokens = line.split(',')
+                assert len(tokens) == len(result_table.columns), (
+                    'Expected {} tokens on line {}, but got {}'.format(
+                        len(result_table.columns), line, len(tokens)))
+                for token, column in zip(tokens,
+                                         result_table.columns.itervalues()):
+                    if column.type == tq_types.INT:
+                        token = int(token)
+                    elif column.type == tq_types.FLOAT:
+                        token = float(token)
+                    elif token == 'null':
+                        token = None
+                    column.values.append(token)
+                result_table.num_rows += 1
+        self.load_table(result_table)
+
+    def make_empty_table(self, table_name, raw_schema):
+        columns = collections.OrderedDict()
+        for field in raw_schema['fields']:
+            # TODO: Handle the mode here. We should default to NULLABLE, but
+            # allow other specifiers.
+            # TODO: Validate that the type is legal. Currently we take
+            # advantage of the fact that type names match the types defined in
+            # tq_types.py.
+            columns[field['name']] = context.Column(field['type'], [])
+        return Table(table_name, 0, columns)
 
     def get_all_tables(self):
         return self.tables_by_name
@@ -177,6 +211,10 @@ class Table(object):
         self.name = name
         self.num_rows = num_rows
         self.columns = columns
+
+    def __repr__(self):
+        return 'Table({}, {}, {})'.format(self.name, self.num_rows,
+                                          self.columns)
 
 
 class QueryJob(collections.namedtuple('QueryJob', ['job_info',

@@ -64,18 +64,9 @@ class TableServiceApiClient(object):
         """Create an empty table."""
         table_reference = body['tableReference']
         raw_schema = body['schema']
-
-        columns = collections.OrderedDict()
-        for field in raw_schema['fields']:
-            # TODO: Handle the mode here. We should default to NULLABLE, but
-            # allow other specifiers.
-            # TODO: Validate that the type is legal. Currently we take
-            # advantage of the fact that type names match the types defined in
-            # tq_types.py.
-            columns[field['name']] = context.Column(field['type'], [])
-
-        table = tinyquery.Table(table_reference['datasetId'] + '.' +
-                                table_reference['tableId'], 0, columns)
+        table_name = (table_reference['datasetId'] + '.' +
+                      table_reference['tableId'])
+        table = self.tq_service.make_empty_table(table_name, raw_schema)
         self.tq_service.load_table(table)
 
     @http_request_provider
