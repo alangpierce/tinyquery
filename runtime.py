@@ -109,6 +109,20 @@ class IfFunction(Function):
                 for cond, arg1, arg2 in zip(cond_list, arg1_list, arg2_list)]
 
 
+class IfNullFunction(Function):
+    def check_types(self, arg1, arg2):
+        if arg1 == tq_types.NONETYPE:
+            return arg2
+        if arg2 == tq_types.NONETYPE:
+            return arg1
+        if arg1 != arg2:
+            raise TypeError('Expected types to be the same.')
+        return arg1
+
+    def evaluate(self, num_rows, arg1, arg2):
+        return arg2 if arg1 is None else arg1
+
+
 class HashFunction(Function):
     def check_types(self, arg):
         return tq_types.INT
@@ -137,17 +151,28 @@ class InFunction(Function):
         return [val1 in val_list
                 for val1, val_list in zip(arg1, zip(*other_args))]
 
-class AggregateIntFunction(Function):
+class MinMaxFunction(Function):
     def __init__(self, func):
         self.func = func
 
     def check_types(self, arg):
-        if not (arg in (tq_types.INT, tq_types.FLOAT)):
-            raise TypeError('Expected int or float type.')
         return arg
 
     def evaluate(self, num_rows, arg_list):
         return [self.func(arg_list)]
+
+
+class SumFunction(Function):
+    def check_types(self, arg):
+        if arg == tq_types.BOOL:
+            return tq_types.INT
+        elif arg == tq_types.INT or arg == tq_types.FLOAT:
+            return arg
+        else:
+            raise TypeError('Unexpected type.')
+
+    def evaluate(self, num_rows, arg_list):
+        return [sum(arg_list)]
 
 
 _UNARY_OPERATORS = {
@@ -180,14 +205,15 @@ _FUNCTIONS = {
     'now': NoArgFunction(lambda: int(time.time() * 1000000)),
     'in': InFunction(),
     'if': IfFunction(),
+    'ifnull': IfNullFunction(),
     'hash': HashFunction(),
 }
 
 
 _AGGREGATE_FUNCTIONS = {
-    'sum': AggregateIntFunction(sum),
-    'min': AggregateIntFunction(min),
-    'max': AggregateIntFunction(max)
+    'sum': SumFunction(),
+    'min': MinMaxFunction(min),
+    'max': MinMaxFunction(max)
 }
 
 
