@@ -94,6 +94,10 @@ def t_ID(t):
     return t
 
 
+def t_COMMENT(t):
+    r"""--.*"""
+
+
 t_ignore = ' \t\n'
 
 

@@ -177,3 +177,12 @@ class LexerTest(unittest.TestCase):
         self.assert_tokens(
             'SELECT 1 IN (1, 2)',
             [select, num(1), in_tok, lparen, num(1), comma, num(2), rparen])
+
+    def test_comment(self):
+        self.assert_tokens(
+            """
+            SELECT -- This selects things
+                foo -- The first field
+                FROM bar
+            """,
+            [select, ident('foo'), from_tok, ident('bar')])
