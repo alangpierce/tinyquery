@@ -41,7 +41,7 @@ class Context(object):
 
     def __eq__(self, other):
         return ((self.num_rows, self.columns, self.aggregate_context) ==
-                other.num_rows, other.columns, other.aggregate_context)
+                (other.num_rows, other.columns, other.aggregate_context))
 
     def __hash__(self):
         return hash((

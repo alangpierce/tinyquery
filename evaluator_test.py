@@ -120,8 +120,8 @@ class EvaluatorTest(unittest.TestCase):
             'FROM test_table WHERE val1 < 5',
             self.make_context([
                 ('foo', tq_types.INT, [5, 2, 2, 3]),
-                ('foo', tq_types.INT, [8, 2, 1, 6]),
-                ('foo', tq_types.INT, [16, 4, 2, 12]),
+                ('val2', tq_types.INT, [8, 2, 1, 6]),
+                ('f0_', tq_types.INT, [16, 4, 2, 12]),
             ])
         )
 
@@ -181,7 +181,7 @@ class EvaluatorTest(unittest.TestCase):
             'FROM (SELECT val1 + val2 AS foo FROM test_table)',
             self.make_context([
                 ('f0_', tq_types.INT, [24, 6, 24, 4, 16]),
-                ('f1_', tq_types.INT, [13, 4, 13, 3, 13]),
+                ('f1_', tq_types.INT, [13, 4, 13, 3, 9]),
             ])
         )
 
@@ -219,15 +219,15 @@ class EvaluatorTest(unittest.TestCase):
         self.assert_query_result(
             'SELECT foo IS NULL, foo IS NOT NULL FROM null_table',
             self.make_context([
-                ('f0_', tq_types.INT, [False, True, True, False]),
-                ('f1_', tq_types.INT, [True, False, False, True]),
+                ('f0_', tq_types.BOOL, [False, True, True, False]),
+                ('f1_', tq_types.BOOL, [True, False, False, True]),
             ]))
 
     def test_string_comparison(self):
         self.assert_query_result(
             'SELECT str = "hello" FROM string_table',
             self.make_context([
-                ('f0_', tq_types.STRING, [True, False])]))
+                ('f0_', tq_types.BOOL, [True, False])]))
 
     def test_boolean_literals(self):
         self.assert_query_result(
@@ -242,5 +242,14 @@ class EvaluatorTest(unittest.TestCase):
             'SELECT NULL IS NULL',
             self.make_context([
                 ('f0_', tq_types.BOOL, [True])
+            ])
+        )
+
+    def test_in_literals(self):
+        self.assert_query_result(
+            'SELECT 2 IN (1, 2, 3), 4 in (1, 2, 3)',
+            self.make_context([
+                ('f0_', tq_types.BOOL, [True]),
+                ('f1_', tq_types.BOOL, [False]),
             ])
         )

@@ -21,7 +21,8 @@ reserved_words = {
     'is': 'IS',
     'null': 'NULL',
     'true': 'TRUE',
-    'false': 'FALSE'
+    'false': 'FALSE',
+    'in': 'IN'
 }
 
 tokens = [

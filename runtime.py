@@ -103,6 +103,14 @@ class NoArgFunction(Function):
         return [self.func() for _ in xrange(num_rows)]
 
 
+class InFunction(Function):
+    def check_types(self, arg1, *arg_types):
+        return tq_types.BOOL
+
+    def evaluate(self, num_rows, arg1, *other_args):
+        return [val1 in val_list
+                for val1, val_list in zip(arg1, zip(*other_args))]
+
 class AggregateIntFunction(Function):
     def __init__(self, func):
         self.func = func
@@ -143,7 +151,8 @@ _BINARY_OPERATORS = {
 _FUNCTIONS = {
     'abs': UnaryIntOperator(abs),
     'pow': ArithmeticOperator(lambda a, b: a ** b),
-    'now': NoArgFunction(lambda: int(time.time() * 1000000))
+    'now': NoArgFunction(lambda: int(time.time() * 1000000)),
+    'in': InFunction()
 }
 
 

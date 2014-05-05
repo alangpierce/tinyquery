@@ -208,28 +208,48 @@ def p_arg_list(p):
         assert False, 'Unexpected number of captured tokens.'
 
 
+def p_expression_in(p):
+    """expression : expression IN LPAREN constant_list RPAREN"""
+    p[0] = tq_ast.FunctionCall('in', [p[1]] + p[4])
+
+
+def p_constant_list(p):
+    """constant_list : constant
+                     | constant_list COMMA constant"""
+    if len(p) == 2:
+        p[0] = [p[1]]
+    else:
+        p[1].append(p[3])
+        p[0] = p[1]
+
+
+def p_expression_constant(p):
+    """expression : constant"""
+    p[0] = p[1]
+
+
 def p_int_literal(p):
-    """expression : NUMBER"""
+    """constant : NUMBER"""
     p[0] = tq_ast.Literal(p[1])
 
 
 def p_string_literal(p):
-    """expression : STRING"""
+    """constant : STRING"""
     p[0] = tq_ast.Literal(p[1])
 
 
 def p_true_literal(p):
-    """expression : TRUE"""
+    """constant : TRUE"""
     p[0] = tq_ast.Literal(True)
 
 
 def p_false_literal(p):
-    """expression : FALSE"""
+    """constant : FALSE"""
     p[0] = tq_ast.Literal(False)
 
 
 def p_null_literal(p):
-    """expression : NULL"""
+    """constant : NULL"""
     p[0] = tq_ast.Literal(None)
 
 

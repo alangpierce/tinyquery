@@ -19,6 +19,7 @@ is_tok = ('IS', 'is')
 null_tok = ('NULL', 'null')
 true_tok = ('TRUE', 'true')
 false_tok = ('FALSE', 'false')
+in_tok = ('IN', 'in')
 select = ('SELECT', 'select')
 as_tok = ('AS', 'as')
 from_tok = ('FROM', 'from')
@@ -171,3 +172,8 @@ class LexerTest(unittest.TestCase):
         self.assert_tokens(
             'SELECT true, false, null',
             [select, true_tok, comma, false_tok, comma, null_tok])
+
+    def test_in(self):
+        self.assert_tokens(
+            'SELECT 1 IN (1, 2)',
+            [select, num(1), in_tok, lparen, num(1), comma, num(2), rparen])
