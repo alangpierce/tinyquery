@@ -312,8 +312,11 @@ class Compiler(object):
     def compile_Literal(self, expr, type_ctx):
         if isinstance(expr.value, int):
             return typed_ast.Literal(expr.value, tq_types.INT)
+        elif isinstance(expr.value, basestring):
+            return typed_ast.Literal(expr.value, tq_types.STRING)
         else:
-            raise NotImplementedError('Only int literals supported for now.')
+            raise NotImplementedError('Only int and string literals supported '
+                                      'for now.')
 
     def compile_UnaryOperator(self, expr, type_ctx):
         func = runtime.get_unary_op(expr.operator)

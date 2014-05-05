@@ -35,8 +35,13 @@ dot = ('DOT', '.')
 def num(n):
     return 'NUMBER', n
 
+
 def ident(name):
     return 'ID', name
+
+
+def string(s):
+    return 'STRING', s
 
 
 class LexerTest(unittest.TestCase):
@@ -151,4 +156,11 @@ class LexerTest(unittest.TestCase):
             'SELECT 0 FROM table GROUP EACH BY foo',
             [select, num(0), from_tok, ident('table'), group, each, by,
              ident('foo')]
+        )
+
+    def test_string_literal(self):
+        self.assert_tokens(
+            'SELECT foo = "hello", bar = \'world\' FROM table',
+            [select, ident('foo'), equals, string('hello'), comma,
+             ident('bar'), equals, string('world'), from_tok, ident('table')]
         )

@@ -39,7 +39,8 @@ tokens = [
     'COMMA',
     'DOT',
     'NUMBER',
-    'ID'
+    'ID',
+    'STRING'
 ] + reserved_words.values()
 
 
@@ -58,6 +59,17 @@ t_LPAREN = r'\('
 t_RPAREN = r'\)'
 t_COMMA = r','
 t_DOT = r'\.'
+
+
+def string_regex(delim):
+    return '{0}[^{0}]*{0}'.format(delim)
+
+
+@lex.TOKEN(string_regex("'") + '|' + string_regex('"'))
+def t_STRING(t):
+    # TODO: Escaped quotation marks and other escapes.
+    t.value = t.value[1:-1]
+    return t
 
 
 def t_NUMBER(token):

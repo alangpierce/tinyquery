@@ -37,6 +37,12 @@ class EvaluatorTest(unittest.TestCase):
             collections.OrderedDict([
                 ('foo', context.Column(tq_types.INT, [1, None, None, 5])),
             ])))
+        self.tq.load_table(tinyquery.Table(
+            'string_table',
+            2,
+            collections.OrderedDict([
+                ('str', context.Column(tq_types.STRING, ['hello', 'world'])),
+            ])))
 
     def assert_query_result(self, query, expected_result):
         result = self.tq.evaluate_query(query)
@@ -216,3 +222,9 @@ class EvaluatorTest(unittest.TestCase):
                 ('f0_', tq_types.INT, [False, True, True, False]),
                 ('f1_', tq_types.INT, [True, False, False, True]),
             ]))
+
+    def test_string_comparison(self):
+        self.assert_query_result(
+            'SELECT str = "hello" FROM string_table',
+            self.make_context([
+                ('f0_', tq_types.STRING, [True, False])]))

@@ -213,6 +213,11 @@ def p_int_literal(p):
     p[0] = tq_ast.Literal(p[1])
 
 
+def p_string_literal(p):
+    """expression : STRING"""
+    p[0] = tq_ast.Literal(p[1])
+
+
 def p_expr_id(p):
     """expression : id_component_list"""
     p[0] = tq_ast.ColumnId(p[1])

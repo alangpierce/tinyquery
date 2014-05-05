@@ -327,3 +327,13 @@ class ParserTest(unittest.TestCase):
                 None,
                 None,
                 None))
+
+    def test_string_literal(self):
+        self.assert_parsed_select(
+            'SELECT "Hello" AS foo',
+            tq_ast.Select([
+                tq_ast.SelectField(tq_ast.Literal('Hello'), 'foo')],
+                None,
+                None,
+                None,
+                None))
