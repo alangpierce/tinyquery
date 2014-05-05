@@ -88,9 +88,14 @@ def t_NUMBER(token):
 # Taken from example at http://www.dabeaz.com/ply/ply.html#ply_nn6
 def t_ID(t):
     r"""[a-zA-Z_][a-zA-Z_0-9]*"""
-    # Canonicalize on lower-case ID tokens for everything.
-    t.value = t.value.lower()
-    t.type = reserved_words.get(t.value, 'ID')
+    # Specific tokens should be lower-cased here, but functions can't be
+    # lower-cased at lex time since we don't know what IDs are functions vs.
+    # columns or tables. We lower-case function names at parse time.
+    if t.value.lower() in reserved_words:
+        t.value = t.value.lower()
+        t.type = reserved_words[t.value.lower()]
+    else:
+        t.type = 'ID'
     return t
 
 

@@ -93,9 +93,9 @@ class LexerTest(unittest.TestCase):
     def test_function_call(self):
         self.assert_tokens(
             'SELECT ABS(-5), POW(x, 3), NOW() FROM test_table',
-            [select, ident('abs'), lparen, minus, num(5), rparen, comma,
-             ident('pow'), lparen, ident('x'), comma, num(3), rparen, comma,
-             ident('now'), lparen, rparen, from_tok, ident('test_table')]
+            [select, ident('ABS'), lparen, minus, num(5), rparen, comma,
+             ident('POW'), lparen, ident('x'), comma, num(3), rparen, comma,
+             ident('NOW'), lparen, rparen, from_tok, ident('test_table')]
         )
 
     def test_select_where(self):
@@ -115,7 +115,7 @@ class LexerTest(unittest.TestCase):
     def test_aggregates(self):
         self.assert_tokens(
             'SELECT MAX(foo) FROM bar',
-            [select, ident('max'), lparen, ident('foo'), rparen, from_tok,
+            [select, ident('MAX'), lparen, ident('foo'), rparen, from_tok,
              ident('bar')]
         )
 

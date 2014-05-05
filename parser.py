@@ -190,7 +190,7 @@ def p_expression_binary(p):
 
 def p_expression_func_call(p):
     """expression : ID LPAREN arg_list RPAREN"""
-    p[0] = tq_ast.FunctionCall(p[1], p[3])
+    p[0] = tq_ast.FunctionCall(p[1].lower(), p[3])
 
 
 def p_arg_list(p):
