@@ -161,6 +161,17 @@ def append_partial_context_to_context(src_context, dest_context):
             dest_column.values.extend(src_column_values)
 
 
+def append_context_to_context(src_context, dest_context):
+    """Adds all rows in src_context to dest_context.
+
+    The columns must match exactly.
+    """
+    dest_context.num_rows += src_context.num_rows
+    for src_column, dest_column in zip(src_context.columns.itervalues(),
+                                       dest_context.columns.itervalues()):
+        dest_column.values.extend(src_column.values)
+
+
 def row_context_from_context(src_context, index):
     """Pull a specific row out of a context as its own context."""
     assert src_context.aggregate_context is None

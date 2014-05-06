@@ -43,6 +43,11 @@ class SelectField(collections.namedtuple('SelectField', ['expr', 'alias'])):
             return str(self.expr)
 
 
+class Star(collections.namedtuple('Star', [])):
+    def __str__(self):
+        return '*'
+
+
 class UnaryOperator(collections.namedtuple(
         'UnaryOperator', ['operator', 'expr'])):
     def __str__(self):

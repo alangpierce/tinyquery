@@ -222,7 +222,7 @@ class Evaluator(object):
             row_context = context.row_context_from_context(result_context_1, i)
             new_rows = context.cross_join_contexts(row_context,
                                                    table_2_key_contexts[key])
-            context.append_partial_context_to_context(new_rows, result_context)
+            context.append_context_to_context(new_rows, result_context)
 
         return result_context
 

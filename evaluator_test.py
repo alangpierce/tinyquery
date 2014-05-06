@@ -291,3 +291,24 @@ class EvaluatorTest(unittest.TestCase):
                 ('f1_', tq_types.INT, [4]),
             ])
         )
+
+    def test_select_star_from_table(self):
+        self.assert_query_result(
+            'SELECT * FROM test_table_3',
+            self.make_context([
+                ('foo', tq_types.INT, [1, 2, 4, 5, 1]),
+                ('bar', tq_types.INT, [2, 7, 3, 1, 1])
+            ])
+        )
+
+    def test_select_star_from_join(self):
+        self.assert_query_result(
+            'SELECT * '
+            'FROM test_table t1 JOIN test_table_2 t2 ON t1.val1 = t2.val3',
+            self.make_context([
+                ('t1.val1', tq_types.INT, [8]),
+                ('t1.val2', tq_types.INT, [4]),
+                ('t2.val3', tq_types.INT, [8]),
+                ('t2.val2', tq_types.INT, [7])
+            ])
+        )

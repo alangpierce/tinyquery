@@ -150,6 +150,11 @@ def p_select_field(p):
     p[0] = tq_ast.SelectField(p[1], alias)
 
 
+def p_select_star(p):
+    """select_field : STAR"""
+    p[0] = tq_ast.Star()
+
+
 def p_expression_parens(p):
     """expression : LPAREN expression RPAREN"""
     p[0] = p[2]

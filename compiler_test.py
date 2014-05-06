@@ -550,3 +550,23 @@ class CompilerTest(unittest.TestCase):
                     self.make_type_context([]))
             )
         )
+
+    def test_select_star(self):
+        self.assert_compiled_select(
+            'SELECT * FROM table1',
+            typed_ast.Select([
+                typed_ast.SelectField(
+                    typed_ast.ColumnRef('table1', 'value', tq_types.INT),
+                    'value'),
+                typed_ast.SelectField(
+                    typed_ast.ColumnRef('table1', 'value2', tq_types.INT),
+                    'value2')],
+                typed_ast.Table('table1', self.table1_type_ctx),
+                typed_ast.Literal(True, tq_types.BOOL),
+                None,
+                self.make_type_context([
+                    (None, 'value', tq_types.INT),
+                    (None, 'value2', tq_types.INT)],
+                    self.make_type_context([
+                        ('table1', 'value', tq_types.INT),
+                        ('table1', 'value2', tq_types.INT)]))))

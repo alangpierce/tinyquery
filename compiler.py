@@ -32,18 +32,20 @@ class Compiler(object):
         table_expr = self.compile_table_expr(select.table_expr)
         table_ctx = table_expr.type_ctx
         where_expr = self.compile_where_expr(select.where_expr, table_ctx)
-        aliases = self.get_aliases(select.select_fields)
-        group_set = self.compile_groups(select.groups, select.select_fields,
-                                        aliases, table_ctx)
+        select_fields = self.expand_select_fields(select.select_fields,
+                                                  table_expr)
+        aliases = self.get_aliases(select_fields)
+        group_set = self.compile_groups(select.groups, select_fields, aliases,
+                                        table_ctx)
 
         compiled_field_dict, aggregate_context = self.compile_group_fields(
-            select.select_fields, aliases, group_set, table_ctx)
+            select_fields, aliases, group_set, table_ctx)
 
         # Implicit columns can only show up in non-aggregate select fields.
         implicit_column_context = self.find_used_column_context(
             compiled_field_dict.values())
 
-        for alias, select_field in zip(aliases, select.select_fields):
+        for alias, select_field in zip(aliases, select_fields):
             if group_set is not None and alias not in group_set.alias_groups:
                 compiled_field_dict[alias] = self.compile_select_field(
                     select_field.expr, alias, aggregate_context)
@@ -57,6 +59,37 @@ class Compiler(object):
             implicit_column_context=implicit_column_context)
         return typed_ast.Select(select_fields, table_expr, where_expr,
                                 group_set, result_context)
+
+    def expand_select_fields(self, select_fields, table_expr):
+        """Expand any stars into a list of all context columns.
+
+        Arguments:
+            select_fields: A list of uncompiled select fields, some of which
+                can be tq_ast.Star.
+            table_expr: The compiled table expression to reference, if
+                necessary.
+        """
+        table_ctx = table_expr.type_ctx
+        star_select_fields = []
+        for table_name, col_name in table_ctx.columns.iterkeys():
+            if table_name is not None:
+                col_ref = table_name + '.' + col_name
+            else:
+                col_ref = col_name
+            # Joins are special: the aliases default to a fully-qualified name.
+            if isinstance(table_expr, typed_ast.Join):
+                alias = table_name + '.' + col_name
+            else:
+                alias = col_name
+            star_select_fields.append(
+                tq_ast.SelectField(tq_ast.ColumnId(col_ref), alias))
+        result_fields = []
+        for field in select_fields:
+            if isinstance(field, tq_ast.Star):
+                result_fields.extend(star_select_fields)
+            else:
+                result_fields.append(field)
+        return result_fields
 
     def compile_group_fields(self, select_fields, aliases, group_set,
                              table_ctx):
