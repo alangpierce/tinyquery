@@ -282,3 +282,12 @@ class EvaluatorTest(unittest.TestCase):
             self.make_context([
                 ('f0_', tq_types.INT, [4])
             ]))
+
+    def test_count_star(self):
+        self.assert_query_result(
+            'SELECT COUNT(foo), COUNT(*) FROM null_table',
+            self.make_context([
+                ('f0_', tq_types.INT, [2]),
+                ('f1_', tq_types.INT, [4]),
+            ])
+        )

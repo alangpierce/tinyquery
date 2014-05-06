@@ -5,7 +5,7 @@ import lexer
 
 plus = ('PLUS', '+')
 minus = ('MINUS', '-')
-times = ('TIMES', '*')
+star = ('STAR', '*')
 divided_by = ('DIVIDED_BY', '/')
 mod = ('MOD', '%')
 equals = ('EQUALS', '=')
@@ -62,7 +62,7 @@ class LexerTest(unittest.TestCase):
     def test_arithmetic_operators(self):
         self.assert_tokens(
             'SELECT 0 + 1 - 2 * 3 / 4 % 5',
-            [select, num(0), plus, num(1), minus, num(2), times, num(3),
+            [select, num(0), plus, num(1), minus, num(2), star, num(3),
              divided_by, num(4), mod, num(5)])
 
     def test_select_from_table(self):
@@ -81,7 +81,7 @@ class LexerTest(unittest.TestCase):
     def test_parens(self):
         self.assert_tokens(
             'SELECT 2 * (3 + 4)',
-            [select, num(2), times, lparen, num(3), plus, num(4), rparen]
+            [select, num(2), star, lparen, num(3), plus, num(4), rparen]
         )
 
     def test_negative_numbers(self):

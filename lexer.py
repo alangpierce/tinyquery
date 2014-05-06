@@ -30,7 +30,7 @@ reserved_words = {
 tokens = [
     'PLUS',
     'MINUS',
-    'TIMES',
+    'STAR',
     'DIVIDED_BY',
     'MOD',
     'EQUALS',
@@ -51,7 +51,7 @@ tokens = [
 
 t_PLUS = r'\+'
 t_MINUS = r'-'
-t_TIMES = r'\*'
+t_STAR = r'\*'
 t_DIVIDED_BY = r'/'
 t_MOD = r'%'
 t_EQUALS = r'='

@@ -11,7 +11,7 @@ precedence = (
     ('left', 'EQUALS', 'NOT_EQUAL', 'GREATER_THAN', 'LESS_THAN',
      'GREATER_THAN_OR_EQUAL', 'LESS_THAN_OR_EQUAL'),
     ('left', 'PLUS', 'MINUS'),
-    ('left', 'TIMES', 'DIVIDED_BY', 'MOD'),
+    ('left', 'STAR', 'DIVIDED_BY', 'MOD'),
 )
 
 
@@ -173,7 +173,7 @@ def p_expression_is_not_null(p):
 def p_expression_binary(p):
     """expression : expression PLUS expression
                   | expression MINUS expression
-                  | expression TIMES expression
+                  | expression STAR expression
                   | expression DIVIDED_BY expression
                   | expression MOD expression
                   | expression EQUALS expression
@@ -201,6 +201,17 @@ def p_expression_count(p):
 def p_expression_count_distinct(p):
     """expression : COUNT LPAREN DISTINCT arg_list RPAREN"""
     p[0] = tq_ast.FunctionCall('count_distinct', p[4])
+
+
+def p_expression_count_star(p):
+    """expression : COUNT LPAREN parenthesized_star RPAREN"""
+    # Treat COUNT(*) as COUNT(1).
+    p[0] = tq_ast.FunctionCall('count', [tq_ast.Literal(1)])
+
+
+def p_parenthesized_star(p):
+    """parenthesized_star : STAR
+                          | LPAREN parenthesized_star RPAREN"""
 
 
 def p_arg_list(p):

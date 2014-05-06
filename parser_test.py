@@ -350,3 +350,17 @@ class ParserTest(unittest.TestCase):
                 None,
                 None)
         )
+
+    def test_count_star(self):
+        self.assert_parsed_select(
+            'SELECT COUNT(*), COUNT(((*))) FROM table',
+            tq_ast.Select([
+                tq_ast.SelectField(
+                    tq_ast.FunctionCall('count', [tq_ast.Literal(1)]), None),
+                tq_ast.SelectField(
+                    tq_ast.FunctionCall('count', [tq_ast.Literal(1)]), None)],
+                tq_ast.TableId('table', None),
+                None,
+                None,
+                None)
+        )
