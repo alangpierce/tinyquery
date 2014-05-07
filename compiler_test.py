@@ -494,6 +494,7 @@ class CompilerTest(unittest.TestCase):
                         typed_ast.ColumnRef('t1', 'value', tq_types.INT),
                         typed_ast.ColumnRef('t2', 'value', tq_types.INT)
                     )],
+                    False,
                     self.make_type_context([
                         ('t1', 'value', tq_types.INT),
                         ('t1', 'value2', tq_types.INT),
@@ -536,6 +537,7 @@ class CompilerTest(unittest.TestCase):
                         typed_ast.ColumnRef('t1', 'value2', tq_types.INT),
                         typed_ast.ColumnRef('t2', 'value3', tq_types.INT)
                     )],
+                    False,
                     self.make_type_context([
                         ('t1', 'value', tq_types.INT),
                         ('t1', 'value2', tq_types.INT),

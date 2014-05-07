@@ -96,7 +96,8 @@ class TableUnion(collections.namedtuple('TableUnion', ['tables'])):
         return ', '.join(str(table) for table in self.tables)
 
 
-class Join(collections.namedtuple('Join', ['table1', 'table2', 'condition'])):
+class Join(collections.namedtuple('Join', ['table1', 'table2', 'condition',
+                                           'is_left_outer'])):
     """Table expression for a join of two tables.
 
     Joining more than two tables currently isn't supported.

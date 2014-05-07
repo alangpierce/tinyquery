@@ -164,12 +164,16 @@ def append_partial_context_to_context(src_context, dest_context):
 def append_context_to_context(src_context, dest_context):
     """Adds all rows in src_context to dest_context.
 
-    The columns must match exactly.
+    The columns must be a subset, but all fully-qualified names are taken into
+    account.
     """
     dest_context.num_rows += src_context.num_rows
-    for src_column, dest_column in zip(src_context.columns.itervalues(),
-                                       dest_context.columns.itervalues()):
-        dest_column.values.extend(src_column.values)
+    for dest_column_key, dest_column in dest_context.columns.iteritems():
+        src_column = src_context.columns.get(dest_column_key)
+        if src_column is None:
+            dest_column.values.extend([None] * src_context.num_rows)
+        else:
+            dest_column.values.extend(src_column.values)
 
 
 def row_context_from_context(src_context, index):

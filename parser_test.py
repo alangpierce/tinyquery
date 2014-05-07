@@ -265,7 +265,31 @@ class ParserTest(unittest.TestCase):
                         '=',
                         tq_ast.ColumnId('t1.id'),
                         tq_ast.ColumnId('t2.id')
-                    )
+                    ),
+                    is_left_outer=False
+                ),
+                None,
+                None,
+                None
+            )
+        )
+
+    def test_left_outer_join(self):
+        self.assert_parsed_select(
+            'SELECT t1.foo, t2.bar '
+            'FROM table1 t1 LEFT OUTER JOIN EACH table2 t2 ON t1.id = t2.id',
+            tq_ast.Select([
+                tq_ast.SelectField(tq_ast.ColumnId('t1.foo'), None),
+                tq_ast.SelectField(tq_ast.ColumnId('t2.bar'), None)],
+                tq_ast.Join(
+                    tq_ast.TableId('table1', 't1'),
+                    tq_ast.TableId('table2', 't2'),
+                    tq_ast.BinaryOperator(
+                        '=',
+                        tq_ast.ColumnId('t1.id'),
+                        tq_ast.ColumnId('t2.id')
+                    ),
+                    is_left_outer=True
                 ),
                 None,
                 None,
@@ -323,7 +347,8 @@ class ParserTest(unittest.TestCase):
                         '=',
                         tq_ast.ColumnId('t1.foo'),
                         tq_ast.ColumnId('t2.bar')
-                    )),
+                    ),
+                    is_left_outer=False),
                 None,
                 None,
                 None))

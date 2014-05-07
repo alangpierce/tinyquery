@@ -215,7 +215,7 @@ class Compiler(object):
         result_type_ctx = type_context.TypeContext.join_contexts(
             [result_ctx_1, result_ctx_2])
         return typed_ast.Join(compiled_table1, compiled_table2, result_fields,
-                              result_type_ctx)
+                              table_expr.is_left_outer, result_type_ctx)
 
     def compile_join_fields(self, type_ctx1, type_ctx2, alias1, alias2, expr):
         """Traverse a join condition to find the joined fields.

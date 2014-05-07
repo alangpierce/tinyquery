@@ -218,6 +218,13 @@ class Evaluator(object):
         for i in xrange(result_context_1.num_rows):
             key = self.get_join_key(result_context_1, table_1_key_refs, i)
             if key not in table_2_key_contexts:
+                # Left outer join means that if we didn't find something, we
+                # still put in a row with nulls on the right.
+                if table_expr.is_left_outer:
+                    row_context = context.row_context_from_context(
+                        result_context_1, i)
+                    context.append_context_to_context(row_context,
+                                                      result_context)
                 continue
             row_context = context.row_context_from_context(result_context_1, i)
             new_rows = context.cross_join_contexts(row_context,

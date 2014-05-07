@@ -29,6 +29,8 @@ on = ('ON', 'on')
 group = ('GROUP', 'group')
 by = ('BY', 'by')
 each = ('EACH', 'each')
+left = ('LEFT', 'left')
+outer = ('OUTER', 'outer')
 lparen = ('LPAREN', '(')
 rparen = ('RPAREN', ')')
 comma = ('COMMA', ',')
@@ -186,3 +188,10 @@ class LexerTest(unittest.TestCase):
                 FROM bar
             """,
             [select, ident('foo'), from_tok, ident('bar')])
+
+    def test_left_outer_join(self):
+        self.assert_tokens(
+            'SELECT foo FROM t1 LEFT OUTER JOIN EACH t2 ON t1.foo = t2.bar',
+            [select, ident('foo'), from_tok, ident('t1'), left, outer, join,
+             each, ident('t2'), on, ident('t1'), dot, ident('foo'), equals,
+             ident('t2'), dot, ident('bar')])

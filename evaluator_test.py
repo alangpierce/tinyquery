@@ -312,3 +312,15 @@ class EvaluatorTest(unittest.TestCase):
                 ('t2.val2', tq_types.INT, [7])
             ])
         )
+
+    def test_left_outer_join(self):
+        self.assert_query_result(
+            'SELECT * FROM test_table t1 '
+            'LEFT OUTER JOIN EACH test_table_2 t2 ON t1.val1 = t2.val3',
+            self.make_context([
+                ('t1.val1', tq_types.INT, [4, 1, 8, 1, 2]),
+                ('t1.val2', tq_types.INT, [8, 2, 4, 1, 6]),
+                ('t2.val3', tq_types.INT, [None, None, 8, None, None]),
+                ('t2.val2', tq_types.INT, [None, None, 7, None, None])
+            ])
+        )

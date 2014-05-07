@@ -73,15 +73,19 @@ def p_table_expr_table_or_union(p):
 def p_table_expr_join(p):
     """full_table_expr : aliased_table_expr JOIN aliased_table_expr \
                             ON expression
-    """
-    p[0] = tq_ast.Join(p[1], p[3], p[5])
-
-
-def p_table_expr_join_each(p):
-    """full_table_expr : aliased_table_expr JOIN EACH aliased_table_expr \
+                       | aliased_table_expr JOIN EACH aliased_table_expr \
                             ON expression
     """
-    p[0] = tq_ast.Join(p[1], p[4], p[6])
+    p[0] = tq_ast.Join(p[1], p[len(p) - 3], p[len(p) - 1], is_left_outer=False)
+
+
+def p_table_expr_left_outer_join(p):
+    """full_table_expr : aliased_table_expr LEFT OUTER JOIN \
+                         aliased_table_expr ON expression
+                       | aliased_table_expr LEFT OUTER JOIN EACH \
+                         aliased_table_expr ON expression
+    """
+    p[0] = tq_ast.Join(p[1], p[len(p) - 3], p[len(p) - 1], is_left_outer=True)
 
 
 def p_aliased_table_expr_list(p):

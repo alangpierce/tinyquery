@@ -69,7 +69,8 @@ class TableUnion(collections.namedtuple('TableUnion', ['tables', 'type_ctx']),
 
 
 class Join(collections.namedtuple('Join', ['table1', 'table2',
-                                           'conditions', 'type_ctx']),
+                                           'conditions', 'is_left_outer',
+                                           'type_ctx']),
            TableExpression):
     """Table expression for a join operation.
 
@@ -78,6 +79,7 @@ class Join(collections.namedtuple('Join', ['table1', 'table2',
         table2: A table expression on the right side of the join.
         conditions: A list of JoinFields objects, each of which specifies a
             field from table1 joined on a field from table2.
+        is_left_outer: A boolean for whether or not this is a left outer join.
         type_ctx: The resulting type context.
     """
 
