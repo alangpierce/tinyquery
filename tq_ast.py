@@ -88,7 +88,7 @@ class TableId(collections.namedtuple('TableId', ['name', 'alias'])):
 
 
 class TableUnion(collections.namedtuple('TableUnion', ['tables'])):
-    """Table expression for a union of two tables (the comma operator).
+    """Table expression for a union of tables (the comma operator).
 
     The tables can be arbitrary table expressions.
     """

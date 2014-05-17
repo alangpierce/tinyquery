@@ -402,3 +402,27 @@ class ParserTest(unittest.TestCase):
                 None
             )
         )
+
+    def test_redundant_commas_allowed(self):
+        # In most cases, a comma at the end of a comma-separated list is OK.
+        self.assert_parsed_select(
+            'SELECT foo IN (1, 2, 3,), bar, FROM table1, table2,',
+            tq_ast.Select([
+                tq_ast.SelectField(
+                    tq_ast.FunctionCall('in', [
+                        tq_ast.ColumnId('foo'),
+                        tq_ast.Literal(1), tq_ast.Literal(2), tq_ast.Literal(3)
+                    ]), None),
+                tq_ast.SelectField(tq_ast.ColumnId('bar'), None)],
+                tq_ast.TableUnion([
+                    tq_ast.TableId('table1', None),
+                    tq_ast.TableId('table2', None)]),
+                None,
+                None,
+                None
+            )
+        )
+
+    def test_function_call_redundant_commas_not_allowed(self):
+        self.assertRaises(SyntaxError, parser.parse_text,
+                          'SELECT IFNULL(foo, 3,) FROM my_table')

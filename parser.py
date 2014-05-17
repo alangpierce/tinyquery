@@ -94,9 +94,15 @@ def p_table_expr_cross_join(p):
 
 
 def p_aliased_table_expr_list(p):
-    """aliased_table_expr_list : aliased_table_expr
-                               | aliased_table_expr_list COMMA \
-                                    aliased_table_expr
+    """aliased_table_expr_list : strict_aliased_table_expr_list
+                               | strict_aliased_table_expr_list COMMA"""
+    p[0] = p[1]
+
+
+def p_strict_aliased_table_expr_list(p):
+    """strict_aliased_table_expr_list : aliased_table_expr
+                                      | strict_aliased_table_expr_list COMMA \
+                                            aliased_table_expr
     """
     if len(p) == 2:
         p[0] = [p[1]]
@@ -137,8 +143,14 @@ def p_table_expression_parens(p):
 
 
 def p_select_field_list(p):
-    """select_field_list : select_field
-                         | select_field_list COMMA select_field
+    """select_field_list : strict_select_field_list
+                         | strict_select_field_list COMMA"""
+    p[0] = p[1]
+
+
+def p_strict_select_field_list(p):
+    """strict_select_field_list : select_field
+                                | strict_select_field_list COMMA select_field
     """
     if len(p) == 2:
         p[0] = [p[1]]
@@ -249,8 +261,14 @@ def p_expression_in(p):
 
 
 def p_constant_list(p):
-    """constant_list : constant
-                     | constant_list COMMA constant"""
+    """constant_list : strict_constant_list
+                     | strict_constant_list COMMA"""
+    p[0] = p[1]
+
+
+def p_strict_constant_list(p):
+    """strict_constant_list : constant
+                            | strict_constant_list COMMA constant"""
     if len(p) == 2:
         p[0] = [p[1]]
     else:
