@@ -200,22 +200,37 @@ class Compiler(object):
             table.type_ctx for table in compiled_tables)
         return typed_ast.TableUnion(compiled_tables, type_ctx)
 
-    def compile_table_expr_Join(self, table_expr):
-        compiled_table1 = self.compile_table_expr(table_expr.table1)
-        compiled_table2 = self.compile_table_expr(table_expr.table2)
-        alias1 = self.get_table_expression_alias(table_expr.table1)
-        alias2 = self.get_table_expression_alias(table_expr.table2)
-        result_ctx_1 = compiled_table1.type_ctx.context_with_full_alias(alias1)
-        result_ctx_2 = compiled_table2.type_ctx.context_with_full_alias(alias2)
-        # Modify the resulting table expressions to account for aliases.
-        compiled_table1 = compiled_table1.with_type_ctx(result_ctx_1)
-        compiled_table2 = compiled_table2.with_type_ctx(result_ctx_2)
-        result_fields = self.compile_join_fields(
-            result_ctx_1, result_ctx_2, alias1, alias2, table_expr.condition)
+    def compile_table_expr_CrossJoin(self, table_expr):
+        compiled_table1, _ = self.compile_joined_table(table_expr.table1)
+        compiled_table2, _ = self.compile_joined_table(table_expr.table2)
         result_type_ctx = type_context.TypeContext.join_contexts(
-            [result_ctx_1, result_ctx_2])
+            [compiled_table1.type_ctx, compiled_table2.type_ctx])
+        return typed_ast.Join(compiled_table1, compiled_table2, [],
+                              False, result_type_ctx)
+
+    def compile_table_expr_Join(self, table_expr):
+        compiled_table1, alias1 = self.compile_joined_table(table_expr.table1)
+        compiled_table2, alias2 = self.compile_joined_table(table_expr.table2)
+        result_fields = self.compile_join_fields(
+            compiled_table1.type_ctx, compiled_table2.type_ctx, alias1, alias2,
+            table_expr.condition)
+        result_type_ctx = type_context.TypeContext.join_contexts(
+            [compiled_table1.type_ctx, compiled_table2.type_ctx])
         return typed_ast.Join(compiled_table1, compiled_table2, result_fields,
                               table_expr.is_left_outer, result_type_ctx)
+
+    def compile_joined_table(self, table_expr):
+        """Given one side of a JOIN, get its table expression and alias."""
+        compiled_table = self.compile_table_expr(table_expr)
+        if table_expr.alias is not None:
+            alias = table_expr.alias
+        elif isinstance(table_expr, tq_ast.TableId):
+            alias = table_expr.name
+        else:
+            raise CompileError('Table expression must have an alias name.')
+        result_ctx = compiled_table.type_ctx.context_with_full_alias(alias)
+        compiled_table = compiled_table.with_type_ctx(result_ctx)
+        return compiled_table, alias
 
     def compile_join_fields(self, type_ctx1, type_ctx2, alias1, alias2, expr):
         """Traverse a join condition to find the joined fields.
@@ -250,14 +265,6 @@ class Compiler(object):
                 return [typed_ast.JoinFields(column_ref1, column_ref2)]
         raise CompileError('JOIN conditions must consist of an AND of = '
                            'comparisons. Got expression {}'.format(expr))
-
-    def get_table_expression_alias(self, table_expr):
-        """Get the alias of a table expression, or crash if there is none."""
-        if table_expr.alias is not None:
-            return table_expr.alias
-        if isinstance(table_expr, tq_ast.TableId):
-            return table_expr.name
-        raise CompileError('Table expression must have an alias name.')
 
     def compile_table_expr_Select(self, table_expr):
         select_result = self.compile_select(table_expr)

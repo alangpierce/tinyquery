@@ -88,6 +88,11 @@ def p_table_expr_left_outer_join(p):
     p[0] = tq_ast.Join(p[1], p[len(p) - 3], p[len(p) - 1], is_left_outer=True)
 
 
+def p_table_expr_cross_join(p):
+    """full_table_expr : aliased_table_expr CROSS JOIN aliased_table_expr"""
+    p[0] = tq_ast.CrossJoin(p[1], p[4])
+
+
 def p_aliased_table_expr_list(p):
     """aliased_table_expr_list : aliased_table_expr
                                | aliased_table_expr_list COMMA \

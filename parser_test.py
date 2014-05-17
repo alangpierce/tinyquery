@@ -389,3 +389,16 @@ class ParserTest(unittest.TestCase):
                 None,
                 None)
         )
+
+    def test_cross_join(self):
+        self.assert_parsed_select(
+            'SELECT 0 FROM table1 t1 CROSS JOIN table2 t2',
+            tq_ast.Select(
+                [tq_ast.SelectField(tq_ast.Literal(0), None)],
+                tq_ast.CrossJoin(tq_ast.TableId('table1', 't1'),
+                                 tq_ast.TableId('table2', 't2')),
+                None,
+                None,
+                None
+            )
+        )

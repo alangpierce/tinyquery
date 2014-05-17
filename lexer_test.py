@@ -31,6 +31,7 @@ by = ('BY', 'by')
 each = ('EACH', 'each')
 left = ('LEFT', 'left')
 outer = ('OUTER', 'outer')
+cross = ('CROSS', 'cross')
 lparen = ('LPAREN', '(')
 rparen = ('RPAREN', ')')
 comma = ('COMMA', ',')
@@ -195,3 +196,9 @@ class LexerTest(unittest.TestCase):
             [select, ident('foo'), from_tok, ident('t1'), left, outer, join,
              each, ident('t2'), on, ident('t1'), dot, ident('foo'), equals,
              ident('t2'), dot, ident('bar')])
+
+    def test_cross_join(self):
+        self.assert_tokens(
+            'SELECT 0 FROM t1 CROSS JOIN t2',
+            [select, num(0), from_tok, ident('t1'), cross, join, ident('t2')]
+        )

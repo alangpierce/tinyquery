@@ -324,3 +324,14 @@ class EvaluatorTest(unittest.TestCase):
                 ('t2.val2', tq_types.INT, [None, None, 7, None, None])
             ])
         )
+
+    def test_cross_join(self):
+        self.assert_query_result(
+            'SELECT * FROM string_table t1 CROSS JOIN test_table_2 t2',
+            self.make_context([
+                ('t1.str', tq_types.STRING, ['hello', 'hello',
+                                             'world', 'world']),
+                ('t2.val3', tq_types.INT, [3, 8, 3, 8]),
+                ('t2.val2', tq_types.INT, [2, 7, 2, 7])
+            ])
+        )

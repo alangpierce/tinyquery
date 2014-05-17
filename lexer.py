@@ -17,6 +17,7 @@ reserved_words = {
     'each': 'EACH',
     'left': 'LEFT',
     'outer': 'OUTER',
+    'cross': 'CROSS',
     'and': 'AND',
     'or': 'OR',
     'not': 'NOT',
