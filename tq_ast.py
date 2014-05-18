@@ -32,7 +32,8 @@ class Select(collections.namedtuple(
         if self.where_expr:
             result += ' WHERE {}'.format(self.where_expr)
         if self.groups:
-            result += ' GROUP BY {}'.format(', '.join(self.groups))
+            result += ' GROUP BY {}'.format(
+                ', '.join(str(group) for group in self.groups))
         if self.limit:
             result += ' LIMIT {}'.format(self.limit)
         return result

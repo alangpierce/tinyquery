@@ -207,7 +207,7 @@ class ParserTest(unittest.TestCase):
                 [tq_ast.SelectField(tq_ast.ColumnId('foo'), None)],
                 tq_ast.TableId('bar', None),
                 None,
-                ['baz'],
+                [tq_ast.ColumnId('baz')],
                 None,
                 None
             )
@@ -351,7 +351,7 @@ class ParserTest(unittest.TestCase):
                 tq_ast.SelectField(tq_ast.Literal(0), None)],
                 tq_ast.TableId('table', None),
                 None,
-                ['foo'],
+                [tq_ast.ColumnId('foo')],
                 None,
                 None))
 
@@ -431,7 +431,8 @@ class ParserTest(unittest.TestCase):
     def test_redundant_commas_allowed(self):
         # In most cases, a comma at the end of a comma-separated list is OK.
         self.assert_parsed_select(
-            'SELECT foo IN (1, 2, 3,), bar, FROM table1, table2,',
+            'SELECT foo IN (1, 2, 3,), bar, FROM table1, table2, '
+            'GROUP BY col1, col2,',
             tq_ast.Select([
                 tq_ast.SelectField(
                     tq_ast.FunctionCall('in', [
@@ -443,7 +444,7 @@ class ParserTest(unittest.TestCase):
                     tq_ast.TableId('table1', None),
                     tq_ast.TableId('table2', None)]),
                 None,
-                None,
+                [tq_ast.ColumnId('col1'), tq_ast.ColumnId('col2')],
                 None,
                 None
             )
@@ -462,7 +463,7 @@ class ParserTest(unittest.TestCase):
                     None)],
                 tq_ast.TableId('bar', None),
                 None,
-                ['baz'],
+                [tq_ast.ColumnId('baz')],
                 10,
                 None
             )

@@ -310,8 +310,8 @@ class Compiler(object):
 
             alias_set = set(aliases)
             for group in groups:
-                if group in alias_set:
-                    alias_groups.add(group)
+                if group.name in alias_set:
+                    alias_groups.add(group.name)
                 else:
                     # Will raise an exception if not found.
                     # TODO: This doesn't perfectly match BigQuery's approach.
@@ -321,7 +321,8 @@ class Compiler(object):
                     # make it so only my_value is a valid way of referring to
                     # the group. The whole approach to implicit table
                     # references could potentially be rethought.
-                    field_groups.append(table_ctx.column_ref_for_name(group))
+                    field_groups.append(
+                        table_ctx.column_ref_for_name(group.name))
             return typed_ast.GroupSet(alias_groups, field_groups)
 
 

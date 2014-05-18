@@ -40,8 +40,8 @@ def p_optional_where(p):
 
 def p_optional_group_by(p):
     """optional_group_by :
-                         | GROUP BY id_list
-                         | GROUP EACH BY id_list
+                         | GROUP BY column_id_list
+                         | GROUP EACH BY column_id_list
     """
     if len(p) == 1:
         p[0] = None
@@ -49,9 +49,15 @@ def p_optional_group_by(p):
         p[0] = p[len(p) - 1]
 
 
-def p_id_list(p):
-    """id_list : ID
-               | id_list COMMA ID
+def p_column_id_list(p):
+    """column_id_list : strict_column_id_list
+                      | strict_column_id_list COMMA"""
+    p[0] = p[1]
+
+
+def p_strict_column_id_list(p):
+    """strict_column_id_list : column_id
+                             | strict_column_id_list COMMA column_id
     """
     if len(p) == 2:
         p[0] = [p[1]]
@@ -317,8 +323,13 @@ def p_null_literal(p):
     p[0] = tq_ast.Literal(None)
 
 
-def p_expr_id(p):
-    """expression : id_component_list"""
+def p_expr_column_id(p):
+    """expression : column_id"""
+    p[0] = p[1]
+
+
+def p_column_id(p):
+    """column_id : id_component_list"""
     p[0] = tq_ast.ColumnId(p[1])
 
 

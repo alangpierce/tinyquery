@@ -344,3 +344,9 @@ class EvaluatorTest(unittest.TestCase):
                 ('val2', tq_types.INT, [8, 2, 4])
             ])
         )
+
+    def test_group_by_fully_qualified_column(self):
+        result = self.tq.evaluate_query(
+            'SELECT COUNT(*) FROM test_table t GROUP BY t.val1')
+        result_rows = result.columns[(None, 'f0_')].values
+        self.assertEqual([1, 1, 1, 2], sorted(result_rows))
