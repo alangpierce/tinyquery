@@ -202,3 +202,16 @@ def cross_join_contexts(context1, context2):
             for col_name, column in context2.columns.iteritems():
                 result_columns[col_name].values.append(column.values[index2])
     return Context(context1.num_rows * context2.num_rows, result_columns, None)
+
+
+def truncate_context(context, limit):
+    """Modify the given context to have at most the given number of rows."""
+    assert context.aggregate_context is None
+    # BigQuery adds non-int limits, so we need to allow floats up until now.
+    limit = int(limit)
+    if context.num_rows <= limit:
+        return
+    context.num_rows = limit
+
+    for column in context.columns.itervalues():
+        column.values[limit:] = []

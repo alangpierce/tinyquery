@@ -32,6 +32,7 @@ each = ('EACH', 'each')
 left = ('LEFT', 'left')
 outer = ('OUTER', 'outer')
 cross = ('CROSS', 'cross')
+limit = ('LIMIT', 'limit')
 lparen = ('LPAREN', '(')
 rparen = ('RPAREN', ')')
 comma = ('COMMA', ',')
@@ -201,4 +202,10 @@ class LexerTest(unittest.TestCase):
         self.assert_tokens(
             'SELECT 0 FROM t1 CROSS JOIN t2',
             [select, num(0), from_tok, ident('t1'), cross, join, ident('t2')]
+        )
+
+    def test_limit(self):
+        self.assert_tokens(
+            'SELECT * FROM my_table LIMIT 10',
+            [select, star, from_tok, ident('my_table'), limit, num(10)]
         )

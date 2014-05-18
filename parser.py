@@ -16,14 +16,14 @@ precedence = (
 
 
 def p_select(p):
-    """select : SELECT select_field_list
+    """select : SELECT select_field_list optional_limit
               | SELECT select_field_list FROM full_table_expr optional_where \
-                    optional_group_by
+                    optional_group_by optional_limit
     """
-    if len(p) == 3:
-        p[0] = tq_ast.Select(p[2], None, None, None, None)
-    elif len(p) == 7:
-        p[0] = tq_ast.Select(p[2], p[4], p[5], p[6], None)
+    if len(p) == 4:
+        p[0] = tq_ast.Select(p[2], None, None, None, p[3], None)
+    elif len(p) == 8:
+        p[0] = tq_ast.Select(p[2], p[4], p[5], p[6], p[7], None)
     else:
         assert False, 'Unexpected number of captured tokens.'
 
@@ -58,6 +58,16 @@ def p_id_list(p):
     else:
         p[1].append(p[3])
         p[0] = p[1]
+
+
+def p_optional_limit(p):
+    """optional_limit :
+                      | LIMIT NUMBER
+    """
+    if len(p) == 1:
+        p[0] = None
+    else:
+        p[0] = p[2]
 
 
 def p_table_expr_table_or_union(p):
@@ -122,7 +132,8 @@ def p_aliased_table_expr(p):
             p[0] = tq_ast.TableId(p[1].name, p[len(p) - 1])
         elif isinstance(p[1], tq_ast.Select):
             p[0] = tq_ast.Select(p[1].select_fields, p[1].table_expr,
-                                 p[1].where_expr, p[1].groups, p[len(p) - 1])
+                                 p[1].where_expr, p[1].groups, p[1].limit,
+                                 p[len(p) - 1])
         else:
             assert False, 'Unexpected table_expr type: %s' % type(p[1])
 

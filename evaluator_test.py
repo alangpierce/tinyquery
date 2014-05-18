@@ -335,3 +335,12 @@ class EvaluatorTest(unittest.TestCase):
                 ('t2.val2', tq_types.INT, [2, 7, 2, 7])
             ])
         )
+
+    def test_limit(self):
+        self.assert_query_result(
+            'SELECT * from test_table LIMIT 3',
+            self.make_context([
+                ('val1', tq_types.INT, [4, 1, 8]),
+                ('val2', tq_types.INT, [8, 2, 4])
+            ])
+        )

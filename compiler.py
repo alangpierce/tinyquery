@@ -58,7 +58,7 @@ class Compiler(object):
                 (field.alias, field.expr.type) for field in select_fields),
             implicit_column_context=implicit_column_context)
         return typed_ast.Select(select_fields, table_expr, where_expr,
-                                group_set, result_context)
+                                group_set, select.limit, result_context)
 
     def expand_select_fields(self, select_fields, table_expr):
         """Expand any stars into a list of all context columns.

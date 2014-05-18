@@ -17,11 +17,14 @@ class Evaluator(object):
         select_context = context.mask_context(table_context, mask_column)
 
         if select_ast.group_set is not None:
-            return self.evaluate_groups(
+            result = self.evaluate_groups(
                 select_ast.select_fields, select_ast.group_set, select_context)
         else:
-            return self.evaluate_select_fields(
+            result = self.evaluate_select_fields(
                 select_ast.select_fields, select_context)
+        if select_ast.limit is not None:
+            context.truncate_context(result, select_ast.limit)
+        return result
 
     def evaluate_groups(self, select_fields, group_set, select_context):
         """Evaluate a list of select fields, grouping by some of the values.
@@ -253,7 +256,6 @@ class Evaluator(object):
         return tuple(
             table_context.column_from_ref(col_ref).values[index]
             for col_ref in key_column_refs)
-
 
     def eval_table_Select(self, table_expr):
         """Evaluate a select table expression.

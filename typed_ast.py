@@ -6,7 +6,7 @@ import type_context
 
 class Select(collections.namedtuple(
         'Select', ['select_fields', 'table', 'where_expr', 'group_set',
-                   'type_ctx'])):
+                   'limit', 'type_ctx'])):
     """A compiled query.
 
     Fields:
@@ -15,16 +15,21 @@ class Select(collections.namedtuple(
         where_expr: A filter to apply on the selected table expression. Note
             that this filter should always be valid; if the user didn't specify
             a WHERE clause, this is the literal true.
-        groups: Either None, indicating that no grouping should be done, or a
-            GroupSet object. If there were groups explicitly specified by
+        group_set: Either None, indicating that no grouping should be done, or
+            a GroupSet object. If there were groups explicitly specified by
             GROUP BY, then the GroupSet always exists and is nonempty. If there
             was no GROUP BY but the select is an aggregate select, the GroupSet
             exists and is empty (since grouping by nothing puts everything into
             the same group).
+        limit: Either a number with the number of rows to limit the results to,
+            or None if there is no limit.
+        type_ctx: A type context describing the names and types of the fields
+            returned from this select clause.
+
     """
     def with_type_ctx(self, type_ctx):
         return Select(self.select_fields, self.table, self.where_expr,
-                      self.group_set, type_ctx)
+                      self.group_set, self.limit, type_ctx)
 
 
 class SelectField(collections.namedtuple('SelectField', ['expr', 'alias'])):
