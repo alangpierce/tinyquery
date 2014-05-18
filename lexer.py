@@ -18,6 +18,8 @@ reserved_words = {
     'left': 'LEFT',
     'outer': 'OUTER',
     'cross': 'CROSS',
+    'order': 'ORDER',
+    'desc': 'DESC',
     'limit': 'LIMIT',
     'and': 'AND',
     'or': 'OR',
