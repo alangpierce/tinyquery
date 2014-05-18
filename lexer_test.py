@@ -33,6 +33,7 @@ left = ('LEFT', 'left')
 outer = ('OUTER', 'outer')
 cross = ('CROSS', 'cross')
 order = ('ORDER', 'order')
+asc = ('ASC', 'asc')
 desc = ('DESC', 'desc')
 limit = ('LIMIT', 'limit')
 lparen = ('LPAREN', '(')
@@ -214,7 +215,7 @@ class LexerTest(unittest.TestCase):
 
     def test_order_by(self):
         self.assert_tokens(
-            'SELECT * FROM my_table ORDER BY val DESC,',
+            'SELECT * FROM my_table ORDER BY val DESC, val2 ASC,',
             [select, star, from_tok, ident('my_table'), order, by,
-             ident('val'), desc, comma]
+             ident('val'), desc, comma, ident('val2'), asc, comma]
         )

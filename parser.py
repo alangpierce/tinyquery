@@ -18,12 +18,12 @@ precedence = (
 def p_select(p):
     """select : SELECT select_field_list optional_limit
               | SELECT select_field_list FROM full_table_expr optional_where \
-                    optional_group_by optional_limit
+                    optional_group_by optional_order_by optional_limit
     """
     if len(p) == 4:
-        p[0] = tq_ast.Select(p[2], None, None, None, p[3], None)
-    elif len(p) == 8:
-        p[0] = tq_ast.Select(p[2], p[4], p[5], p[6], p[7], None)
+        p[0] = tq_ast.Select(p[2], None, None, None, None, p[3], None)
+    elif len(p) == 9:
+        p[0] = tq_ast.Select(p[2], p[4], p[5], p[6], p[7], p[8], None)
     else:
         assert False, 'Unexpected number of captured tokens.'
 
@@ -47,6 +47,43 @@ def p_optional_group_by(p):
         p[0] = None
     else:
         p[0] = p[len(p) - 1]
+
+
+def p_optional_order_by(p):
+    """optional_order_by :
+                         | ORDER BY order_by_list"""
+    if len(p) == 1:
+        p[0] = None
+    else:
+        p[0] = p[3]
+
+
+def p_order_by_list(p):
+    """order_by_list : strict_order_by_list
+                     | strict_order_by_list COMMA"""
+    p[0] = p[1]
+
+
+def p_strict_order_by_list(p):
+    """strict_order_by_list : ordering
+                            | strict_order_by_list COMMA ordering"""
+    if len(p) == 2:
+        p[0] = [p[1]]
+    else:
+        p[1].append(p[3])
+        p[0] = p[1]
+
+
+def p_ordering_asc(p):
+    """ordering : column_id
+                | column_id ASC"""
+    p[0] = tq_ast.Ordering(p[1], True)
+
+
+def p_ordering_desc(p):
+    """ordering : column_id DESC"""
+    p[0] = tq_ast.Ordering(p[1], False)
+
 
 
 def p_column_id_list(p):
@@ -138,8 +175,8 @@ def p_aliased_table_expr(p):
             p[0] = tq_ast.TableId(p[1].name, p[len(p) - 1])
         elif isinstance(p[1], tq_ast.Select):
             p[0] = tq_ast.Select(p[1].select_fields, p[1].table_expr,
-                                 p[1].where_expr, p[1].groups, p[1].limit,
-                                 p[len(p) - 1])
+                                 p[1].where_expr, p[1].groups, p[1].orderings,
+                                 p[1].limit, p[len(p) - 1])
         else:
             assert False, 'Unexpected table_expr type: %s' % type(p[1])
 

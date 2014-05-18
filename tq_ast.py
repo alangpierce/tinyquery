@@ -9,7 +9,7 @@ import collections
 
 class Select(collections.namedtuple(
         'Select', ['select_fields', 'table_expr', 'where_expr', 'groups',
-                   'limit', 'alias'])):
+                   'orderings', 'limit', 'alias'])):
     """Represents a top-level select statement.
 
     Fields:
@@ -20,6 +20,8 @@ class Select(collections.namedtuple(
             no WHERE filter.
         groups: A list of strings for fields to group by, or None if there is
             no GROUP BY clause.
+        orderings: A list of Ordering instances, or None if there was no
+            ORDER BY clause.
         limit: An integer limit
         alias: For subqueries, a name given to the subquery, or None if no name
             was given (or if this is an outermost query).
@@ -34,6 +36,9 @@ class Select(collections.namedtuple(
         if self.groups:
             result += ' GROUP BY {}'.format(
                 ', '.join(str(group) for group in self.groups))
+        if self.orderings:
+            result += ' ORDER BY {}'.format(
+                ', '.join(str(ordering) for ordering in self.orderings))
         if self.limit:
             result += ' LIMIT {}'.format(self.limit)
         return result
@@ -77,6 +82,15 @@ class Literal(collections.namedtuple('Literal', ['value'])):
 class ColumnId(collections.namedtuple('ColumnId', ['name'])):
     def __str__(self):
         return self.name
+
+
+class Ordering(collections.namedtuple('Ordering',
+                                      ['column_id', 'is_ascending'])):
+    def __str__(self):
+        if self.is_ascending:
+            return '{} ASC'.format(self.column_id)
+        else:
+            return '{} DESC'.format(self.column_id)
 
 
 class TableId(collections.namedtuple('TableId', ['name', 'alias'])):
