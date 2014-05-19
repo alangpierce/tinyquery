@@ -107,7 +107,7 @@ class JobServiceApiClient(object):
         if 'query' in body['configuration']:
             config = body['configuration']['query']
             query = config['query']
-            dest_dataset, dest_table = self.get_config_table(
+            dest_dataset, dest_table = self._get_config_table(
                 config, 'destinationTable')
             create_disposition = config.get('createDisposition',
                                             'CREATE_IF_NEEDED')
@@ -117,9 +117,9 @@ class JobServiceApiClient(object):
                 write_disposition)
         elif 'copy' in body['configuration']:
             config = body['configuration']['copy']
-            src_dataset, src_table = self.get_config_table(
+            src_dataset, src_table = self._get_config_table(
                 config, 'sourceTable')
-            dest_dataset, dest_table = self.get_config_table(
+            dest_dataset, dest_table = self._get_config_table(
                 config, 'destinationTable')
             create_disposition = config.get('createDisposition',
                                             'CREATE_IF_NEEDED')
@@ -132,7 +132,7 @@ class JobServiceApiClient(object):
                 body['configuration'].keys())
 
     @staticmethod
-    def get_config_table(config, key):
+    def _get_config_table(config, key):
         """Return the dataset_id, table_id, if any."""
         dest_table_config = config.get(key)
         if dest_table_config:
