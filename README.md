@@ -4,21 +4,24 @@ in-memory in Python code. If you have Python code that uses the BigQuery API,
 you may be able to use tinyquery to make your automated tests orders of
 magnitude faster, more reliable, and less annoying to run.
 
+There are still lots of missing pieces, but enough of the API and SQL language
+is filled in that it can be used for some production-size BigQuery pipelines.
+
 ## Motivation
 [BigQuery](https://developers.google.com/bigquery/) is a Google service that
 lets you import giant data sets and run arbitrary SQL queries over them. The
 most common use case is to allow people to dig into their data manually using
 SQL, but BigQuery also lets you build complex data pipelines entirely in SQL,
-which makes them much more maintainable and debuggable.
+which has a number of advantages over other approaches like MapReduce.
 
 One of the biggest challenges when writing a data pipeline on top of BigQuery
 is writing high-quality automated tests. Normally, you're left with a few
 less-than-perfect options:
 
 * Skip automated testing and rely only on manual testing.
-* Mock out the BigQuery service. This lets you test some basic things, but
-won't give you confidence in your system if you have a nontrivial amount of
-SQL.
+* Swap out the BigQuery service with a mock object that asserts the API usage
+and returns pre-canned results. This lets you test some basic things, but won't
+give you confidence in your system if most of your business logic is in SQL.
 * Run tests against some other SQL implementation that can be run locally.
 Since every dialect of SQL is different (and with BigQuery having a
 dramatically different architecture than a typical relational database), this
@@ -41,15 +44,15 @@ was used to dramatically improve a test at Khan Academy that ran a large data
 pipeline three times in different conditions. Originally, the test took about 8
 minutes (and at its worst point took about an hour to run) and required some
 manual steps. After modifying the test to use tinyquery, the test now takes 2
-seconds to run and is suitable for inclusion in the standard test suite that
-anyone can run.
+seconds to run and can be run as part of the regular build process (or manually
+by any developer) without any extra work.
 
 ## How to use
 tinyquery is a drop-in replacement as long as you're accessing the
 [BigQuery API](https://developers.google.com/bigquery/docs/developers_guide)
 using the [Python client library](https://developers.google.com/api-client-library/python/).
 
-Here's how you might set things up:
+Here's the basic setup code that you would use to get started:
 
     from tinyquery import tinyquery
     from tinyquery import api_client
