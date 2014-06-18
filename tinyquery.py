@@ -18,7 +18,7 @@ class TinyQuery(object):
         self.next_job_num = 0
         self.job_map = {}
 
-    def load_table(self, table):
+    def load_table_or_view(self, table):
         """Create a table."""
         self.tables_by_name[table.name] = table
 
@@ -42,7 +42,7 @@ class TinyQuery(object):
                         token = None
                     column.values.append(token)
                 result_table.num_rows += 1
-        self.load_table(result_table)
+        self.load_table_or_view(result_table)
 
     def make_empty_table(self, table_name, raw_schema):
         columns = collections.OrderedDict()
@@ -54,6 +54,15 @@ class TinyQuery(object):
             # tq_types.py.
             columns[field['name']] = context.Column(field['type'], [])
         return Table(table_name, 0, columns)
+
+    def make_view(self, view_name, query):
+        # TODO: Figure out the schema by compiling the query, and refactor the
+        # code so that the compiler can use the schema instead of expecting
+        # every TableId to have actual Columns. For now, we just validate that
+        # the view works, and things will break later if the view is actually
+        # used.
+        compiler.compile_text(query, self.tables_by_name)
+        return View(view_name, query)
 
     def get_all_tables(self):
         return self.tables_by_name
@@ -165,7 +174,7 @@ class TinyQuery(object):
             for col_name, col in template_table.columns.iteritems()
         )
         table = Table(table_name, 0, columns)
-        self.load_table(table)
+        self.load_table_or_view(table)
 
     @staticmethod
     def clear_table(table):
@@ -215,6 +224,18 @@ class Table(object):
     def __repr__(self):
         return 'Table({}, {}, {})'.format(self.name, self.num_rows,
                                           self.columns)
+
+
+class View(object):
+    """Information about a view (a virtual table defined by a query).
+
+    Fields:
+        name: The name of the view.
+        query: The query string for the view.
+    """
+    def __init__(self, name, query):
+        self.name = name
+        self.query = query
 
 
 class QueryJob(collections.namedtuple('QueryJob', ['job_info',

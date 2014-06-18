@@ -59,13 +59,20 @@ class TableServiceApiClient(object):
 
     @http_request_provider
     def insert(self, projectId, datasetId, body):
-        """Create an empty table."""
+        """Create an empty table or a view."""
         table_reference = body['tableReference']
-        raw_schema = body['schema']
         table_name = (table_reference['datasetId'] + '.' +
                       table_reference['tableId'])
-        table = self.tq_service.make_empty_table(table_name, raw_schema)
-        self.tq_service.load_table(table)
+        if 'view' in body:
+            # The new table is actually a view.
+            table_reference = body['tableReference']
+            view = self.tq_service.make_view(table_name, body['view']['query'])
+            self.tq_service.load_table_or_view(view)
+        else:
+            #The new table is a regular table.
+            raw_schema = body['schema']
+            table = self.tq_service.make_empty_table(table_name, raw_schema)
+            self.tq_service.load_table_or_view(table)
 
     @http_request_provider
     def get(self, projectId, datasetId, tableId):

@@ -125,23 +125,7 @@ class ApiClientTest(unittest.TestCase):
         self.assertEqual(5, len(query_result['rows']))
 
     def test_patch(self):
-        # Make a table.
-        self.tq_service.jobs().insert(
-            projectId='test_project',
-            body={
-                'projectId': 'test_project',
-                'configuration': {
-                    'query': {
-                        'query': 'SELECT 7 as foo',
-                    },
-                    'destinationTable': {
-                        'projectId': 'test_project',
-                        'datasetId': 'test_dataset',
-                        'tableId': 'test_table'
-                    }
-                }
-            }
-        ).execute()
+        self.insert_simple_table()
         # Should not crash. TODO: Allow the new expiration time to be read.
         self.tq_service.tables().patch(
             projectId='test_project',
@@ -149,5 +133,18 @@ class ApiClientTest(unittest.TestCase):
             tableId='test_table',
             body={
                 'expirationTime': 1000000000
+            }
+        ).execute()
+
+    def test_create_view(self):
+        self.insert_simple_table()
+        self.tq_service.tables().insert(
+            projectId='test_project',
+            datasetId='test_dataset',
+            body={
+                'tableReference': self.table_ref('test_view'),
+                'view': {
+                    'query': 'SELECT COUNT(*) FROM test_dataset.test_table'
+                }
             }
         ).execute()

@@ -10,34 +10,34 @@ import tq_types
 class EvaluatorTest(unittest.TestCase):
     def setUp(self):
         self.tq = tinyquery.TinyQuery()
-        self.tq.load_table(tinyquery.Table(
+        self.tq.load_table_or_view(tinyquery.Table(
             'test_table',
             5,
             collections.OrderedDict([
                 ('val1', context.Column(tq_types.INT, [4, 1, 8, 1, 2])),
                 ('val2', context.Column(tq_types.INT, [8, 2, 4, 1, 6]))
             ])))
-        self.tq.load_table(tinyquery.Table(
+        self.tq.load_table_or_view(tinyquery.Table(
             'test_table_2',
             2,
             collections.OrderedDict([
                 ('val3', context.Column(tq_types.INT, [3, 8])),
                 ('val2', context.Column(tq_types.INT, [2, 7])),
             ])))
-        self.tq.load_table(tinyquery.Table(
+        self.tq.load_table_or_view(tinyquery.Table(
             'test_table_3',
             5,
             collections.OrderedDict([
                 ('foo', context.Column(tq_types.INT, [1, 2, 4, 5, 1])),
                 ('bar', context.Column(tq_types.INT, [2, 7, 3, 1, 1])),
             ])))
-        self.tq.load_table(tinyquery.Table(
+        self.tq.load_table_or_view(tinyquery.Table(
             'null_table',
             4,
             collections.OrderedDict([
                 ('foo', context.Column(tq_types.INT, [1, None, None, 5])),
             ])))
-        self.tq.load_table(tinyquery.Table(
+        self.tq.load_table_or_view(tinyquery.Table(
             'string_table',
             2,
             collections.OrderedDict([
