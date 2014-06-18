@@ -2,10 +2,8 @@
 
 This can be used in place of the value returned by apiclient.discovery.build().
 """
-import collections
 import functools
 import json
-import context
 import tinyquery
 
 
@@ -92,6 +90,11 @@ class TableServiceApiClient(object):
                     'message': 'Table not found: %s.%s' % (datasetId, tableId)
                 }
             }))
+
+    @http_request_provider
+    def patch(self, projectId, datasetId, tableId, body):
+        # TODO: Implement this instead of making it a no-op.
+        pass
 
 
 class JobServiceApiClient(object):

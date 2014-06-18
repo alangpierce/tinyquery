@@ -123,3 +123,31 @@ class ApiClientTest(unittest.TestCase):
             jobId=query_job_info['jobReference']['jobId']
         ).execute()
         self.assertEqual(5, len(query_result['rows']))
+
+    def test_patch(self):
+        # Make a table.
+        self.tq_service.jobs().insert(
+            projectId='test_project',
+            body={
+                'projectId': 'test_project',
+                'configuration': {
+                    'query': {
+                        'query': 'SELECT 7 as foo',
+                    },
+                    'destinationTable': {
+                        'projectId': 'test_project',
+                        'datasetId': 'test_dataset',
+                        'tableId': 'test_table'
+                    }
+                }
+            }
+        ).execute()
+        # Should not crash. TODO: Allow the new expiration time to be read.
+        self.tq_service.tables().patch(
+            projectId='test_project',
+            datasetId='test_dataset',
+            tableId='test_table',
+            body={
+                'expirationTime': 1000000000
+            }
+        ).execute()
