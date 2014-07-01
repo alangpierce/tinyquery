@@ -170,7 +170,6 @@ class ApiClientTest(unittest.TestCase):
             maxResults=5
         ).execute()
         table_list = response['tables']
-        print table_list
         self.assertEqual(2, len(table_list))
         self.assertEqual('another_table',
                          table_list[0]['tableReference']['tableId'])
