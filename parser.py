@@ -1,4 +1,6 @@
 """The parser turns a stream of tokens into an AST."""
+import os
+
 from ply import yacc
 
 import tq_ast
@@ -384,5 +386,12 @@ def p_error(p):
 
 
 def parse_text(text):
-    parser = yacc.yacc()
+    # If you're making changes to the parser, you need to run the the code with
+    # SHOULD_REBUILD_PARSER=1 in order to update it.
+    should_rebuild_parser = int(os.getenv('SHOULD_REBUILD_PARSER', '0'))
+    if should_rebuild_parser:
+        parser = yacc.yacc()
+    else:
+        import parsetab
+        parser = yacc.yacc(debug=0, write_tables=0, tabmodule=parsetab)
     return parser.parse(text, lexer=lexer.get_lexer())

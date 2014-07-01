@@ -1,4 +1,3 @@
 *.pyc
 .idea
 parser.out
-parsetab.py
