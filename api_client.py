@@ -87,6 +87,15 @@ class TableServiceApiClient(object):
             }))
 
     @http_request_provider
+    def list(self, projectId, datasetId, pageToken=None, maxResults=None):
+        # TODO(alan): Support paging.
+        all_tables = self.tq_service.get_all_table_info_in_dataset(
+            projectId, datasetId)
+        return {
+            'tables': all_tables[:maxResults]
+        }
+
+    @http_request_provider
     def delete(self, projectId, datasetId, tableId):
         try:
             return self.tq_service.delete_table(datasetId, tableId)

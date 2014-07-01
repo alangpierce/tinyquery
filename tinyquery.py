@@ -67,6 +67,32 @@ class TinyQuery(object):
     def get_all_tables(self):
         return self.tables_by_name
 
+    def get_table_names_for_dataset(self, dataset):
+        # TODO(alan): Improve this to use a more first-class dataset structure.
+        return [full_table[len(dataset + '.'):]
+                for full_table in self.tables_by_name.iterkeys()
+                if full_table.startswith(dataset + '.')]
+
+    def get_all_table_info_in_dataset(self, project_id, dataset):
+        """Gets a "table info" dictionary for each table, sorted by name.
+
+        In practice, this is a bit wasteful when it is used for multiple pages.
+        """
+
+
+        return [self.get_short_table_info(project_id, dataset, table)
+                for table in sorted(self.get_table_names_for_dataset(dataset))]
+
+    def get_short_table_info(self, project_id, dataset, table_name):
+        """Returns the format from bq_service.tables().list()."""
+        return {
+            'tableReference': {
+                'projectId': project_id,
+                'datasetId': dataset,
+                'tableId': table_name
+            }
+        }
+
     def get_table_info(self, dataset, table_name):
         # Will throw KeyError if the table doesn't exist.
         table = self.tables_by_name[dataset + '.' + table_name]

@@ -148,3 +148,31 @@ class ApiClientTest(unittest.TestCase):
                 }
             }
         ).execute()
+
+    def test_list_tables(self):
+        self.insert_simple_table()
+        self.tq_service.jobs().insert(
+            projectId='test_project',
+            body={
+                'projectId': 'test_project',
+                'configuration': {
+                    'query': {
+                        'query': 'SELECT 7 as foo',
+                        'destinationTable': self.table_ref('another_table')
+                    },
+                }
+            }
+        ).execute()
+        response = self.tq_service.tables().list(
+            projectId='test_project',
+            datasetId='test_dataset',
+            pageToken=None,
+            maxResults=5
+        ).execute()
+        table_list = response['tables']
+        print table_list
+        self.assertEqual(2, len(table_list))
+        self.assertEqual('another_table',
+                         table_list[0]['tableReference']['tableId'])
+        self.assertEqual('test_table',
+                         table_list[1]['tableReference']['tableId'])
