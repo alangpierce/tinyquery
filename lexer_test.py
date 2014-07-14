@@ -46,6 +46,10 @@ def num(n):
     return 'NUMBER', n
 
 
+def flt(f):
+    return 'FLOAT', f
+
+
 def ident(name):
     return 'ID', name
 
@@ -95,6 +99,12 @@ class LexerTest(unittest.TestCase):
         self.assert_tokens(
             'SELECT -5',
             [select, minus, num(5)]
+        )
+
+    def test_floating_numbers(self):
+        self.assert_tokens(
+            'SELECT 5.3',
+            [select, flt(5.3)]
         )
 
     def test_function_call(self):

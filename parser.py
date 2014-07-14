@@ -87,7 +87,6 @@ def p_ordering_desc(p):
     p[0] = tq_ast.Ordering(p[1], False)
 
 
-
 def p_column_id_list(p):
     """column_id_list : strict_column_id_list
                       | strict_column_id_list COMMA"""
@@ -339,6 +338,11 @@ def p_expression_constant(p):
 
 def p_int_literal(p):
     """constant : NUMBER"""
+    p[0] = tq_ast.Literal(p[1])
+
+
+def p_float_literal(p):
+    """constant : FLOAT"""
     p[0] = tq_ast.Literal(p[1])
 
 

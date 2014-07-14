@@ -51,6 +51,7 @@ tokens = [
     'COMMA',
     'DOT',
     'NUMBER',
+    'FLOAT',
     'ID',
     'STRING'
 ] + reserved_words.values()
@@ -84,6 +85,13 @@ def t_STRING(t):
     return t
 
 
+def t_FLOAT(token):
+    r"""\d+\.\d+"""
+    token.value = float(token.value)
+    return token
+
+
+# TODO(colin): consider renaming to t_INTEGER
 def t_NUMBER(token):
     r"""\d+"""
     try:

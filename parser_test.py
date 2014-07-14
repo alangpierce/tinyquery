@@ -125,6 +125,20 @@ class ParserTest(unittest.TestCase):
             ),
         )
 
+    def test_floating_numbers(self):
+        self.assert_parsed_select(
+            'SELECT 5.3',
+            tq_ast.Select(
+                [tq_ast.SelectField(literal(5.3), None)],
+                None,
+                None,
+                None,
+                None,
+                None,
+                None
+            ),
+        )
+
     def test_function_calls(self):
         self.assert_parsed_select(
             'SELECT ABS(-3), POW(2, 3), NOW()',
