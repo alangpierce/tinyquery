@@ -37,8 +37,13 @@ class ArithmeticOperator(Function):
         self.func = func
 
     def check_types(self, type1, type2):
-        # TODO: Fail if types are wrong.
-        return tq_types.INT
+        numeric_types = (tq_types.FLOAT, tq_types.INT)
+        if type1 not in numeric_types or type2 not in numeric_types:
+            raise TypeError('Expected int or float type')
+        if type1 == tq_types.FLOAT or type2 == tq_types.FLOAT:
+            return tq_types.FLOAT
+        else:
+            return tq_types.INT
 
     def evaluate(self, num_rows, list1, list2):
         return [self.func(arg1, arg2) for arg1, arg2 in zip(list1, list2)]
@@ -150,6 +155,7 @@ class InFunction(Function):
     def evaluate(self, num_rows, arg1, *other_args):
         return [val1 in val_list
                 for val1, val_list in zip(arg1, zip(*other_args))]
+
 
 class MinMaxFunction(Function):
     def __init__(self, func):

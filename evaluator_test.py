@@ -71,6 +71,18 @@ class EvaluatorTest(unittest.TestCase):
             self.make_context([('f0_', tq_types.INT, [3])])
         )
 
+    def test_float_arithmetic(self):
+        self.assert_query_result(
+            'SELECT 1.0 + 2.0',
+            self.make_context([('f0_', tq_types.FLOAT, [3.0])])
+        )
+
+    def test_mixed_arithmetic(self):
+        self.assert_query_result(
+            'SELECT 1 + 2.0',
+            self.make_context([('f0_', tq_types.FLOAT, [3.0])])
+        )
+
     def test_precedence(self):
         self.assert_query_result(
             'SELECT 2 * (3 + 1) + 2 * 3',

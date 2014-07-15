@@ -325,7 +325,6 @@ class Compiler(object):
                         table_ctx.column_ref_for_name(group.name))
             return typed_ast.GroupSet(alias_groups, field_groups)
 
-
     def compile_select_field(self, expr, alias, type_ctx):
         compiled_expr = self.compile_expr(expr, type_ctx)
         return typed_ast.SelectField(compiled_expr, alias)
@@ -356,6 +355,8 @@ class Compiler(object):
             return typed_ast.Literal(expr.value, tq_types.BOOL)
         if isinstance(expr.value, int):
             return typed_ast.Literal(expr.value, tq_types.INT)
+        if isinstance(expr.value, float):
+            return typed_ast.Literal(expr.value, tq_types.FLOAT)
         elif isinstance(expr.value, basestring):
             return typed_ast.Literal(expr.value, tq_types.STRING)
         elif expr.value is None:
