@@ -362,3 +362,34 @@ class EvaluatorTest(unittest.TestCase):
             'SELECT COUNT(*) FROM test_table t GROUP BY t.val1')
         result_rows = result.columns[(None, 'f0_')].values
         self.assertEqual([1, 1, 1, 2], sorted(result_rows))
+
+    def test_various_functions(self):
+        self.assert_query_result(
+            'SELECT CONCAT("foo", "bar", "baz"), FLOOR(7 / 2), STRING(2)',
+            self.make_context([
+                ('f0_', tq_types.STRING, ['foobarbaz']),
+                ('f1_', tq_types.FLOAT, [3.0]),
+                ('f2_', tq_types.STRING, ['2']),
+            ])
+        )
+
+    def test_quantiles(self):
+        self.assert_query_result(
+            'SELECT NTH(1, QUANTILES(val1, 3)),'
+            '       NTH(2, QUANTILES(val1, 3)),'
+            '       NTH(3, QUANTILES(val1, 3))'
+            'FROM test_table',
+            self.make_context([
+                ('f0_', tq_types.INT, [1]),
+                ('f1_', tq_types.INT, [2]),
+                ('f2_', tq_types.INT, [8]),
+            ])
+        )
+
+    def test_avg(self):
+        self.assert_query_result(
+            'SELECT AVG(foo) FROM null_table',
+            self.make_context([
+                ('f0_', tq_types.FLOAT, [3.0])
+            ])
+        )

@@ -1,6 +1,8 @@
 """Implementation of the standard built-in functions."""
 import abc
+import random
 import time
+import math
 import compiler
 
 import tq_types
@@ -137,6 +139,48 @@ class HashFunction(Function):
         return [hash(arg) for arg in arg_list]
 
 
+class FloorFunction(Function):
+    def check_types(self, arg):
+        if arg not in (tq_types.INT, tq_types.FLOAT):
+            raise TypeError('Expected type int or float.')
+        return tq_types.FLOAT
+
+    def evaluate(self, num_rows, arg_list):
+        return [math.floor(arg) for arg in arg_list]
+
+
+class RandFunction(Function):
+    def check_types(self):
+        return tq_types.FLOAT
+
+    def evaluate(self, num_rows):
+        return [random.random() for _ in xrange(num_rows)]
+
+
+class NthFunction(Function):
+    # TODO(alan): Enforce that NTH takes a constant as its first arg.
+    def check_types(self, index_type, rep_list_type):
+        if index_type != tq_types.INT:
+            raise SyntaxError('Expected an int index.')
+        # TODO(alan): Add a list type instead of assuming ints.
+        return tq_types.INT
+
+    def evaluate(self, num_rows, index_list, rep_list):
+        # Ideally, this would take a constant and not a full expression, but to
+        # hack around it for now, we'll just take the value at the first "row",
+        # which works if the expression was a constant.
+        index = index_list[0]
+        return [self.safe_index(rep_elem, index) for rep_elem in rep_list]
+
+    @staticmethod
+    def safe_index(rep_elem, index):
+        if not rep_elem:
+            return None
+        if index <= 0 or index > len(rep_elem):
+            return None
+        return rep_elem[index - 1]
+
+
 class NoArgFunction(Function):
     def __init__(self, func):
         self.func = func
@@ -155,6 +199,24 @@ class InFunction(Function):
     def evaluate(self, num_rows, arg1, *other_args):
         return [val1 in val_list
                 for val1, val_list in zip(arg1, zip(*other_args))]
+
+
+class ConcatFunction(Function):
+    def check_types(self, *arg_types):
+        if any(arg_type != tq_types.STRING for arg_type in arg_types):
+            raise TypeError('CONCAT only takes string arguments.')
+        return tq_types.STRING
+
+    def evaluate(self, num_rows, *args):
+        return [''.join(strs) for strs in zip(*args)]
+
+
+class StringFunction(Function):
+    def check_types(self, arg_type):
+        return tq_types.STRING
+
+    def evaluate(self, num_rows, arg_list):
+        return [str(arg) for arg in arg_list]
 
 
 class MinMaxFunction(Function):
@@ -189,12 +251,63 @@ class CountFunction(Function):
         return [len([0 for arg in arg_list if arg is not None])]
 
 
+class AvgFunction(Function):
+    def check_types(self, arg):
+        return tq_types.FLOAT
+
+    def evaluate(self, num_rows, arg_list):
+        filtered_args = [arg for arg in arg_list if arg is not None]
+        if not filtered_args:
+            return [None]
+        else:
+            return [float(sum(filtered_args)) / len(filtered_args)]
+
+
 class CountDistinctFunction(Function):
     def check_types(self, arg):
         return tq_types.INT
 
     def evaluate(self, num_rows, arg_list):
         return [len(set(arg_list))]
+
+
+class StddevSampFunction(Function):
+    def check_types(self, arg):
+        return tq_types.FLOAT
+
+    def evaluate(self, num_rows, arg_list):
+        # TODO(alan): Implement instead of returning 0.
+        return [0.0]
+
+
+class QuantilesFunction(Function):
+    # TODO(alan): Enforce that QUANTILES takes a constant as its second arg.
+    def check_types(self, arg_list_type, num_quantiles_type):
+        if num_quantiles_type != tq_types.INT:
+            raise SyntaxError('Expected an int number of quantiles.')
+        # TODO(alan): This should actually return a repeated version of the arg
+        # list type.
+        return tq_types.INT
+
+    def evaluate(self, num_rows, arg_list, num_quantiles_list):
+        sorted_args = sorted(arg for arg in arg_list if arg is not None)
+        if not sorted_args:
+            return [None]
+        # QUANTILES is special because it takes a constant, not an expression
+        # that gets repeated for each column. To hack around this for now, just
+        # take the first element off.
+        num_quantiles = num_quantiles_list[0]
+        # Stretch the quantiles out so the first is always the min of the list
+        # and the last is always the max of the list, but make sure it stays
+        # within the bounds of the list so we don't get an IndexError.
+        # This returns a single repeated field rather than one row per
+        # quantile, so we need one more set of brackets than you might expect.
+        return [[
+            sorted_args[
+                min(len(sorted_args) * i / (num_quantiles - 1),
+                    len(sorted_args) - 1)
+            ] for i in xrange(num_quantiles)
+        ]]
 
 
 _UNARY_OPERATORS = {
@@ -223,6 +336,11 @@ _BINARY_OPERATORS = {
 
 _FUNCTIONS = {
     'abs': UnaryIntOperator(abs),
+    'floor': FloorFunction(),
+    'rand': RandFunction(),
+    'nth': NthFunction(),
+    'concat': ConcatFunction(),
+    'string': StringFunction(),
     'pow': ArithmeticOperator(lambda a, b: a ** b),
     'now': NoArgFunction(lambda: int(time.time() * 1000000)),
     'in': InFunction(),
@@ -237,7 +355,10 @@ _AGGREGATE_FUNCTIONS = {
     'min': MinMaxFunction(min),
     'max': MinMaxFunction(max),
     'count': CountFunction(),
-    'count_distinct': CountDistinctFunction()
+    'avg': AvgFunction(),
+    'count_distinct': CountDistinctFunction(),
+    'stddev_samp': StddevSampFunction(),
+    'quantiles': QuantilesFunction(),
 }
 
 
