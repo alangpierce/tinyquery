@@ -78,8 +78,6 @@ class TinyQuery(object):
 
         In practice, this is a bit wasteful when it is used for multiple pages.
         """
-
-
         return [self.get_short_table_info(project_id, dataset, table)
                 for table in sorted(self.get_table_names_for_dataset(dataset))]
 

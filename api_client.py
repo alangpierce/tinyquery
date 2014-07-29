@@ -4,7 +4,6 @@ This can be used in place of the value returned by apiclient.discovery.build().
 """
 import functools
 import json
-import tinyquery
 
 
 class TinyQueryApiClient(object):
