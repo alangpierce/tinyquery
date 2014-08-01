@@ -181,6 +181,23 @@ class NthFunction(Function):
         return rep_elem[index - 1]
 
 
+class FirstFunction(Function):
+    def check_types(self, rep_list_type):
+        return rep_list_type
+
+    def evaluate(self, num_rows, rep_list):
+        if len(rep_list) == 0:
+            return [None]
+
+        if (type(rep_list[0]) is list):
+            # FIRST over something repeated
+            return [rep_row[0] if len(rep_row) > 0 else None
+                    for rep_row in rep_list]
+        else:
+            # FIRST over rows
+            return [rep_list[0]]
+
+
 class NoArgFunction(Function):
     def __init__(self, func):
         self.func = func
@@ -359,6 +376,7 @@ _AGGREGATE_FUNCTIONS = {
     'count_distinct': CountDistinctFunction(),
     'stddev_samp': StddevSampFunction(),
     'quantiles': QuantilesFunction(),
+    'first': FirstFunction()
 }
 
 

@@ -393,3 +393,21 @@ class EvaluatorTest(unittest.TestCase):
                 ('f0_', tq_types.FLOAT, [3.0])
             ])
         )
+
+    def test_first(self):
+        # Test over the equivalent of a GROUP BY
+        self.assert_query_result(
+            'SELECT FIRST(val1) FROM test_table',
+            self.make_context([
+                ('f0_', tq_types.INT, [4])
+            ])
+        )
+        # Test over something repeated
+        self.assert_query_result(
+            'SELECT FIRST(QUANTILES(val1, 3)) FROM test_table',
+            self.make_context([
+                ('f0_', tq_types.INT, [1])
+            ])
+        )
+
+        # TODO(colin): test behavior on empty list in both cases
