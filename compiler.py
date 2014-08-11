@@ -5,6 +5,7 @@ This step has a number of responsibilities:
 -Resolve all select fields to their aliases and types.
 """
 import collections
+import tinyquery
 
 import parser
 import runtime
@@ -182,16 +183,44 @@ class Compiler(object):
             return method(table_expr)
 
     def compile_table_expr_TableId(self, table_expr):
-        table_name = table_expr.name
         table = self.tables_by_name[table_expr.name]
+        if isinstance(table, tinyquery.Table):
+            return self.compile_table_ref(table_expr, table)
+        elif isinstance(table, tinyquery.View):
+            return self.compile_view_ref(table_expr, table)
+        else:
+            raise NotImplementedError('Unknown table type %s.' % type(table))
 
-        alias = table_expr.alias or table_name
+    def compile_table_ref(self, table_expr, table):
+        alias = table_expr.alias or table_expr.name
         columns = collections.OrderedDict([
             (name, column.type) for name, column in table.columns.iteritems()
         ])
         type_ctx = type_context.TypeContext.from_table_and_columns(
             alias, columns, None)
-        return typed_ast.Table(table_name, type_ctx)
+        return typed_ast.Table(table_expr.name, type_ctx)
+
+    def compile_view_ref(self, table_expr, view):
+        # TODO(alan): This code allows fields from the view's implicit column
+        # context to be selected, which probably isn't allowed in regular
+        # BigQuery.
+
+        # TODO(alan): We should check for cycles when evaluating views.
+        # Otherwise, circular views will cause an infinite loop.
+
+        # The view keeps its query as regular text, so we need to lex and parse
+        # it, then include it as if it was a subquery. It's almost correct to
+        # re-use the subquery compiling code, except that subquery aliases have
+        # special semantics that we don't want to use; an alias on a view
+        # should count for all returned fields.
+        alias = table_expr.alias or table_expr.name
+        uncompiled_view_ast = parser.parse_text(view.query)
+        compiled_view_select = self.compile_select(uncompiled_view_ast)
+        # We always want to apply either the alias or the full table name to
+        # the returned type context.
+        new_type_context = (
+            compiled_view_select.type_ctx.context_with_full_alias(alias))
+        return compiled_view_select.with_type_ctx(new_type_context)
 
     def compile_table_expr_TableUnion(self, table_expr):
         compiled_tables = [
