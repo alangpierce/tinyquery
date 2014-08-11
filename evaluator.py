@@ -54,6 +54,23 @@ class Evaluator(object):
         # Dictionary mapping (singleton) group key context to the context of
         # values for that key.
         group_contexts = {}
+
+        # As a special case, we check if we are grouping by nothing (in other
+        # words, if the query had an aggregate without any explicit GROUP BY).
+        # Normally, it's fine to just use the trivial group set: every row maps
+        # to the empty tuple, so we have a single aggregation over the entire
+        # table. However, if the table is empty, we still want to aggregate
+        # over the empty table and return a single row, so this is the one case
+        # where it's possible to have a group with no rows in it. To make this
+        # case work, we ensure that the trivial group key (the empty tuple)
+        # always shows up for the TRIVIAL_GROUP_SET case.
+        # In the long run, it might be cleaner to view TRIVIAL_GROUP_SET as a
+        # completely separate case, but this approach should work.
+        if group_set == typed_ast.TRIVIAL_GROUP_SET:
+            trivial_ctx = context.Context(1, collections.OrderedDict(), None)
+            group_contexts[trivial_ctx] = (
+                context.empty_context_from_template(select_context))
+
         # TODO: Seems pretty ugly and wasteful to use a whole context as a
         # group key.
         for i in xrange(select_context.num_rows):

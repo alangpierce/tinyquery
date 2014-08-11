@@ -49,6 +49,14 @@ class GroupSet(collections.namedtuple(
     """
 
 
+# This special GroupSet means "group by nothing". In other words, everything
+# should end up in the same group (which happens when an aggregate function is
+# used, but no GROUP BY groups are specified explicitly). It's almost enough to
+# just omit all alias and field groups, but we also need to make sure that we
+# include the group even if there are no rows in the table being selected.
+TRIVIAL_GROUP_SET = GroupSet(set(), [])
+
+
 class TableExpression(object):
     """Abstract class for all table expression ASTs."""
     def __init__(self, *_):

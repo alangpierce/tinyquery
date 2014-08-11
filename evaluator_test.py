@@ -43,6 +43,12 @@ class EvaluatorTest(unittest.TestCase):
             collections.OrderedDict([
                 ('str', context.Column(tq_types.STRING, ['hello', 'world'])),
             ])))
+        self.tq.load_table_or_view(tinyquery.Table(
+            'empty_table',
+            0,
+            collections.OrderedDict([
+                ('foo', context.Column(tq_types.INT, [])),
+            ])))
 
     def assert_query_result(self, query, expected_result):
         result = self.tq.evaluate_query(query)
@@ -287,6 +293,14 @@ class EvaluatorTest(unittest.TestCase):
             'SELECT COUNT(1) FROM test_table WHERE val1 = 1',
             self.make_context([
                 ('f0_', tq_types.INT, [2])]))
+
+    def test_count_empty_table(self):
+        self.assert_query_result(
+            'SELECT COUNT(*) FROM empty_table',
+            self.make_context([
+                ('f0_', tq_types.INT, [0])
+            ])
+        )
 
     def test_count_distinct(self):
         self.assert_query_result(

@@ -298,7 +298,7 @@ class Compiler(object):
 
             if is_aggregate_select:
                 # Group such that everything is in the same group.
-                return typed_ast.GroupSet(set(), [])
+                return typed_ast.TRIVIAL_GROUP_SET
             else:
                 # Don't do any grouping at all.
                 return None
