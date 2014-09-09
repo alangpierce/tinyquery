@@ -16,6 +16,9 @@ class TinyQueryApiClient(object):
     def jobs(self):
         return JobServiceApiClient(self.tq_service)
 
+    def tabledata(self):
+        return TabledataServiceApiClient(self.tq_service)
+
 
 class FakeHttpError(Exception):
     """Replace this with a real HttpError class if your code catches one."""
@@ -165,13 +168,7 @@ class JobServiceApiClient(object):
     @http_request_provider
     def getQueryResults(self, projectId, jobId):
         result_table = self.tq_service.get_query_result_table(jobId)
-        result_rows = []
-        for i in xrange(result_table.num_rows):
-            field_values = [{'v': str(col.values[i])}
-                            for col in result_table.columns.itervalues()]
-            result_rows.append({
-                'f': field_values
-            })
+        result_rows = rows_from_table(result_table)
         result_schema = schema_from_table(result_table)
 
         # TODO: Also add the schema.
@@ -195,9 +192,47 @@ class JobServiceApiClient(object):
             jobId=job_insert_result['jobReference']['jobId']).execute()
 
 
+class TabledataServiceApiClient(object):
+    def __init__(self, tq_service):
+        """Service object for working with data within tables.
+
+        :type tq_service: tinyquery.TinyQuery
+        """
+        self.tq_service = tq_service
+
+    @http_request_provider
+    def list(self, projectId, datasetId, tableId, pageToken=None,
+             maxResults=None):
+        # TODO(alan): Support paging.
+        try:
+            table = self.tq_service.get_table(datasetId, tableId)
+            return {
+                'rows': rows_from_table(table)
+            }
+        except KeyError:
+            raise FakeHttpError(None, json.dumps({
+                'error': {
+                    'code': 404,
+                    'message': 'Table not found: %s.%s' % (datasetId, tableId)
+                }
+            }))
+
+
 def schema_from_table(table):
     """Given a tinyquery.Table, build an API-compatible schema."""
     return {'fields': [
         {'name': name, 'type': col.type}
         for name, col in table.columns.iteritems()
     ]}
+
+
+def rows_from_table(table):
+    """Given a tinyquery.Table, build an API-compatible rows object."""
+    result_rows = []
+    for i in xrange(table.num_rows):
+        field_values = [{'v': str(col.values[i])}
+                        for col in table.columns.itervalues()]
+        result_rows.append({
+            'f': field_values
+        })
+    return result_rows

@@ -50,6 +50,26 @@ class ApiClientTest(unittest.TestCase):
         ).execute()
         return query_result
 
+    def query_to_table(self, query, dest_dataset, dest_table):
+        self.tq_service.jobs().insert(
+            projectId='test_project',
+            body={
+                'projectId': 'test_project',
+                'configuration': {
+                    'query': {
+                        'query': query,
+                        'destinationTable': {
+                            'projectId': 'test_project',
+                            'datasetId': dest_dataset,
+                            'tableId': dest_table
+                        }
+                    },
+                }
+            }
+        ).execute()
+        # Normally, we'd need to block until it's complete, but in tinyquery we
+        # know that the query gets executed immediately.
+
     def test_table_management(self):
         self.insert_simple_table()
         table_info = self.tq_service.tables().get(
@@ -209,3 +229,19 @@ class ApiClientTest(unittest.TestCase):
                          table_list[0]['tableReference']['tableId'])
         self.assertEqual('test_table',
                          table_list[1]['tableReference']['tableId'])
+
+    def test_list_tabledata(self):
+        self.query_to_table(
+            """
+            SELECT * FROM
+                (SELECT 0 AS foo, 'hello' AS bar),
+                (SELECT 7 AS foo, 'goodbye' AS bar)
+            """,
+            'test_dataset', 'test_table_2')
+        list_response = self.tq_service.tabledata().list(
+            projectId='test_project', datasetId='test_dataset',
+            tableId='test_table_2').execute()
+        self.assertEqual('0', list_response['rows'][0]['f'][0]['v'])
+        self.assertEqual('hello', list_response['rows'][0]['f'][1]['v'])
+        self.assertEqual('7', list_response['rows'][1]['f'][0]['v'])
+        self.assertEqual('goodbye', list_response['rows'][1]['f'][1]['v'])

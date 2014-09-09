@@ -108,6 +108,10 @@ class TinyQuery(object):
             }
         }
 
+    def get_table(self, dataset, table_name):
+        """Returns the tinyquery.Table with the given dataset and name."""
+        return self.tables_by_name[dataset + '.' + table_name]
+
     def delete_table(self, dataset, table_name):
         del self.tables_by_name[dataset + '.' + table_name]
 
