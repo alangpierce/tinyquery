@@ -116,6 +116,17 @@ def t_ID(t):
     return t
 
 
+def t_brackets_id(t):
+    r"""\[[a-zA-Z_0-9\.]*\]"""
+    # Tokens can be surrounded with square brackets, in which case they're
+    # allowed to start with numbers and contain dots. Tokens specified this way
+    # are NOT allowed to be regular keywords, so we don't do that check like in
+    # t_ID.
+    t.value = t.value[1:-1]
+    t.type = 'ID'
+    return t
+
+
 def t_COMMENT(t):
     r"""--.*"""
 

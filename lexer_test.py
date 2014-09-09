@@ -229,3 +229,13 @@ class LexerTest(unittest.TestCase):
             [select, star, from_tok, ident('my_table'), order, by,
              ident('val'), desc, comma, ident('val2'), asc, comma]
         )
+
+    def test_square_brackets(self):
+        # It looks like square brackets are handled at lex time. For example,
+        # putting a space between the square brackets and the table name isn't
+        # allowed.
+        self.assert_tokens(
+            'SELECT [max](val) FROM [2014.test_table]',
+            [select, ident('max'), lparen, ident('val'), rparen, from_tok,
+             ident('2014.test_table')]
+        )
