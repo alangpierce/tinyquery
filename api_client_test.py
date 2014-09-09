@@ -1,6 +1,7 @@
 import unittest
 
 import api_client
+import tq_types
 import tinyquery
 
 
@@ -94,6 +95,9 @@ class ApiClientTest(unittest.TestCase):
             projectId='test_project', jobId=job_info['jobReference']['jobId']
         ).execute()
         self.assertEqual('7', query_result['rows'][0]['f'][0]['v'])
+        self.assertEqual(
+            {'name': 'foo', 'type': tq_types.INT},
+            query_result['schema']['fields'][0])
 
     def test_sync_query(self):
         # As a convenience, BigQuery also makes it possible to run a query

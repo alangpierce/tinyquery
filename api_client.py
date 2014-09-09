@@ -172,10 +172,12 @@ class JobServiceApiClient(object):
             result_rows.append({
                 'f': field_values
             })
+        result_schema = schema_from_table(result_table)
 
         # TODO: Also add the schema.
         return {
-            'rows': result_rows
+            'rows': result_rows,
+            'schema': result_schema
         }
 
     @http_request_provider
@@ -191,3 +193,11 @@ class JobServiceApiClient(object):
         return self.getQueryResults(
             projectId=projectId,
             jobId=job_insert_result['jobReference']['jobId']).execute()
+
+
+def schema_from_table(table):
+    """Given a tinyquery.Table, build an API-compatible schema."""
+    return {'fields': [
+        {'name': name, 'type': col.type}
+        for name, col in table.columns.iteritems()
+    ]}
