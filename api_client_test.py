@@ -78,7 +78,7 @@ class ApiClientTest(unittest.TestCase):
         except api_client.FakeHttpError as e:
             self.assertTrue('404' in e.content)
 
-    def test_simple_query(self):
+    def test_full_job_query(self):
         job_info = self.tq_service.jobs().insert(
             projectId='test_project',
             body={
@@ -92,6 +92,17 @@ class ApiClientTest(unittest.TestCase):
         ).execute()
         query_result = self.tq_service.jobs().getQueryResults(
             projectId='test_project', jobId=job_info['jobReference']['jobId']
+        ).execute()
+        self.assertEqual('7', query_result['rows'][0]['f'][0]['v'])
+
+    def test_sync_query(self):
+        # As a convenience, BigQuery also makes it possible to run a query
+        # synchronously in a single API request.
+        query_result = self.tq_service.jobs().query(
+            projectId='test_project',
+            body={
+                'query': 'SELECT 7 as foo',
+            }
         ).execute()
         self.assertEqual('7', query_result['rows'][0]['f'][0]['v'])
 

@@ -177,3 +177,17 @@ class JobServiceApiClient(object):
         return {
             'rows': result_rows
         }
+
+    @http_request_provider
+    def query(self, projectId, body):
+        # TODO(alan): Disallow things that are allowed for full jobs but not
+        # for simple query calls, such as the destination table.
+        job_insert_result = self.insert(projectId=projectId, body={
+            'projectId': projectId,
+            'configuration': {
+                'query': body
+            }
+        }).execute()
+        return self.getQueryResults(
+            projectId=projectId,
+            jobId=job_insert_result['jobReference']['jobId']).execute()
