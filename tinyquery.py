@@ -91,7 +91,8 @@ class TinyQuery(object):
             }
         }
 
-    def get_table_info(self, dataset, table_name):
+    def get_table_info(self, project, dataset, table_name):
+        # TODO(alan): Don't just ignore the project parameter.
         # Will throw KeyError if the table doesn't exist.
         table = self.tables_by_name[dataset + '.' + table_name]
         schema_fields = []
@@ -105,6 +106,11 @@ class TinyQuery(object):
         return {
             'schema': {
                 'fields': schema_fields
+            },
+            'tableReference': {
+                'projectId': project,
+                'datasetId': dataset,
+                'tableId': table_name
             }
         }
 

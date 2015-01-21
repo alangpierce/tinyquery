@@ -79,7 +79,8 @@ class TableServiceApiClient(object):
     @http_request_provider
     def get(self, projectId, datasetId, tableId):
         try:
-            return self.tq_service.get_table_info(datasetId, tableId)
+            return self.tq_service.get_table_info(
+                projectId, datasetId, tableId)
         except KeyError:
             raise FakeHttpError(None, json.dumps({
                 'error': {
