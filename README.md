@@ -100,3 +100,10 @@ missing various return fields from the API.
 differ, most of which involve fully-qualified column names (e.g.
 `table_alias.column` being allowed in tinyquery but not BigQuery or vice
 versa).
+
+## Contributing
+
+This project is no longer in active development, but pull requests, bug
+reports, and questions are welcome. When submitting pull requests, please
+include tests with any changes you make and try to match the style of the
+surrounding code.
