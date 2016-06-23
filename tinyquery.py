@@ -34,12 +34,13 @@ class TinyQuery(object):
                         len(result_table.columns), line, len(tokens)))
                 for token, column in zip(tokens,
                                          result_table.columns.itervalues()):
-                    if column.type == tq_types.INT:
+                    # All tinyquery types are currently nullable
+                    if token == 'null':
+                        token = None
+                    elif column.type == tq_types.INT:
                         token = int(token)
                     elif column.type == tq_types.FLOAT:
                         token = float(token)
-                    elif token == 'null':
-                        token = None
                     column.values.append(token)
                 result_table.num_rows += 1
         self.load_table_or_view(result_table)

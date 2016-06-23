@@ -1,4 +1,8 @@
-"""Defines the valid types. Currently we just uses strings to identify them."""
+"""Defines the valid types. Currently we just uses strings to identify them.
+
+In bigquery, types are specified as nullable or required. In tinyquery, we
+make them all nullable for simplicity.
+"""
 
 INT = 'INTEGER'
 FLOAT = 'FLOAT'
