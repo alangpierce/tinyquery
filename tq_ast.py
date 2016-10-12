@@ -137,3 +137,20 @@ class CrossJoin(collections.namedtuple('CrossJoin', ['table1', 'table2'])):
     """
     def __str__(self):
         return '{} CROSS JOIN {}'.format(self.table1, self.table2)
+
+
+class CaseClause(collections.namedtuple('CaseClause',
+                                        ['condition', 'result_expr'])):
+    """Expression for a single clause from a CASE / WHEN / END statement.
+
+    ELSE is just expressed as a final WHEN with a condition of TRUE.
+    """
+    def __str__(self):
+        return 'WHEN {} THEN {}'.format(self.condition, self.result_expr)
+
+
+class CaseExpression(collections.namedtuple('CaseExpression', ['clauses'])):
+    """Case expression with one or more WHEN clauses and optional ELSE."""
+    def __str__(self):
+        return 'CASE {} END'.format(
+            ' '.join(str(clause) for clause in self.clauses))

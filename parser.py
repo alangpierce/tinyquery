@@ -269,6 +269,7 @@ def p_expression_binary(p):
                   | expression LESS_THAN_OR_EQUAL expression
                   | expression AND expression
                   | expression OR expression
+                  | expression CONTAINS expression
     """
     p[0] = tq_ast.BinaryOperator(p[2], p[1], p[3])
 
@@ -387,6 +388,36 @@ def p_id_component_list(p):
         p[0] = p[1]
     else:
         p[0] = p[1] + '.' + p[3]
+
+
+def p_case_clause_else(p):
+    """case_clause_else : ELSE expression"""
+    p[0] = tq_ast.CaseClause(tq_ast.Literal(True), p[2])
+
+
+def p_case_clause_when(p):
+    """case_clause_when : WHEN expression THEN expression"""
+    p[0] = tq_ast.CaseClause(p[2], p[4])
+
+
+def p_case_body(p):
+    """case_body : case_clause_when
+                 | case_body case_clause_else
+                 | case_clause_when case_body"""
+    if len(p) == 2:
+        # Just a bare when
+        p[0] = [p[1]]
+    elif isinstance(p[1], list):
+        # body ELSE expression
+        p[0] = p[1] + [p[2]]
+    else:
+        # WHEN ... THEN ... body
+        p[0] = [p[1]] + p[2]
+
+
+def p_expression_case(p):
+    """expression : CASE case_body END"""
+    p[0] = tq_ast.CaseExpression(p[2])
 
 
 def p_error(p):

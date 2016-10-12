@@ -435,6 +435,8 @@ class Compiler(object):
                 expr.name, [arg.type for arg in compiled_args]))
         return ast_type(func, compiled_args, result_type)
 
+    # TODO(colin): add support for compiling CASE expressions
+
     @classmethod
     def get_aliases(cls, select_field_list):
         """Given a list of tq_ast.SelectField, return the aliases to use."""

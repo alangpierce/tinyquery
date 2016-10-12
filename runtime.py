@@ -348,6 +348,7 @@ _BINARY_OPERATORS = {
     '<=': ComparisonOperator(lambda a, b: a <= b),
     'and': BooleanOperator(lambda a, b: a and b),
     'or': BooleanOperator(lambda a, b: a or b),
+    # TODO(colin): add support for CONTAINS
 }
 
 

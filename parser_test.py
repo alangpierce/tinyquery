@@ -550,3 +550,85 @@ class ParserTest(unittest.TestCase):
                 None
             )
         )
+
+    def test_single_clause_case(self):
+        self.assert_parsed_select(
+            'SELECT CASE WHEN x = 4 THEN 16 END',
+            tq_ast.Select(
+                [
+                    tq_ast.SelectField(
+                        tq_ast.CaseExpression([
+                            tq_ast.CaseClause(
+                                tq_ast.BinaryOperator('=',
+                                                      tq_ast.ColumnId('x'),
+                                                      tq_ast.Literal(4)),
+                                tq_ast.Literal(16)
+                            ),
+                        ]),
+                        None
+                    )
+                ],
+                None, None, None, None, None, None
+            )
+        )
+
+    def test_multi_clause_case(self):
+        self.assert_parsed_select(
+            'SELECT CASE WHEN x = 4 THEN 16 WHEN x = 5 THEN 25 END',
+            tq_ast.Select(
+                [
+                    tq_ast.SelectField(
+                        tq_ast.CaseExpression([
+                            tq_ast.CaseClause(
+                                tq_ast.BinaryOperator('=',
+                                                      tq_ast.ColumnId('x'),
+                                                      tq_ast.Literal(4)),
+                                tq_ast.Literal(16)
+                            ),
+                            tq_ast.CaseClause(
+                                tq_ast.BinaryOperator('=',
+                                                      tq_ast.ColumnId('x'),
+                                                      tq_ast.Literal(5)),
+                                tq_ast.Literal(25)
+                            ),
+                        ]),
+                        None
+                    )
+                ],
+                None, None, None, None, None, None
+            )
+        )
+
+    def test_multi_clause_case_with_else(self):
+        self.assert_parsed_select(
+            'SELECT CASE WHEN x = 4 THEN 16 ELSE 0 END',
+            tq_ast.Select(
+                [
+                    tq_ast.SelectField(
+                        tq_ast.CaseExpression([
+                            tq_ast.CaseClause(
+                                tq_ast.BinaryOperator('=',
+                                                      tq_ast.ColumnId('x'),
+                                                      tq_ast.Literal(4)),
+                                tq_ast.Literal(16)
+                            ),
+                            tq_ast.CaseClause(
+                                tq_ast.Literal(True),
+                                tq_ast.Literal(0)
+                            ),
+                        ]),
+                        None
+                    )
+                ],
+                None, None, None, None, None, None
+            )
+        )
+
+    def test_bare_else_not_allowed(self):
+        self.assertRaises(SyntaxError, parser.parse_text,
+                          'SELECT CASE ELSE 16 END')
+
+    def test_out_of_order_else_not_allowed(self):
+        self.assertRaises(
+            SyntaxError, parser.parse_text,
+            'SELECT CASE WHEN x = 4 THEN 16 ELSE 16 WHEN x = 5 THEN 25 END')

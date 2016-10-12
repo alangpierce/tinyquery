@@ -40,6 +40,12 @@ lparen = ('LPAREN', '(')
 rparen = ('RPAREN', ')')
 comma = ('COMMA', ',')
 dot = ('DOT', '.')
+case = ('CASE', 'case')
+when = ('WHEN', 'when')
+then = ('THEN', 'then')
+else_ = ('ELSE', 'else')
+end = ('END', 'end')
+contains = ('CONTAINS', 'contains')
 
 
 def num(n):
@@ -238,4 +244,18 @@ class LexerTest(unittest.TestCase):
             'SELECT [max](val) FROM [2014.test_table]',
             [select, ident('max'), lparen, ident('val'), rparen, from_tok,
              ident('2014.test_table')]
+        )
+
+    def test_contains(self):
+        self.assert_tokens(
+            'SELECT a CONTAINS b',
+            [select, ident('a'), contains, ident('b')]
+        )
+
+    def test_case(self):
+        self.assert_tokens(
+            'SELECT CASE WHEN x = 1 THEN 1 WHEN x = 2 THEN 4 ELSE 9 END',
+            [select, case, when, ident('x'), equals, num(1), then, num(1),
+             when, ident('x'), equals, num(2), then, num(4), else_, num(9),
+             end]
         )

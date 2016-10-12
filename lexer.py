@@ -32,6 +32,12 @@ reserved_words = {
     'in': 'IN',
     'count': 'COUNT',
     'distinct': 'DISTINCT',
+    'case': 'CASE',
+    'when': 'WHEN',
+    'then': 'THEN',
+    'else': 'ELSE',
+    'end': 'END',
+    'contains': 'CONTAINS',
 }
 
 tokens = [
