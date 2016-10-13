@@ -138,6 +138,10 @@ def p_table_expr_left_outer_join(p):
                          aliased_table_expr ON expression
                        | aliased_table_expr LEFT OUTER JOIN EACH \
                          aliased_table_expr ON expression
+                       | aliased_table_expr LEFT JOIN \
+                         aliased_table_expr ON expression
+                       | aliased_table_expr LEFT JOIN EACH \
+                         aliased_table_expr ON expression
     """
     p[0] = tq_ast.Join(p[1], p[len(p) - 3], p[len(p) - 1], is_left_outer=True)
 
