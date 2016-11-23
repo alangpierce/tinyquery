@@ -5,7 +5,7 @@ This step has a number of responsibilities:
 -Resolve all select fields to their aliases and types.
 """
 import collections
-import tinyquery
+import itertools
 
 import parser
 import runtime
@@ -183,6 +183,7 @@ class Compiler(object):
             return method(table_expr)
 
     def compile_table_expr_TableId(self, table_expr):
+        import tinyquery  # TODO(colin): fix circular import
         table = self.tables_by_name[table_expr.name]
         if isinstance(table, tinyquery.Table):
             return self.compile_table_ref(table_expr, table)
@@ -229,24 +230,30 @@ class Compiler(object):
             table.type_ctx for table in compiled_tables)
         return typed_ast.TableUnion(compiled_tables, type_ctx)
 
-    def compile_table_expr_CrossJoin(self, table_expr):
-        compiled_table1, _ = self.compile_joined_table(table_expr.table1)
-        compiled_table2, _ = self.compile_joined_table(table_expr.table2)
-        result_type_ctx = type_context.TypeContext.join_contexts(
-            [compiled_table1.type_ctx, compiled_table2.type_ctx])
-        return typed_ast.Join(compiled_table1, compiled_table2, [],
-                              False, result_type_ctx)
-
     def compile_table_expr_Join(self, table_expr):
-        compiled_table1, alias1 = self.compile_joined_table(table_expr.table1)
-        compiled_table2, alias2 = self.compile_joined_table(table_expr.table2)
+        table_expressions = itertools.chain(
+            [table_expr.base],
+            (join_part.table_expr for join_part in table_expr.join_parts)
+        )
+        compiled_result = map(self.compile_joined_table,
+                              table_expressions)
+        compiled_table_exprs, compiled_aliases = zip(*compiled_result)
+        type_contexts = [compiled_table.type_ctx
+                         for compiled_table in compiled_table_exprs]
         result_fields = self.compile_join_fields(
-            compiled_table1.type_ctx, compiled_table2.type_ctx, alias1, alias2,
-            table_expr.condition)
+            type_contexts,
+            compiled_aliases,
+            [join_part.condition for join_part in table_expr.join_parts]
+        )
         result_type_ctx = type_context.TypeContext.join_contexts(
-            [compiled_table1.type_ctx, compiled_table2.type_ctx])
-        return typed_ast.Join(compiled_table1, compiled_table2, result_fields,
-                              table_expr.is_left_outer, result_type_ctx)
+            type_contexts)
+        return typed_ast.Join(
+            base=compiled_table_exprs[0],
+            tables=zip(compiled_table_exprs[1:],
+                       (join_part.join_type
+                        for join_part in table_expr.join_parts)),
+            conditions=result_fields,
+            type_ctx=result_type_ctx)
 
     def compile_joined_table(self, table_expr):
         """Given one side of a JOIN, get its table expression and alias."""
@@ -261,39 +268,71 @@ class Compiler(object):
         compiled_table = compiled_table.with_type_ctx(result_ctx)
         return compiled_table, alias
 
-    def compile_join_fields(self, type_ctx1, type_ctx2, alias1, alias2, expr):
+    def compile_join_fields(self, type_contexts, aliases, conditions):
         """Traverse a join condition to find the joined fields.
 
         Arguments:
-            type_ctx1: A TypeContext for the first table being joined.
-            type_ctx2: A TypeContext for the second table being joined.
-            alias1: The alias for the first table.
-            alias2: The alias for the second table.
-            expr: An uncompiled tq_ast expression to traverse.
+            type_contexts: a list of TypeContexts for the tables being
+                joined.
+            aliases: a list of aliases for the tables being joined.
+            conditions: an list of instances of tq_ast.BinaryOperator
+                expressing the condition on which each table is being joined.
 
         Returns: A list of JoinFields instances for the expression.
+
+        TODO(colin): is this where we should check that the conditions are
+        sufficient for joining all the tables?
         """
-        if isinstance(expr, tq_ast.BinaryOperator):
-            if expr.operator == 'and':
-                return (self.compile_join_fields(
-                    type_ctx1, type_ctx2, alias1, alias2, expr.left) +
-                    self.compile_join_fields(
-                        type_ctx1, type_ctx2, alias1, alias2, expr.right))
-            elif (expr.operator == '=' and
-                    isinstance(expr.left, tq_ast.ColumnId) and
-                    isinstance(expr.right, tq_ast.ColumnId)):
-                column_id1, column_id2 = expr.left, expr.right
-                # By default, the left side of the equality corresponds to the
-                # left side of the join, but this can be overridden if any
-                # aliases suggest that the reverse order should be used.
-                if (column_id1.name.startswith(alias2 + '.') or
-                        column_id2.name.startswith(alias1 + '.')):
-                    column_id1, column_id2 = column_id2, column_id1
-                column_ref1 = self.compile_ColumnId(column_id1, type_ctx1)
-                column_ref2 = self.compile_ColumnId(column_id2, type_ctx2)
-                return [typed_ast.JoinFields(column_ref1, column_ref2)]
-        raise CompileError('JOIN conditions must consist of an AND of = '
-                           'comparisons. Got expression {}'.format(expr))
+        def compile_join_field(expr):
+            """Compile a single part of the join.
+
+            This results in a list of one or more join fields, depending on
+            whether or not multiple are ANDed together.
+            """
+            if isinstance(expr, tq_ast.BinaryOperator):
+                if expr.operator == 'and':
+                    return itertools.chain(
+                        compile_join_field(expr.left),
+                        compile_join_field(expr.right))
+                elif (expr.operator == '=' and
+                        isinstance(expr.left, tq_ast.ColumnId) and
+                        isinstance(expr.right, tq_ast.ColumnId)):
+                    # For evaluation, we want the ordering of the columns in
+                    # the JoinField to match the ordering of the join, left to
+                    # right, but bigquery allows either order.  Thus we need to
+                    # reorder them if they're reversed.
+                    # TODO(colin): better error message if we don't find an
+                    # alias?
+                    lhs_alias_idx = next(
+                        idx
+                        for idx, alias in enumerate(aliases)
+                        if expr.left.name.startswith(alias)
+                    )
+                    rhs_alias_idx = next(
+                        idx
+                        for idx, alias in enumerate(aliases)
+                        if expr.right.name.startswith(alias)
+                    )
+                    left_column_id = self.compile_ColumnId(
+                        expr.left,
+                        type_contexts[lhs_alias_idx])
+                    right_column_id = self.compile_ColumnId(
+                        expr.right,
+                        type_contexts[rhs_alias_idx])
+
+                    if lhs_alias_idx < rhs_alias_idx:
+                        return [typed_ast.JoinFields(left_column_id,
+                                                     right_column_id)]
+                    elif rhs_alias_idx < lhs_alias_idx:
+                        return [typed_ast.JoinFields(right_column_id,
+                                                     left_column_id)]
+                    # Fall through to the error case if the aliases are the
+                    # same for both sides.
+            raise CompileError('JOIN conditions must consist of an AND of = '
+                               'comparisons between two field on distinct '
+                               'tables. Got expression %s' % expr)
+        return list(itertools.chain(
+            *[compile_join_field(expr) for expr in conditions]))
 
     def compile_table_expr_Select(self, table_expr):
         select_result = self.compile_select(table_expr)
