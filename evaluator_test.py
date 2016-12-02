@@ -8,6 +8,7 @@ import tinyquery
 import tq_modes
 import tq_types
 
+
 # TODO(Samantha): Not all modes are nullable.
 
 
@@ -86,6 +87,18 @@ class EvaluatorTest(unittest.TestCase):
                 ('letters', context.Column(type=tq_types.STRING,
                                            mode=tq_modes.NULLABLE,
                                            values=['h', 'i'])),
+            ])))
+        self.tq.load_table_or_view(tinyquery.Table(
+            'string_table_3',
+            4,
+            collections.OrderedDict([
+                ('str1', context.Column(type=tq_types.STRING,
+                                       mode=tq_modes.NULLABLE,
+                                       values=['hello', 'to',
+                                               'the', 'world'])),
+                ('str2', context.Column(type=tq_types.STRING,
+                                           mode=tq_modes.NULLABLE,
+                                           values=['h', 'i', 'i', 't'])),
             ])))
         self.tq.load_table_or_view(tinyquery.Table(
             'empty_table',
@@ -370,6 +383,41 @@ class EvaluatorTest(unittest.TestCase):
                           result.columns[(None, 'bar')].values)
         self.assertEqual([(0, 2), (0, 4), (0, 6), (0, 8), (1, 1)],
                          sorted(result_rows))
+
+    def test_order_by_field(self):
+        self.assert_query_result(
+            'SELECT val1, val2 FROM test_table ORDER BY val1 DESC, val2',
+            self.make_context([
+                ('val1', tq_types.INT, [8, 4, 2, 1, 1]),
+                ('val2', tq_types.INT, [4, 8, 6, 1, 2]),
+            ])
+        )
+
+    def test_order_by_field2(self):
+        self.assert_query_result(
+            'SELECT val1, val2 FROM test_table ORDER BY val2 DESC, val1',
+            self.make_context([
+                ('val1', tq_types.INT, [4, 2, 8, 1, 1]),
+                ('val2', tq_types.INT, [8, 6, 4, 2, 1]),
+            ])
+        )
+
+    def test_order_by_field3(self):
+        self.assert_query_result(
+            'SELECT val2 FROM test_table ORDER BY val1, val2 DESC',
+            self.make_context([
+                ('val2', tq_types.INT, [2, 1, 6, 8, 4]),
+            ])
+        )
+
+    def test_order_by_string_fields(self):
+        self.assert_query_result(
+            'SELECT str1, str2 FROM string_table_3 ORDER BY str2 DESC, str1',
+            self.make_context([
+                ('str1', tq_types.STRING, ['world', 'the', 'to', 'hello']),
+                ('str2', tq_types.STRING, ['t', 'i', 'i', 'h']),
+            ])
+        )
 
     def test_select_multiple_tables(self):
         self.assert_query_result(

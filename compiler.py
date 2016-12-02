@@ -61,8 +61,8 @@ class Compiler(object):
         having_expr = self.compile_filter_expr(select.having_expr,
                                                result_context)
         return typed_ast.Select(select_fields, table_expr, where_expr,
-                                group_set, having_expr, select.limit,
-                                result_context)
+                                group_set, having_expr, select.orderings,
+                                select.limit, result_context)
 
     def expand_select_fields(self, select_fields, table_expr):
         """Expand any stars into a list of all context columns.

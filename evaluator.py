@@ -26,6 +26,11 @@ class Evaluator(object):
                 select_ast.select_fields, select_context)
         having_mask = self.evaluate_expr(select_ast.having_expr, result)
         result = context.mask_context(result, having_mask)
+
+        if select_ast.orderings is not None:
+            result = self.evaluate_orderings(select_context, result,
+                                             select_ast.orderings)
+
         if select_ast.limit is not None:
             context.truncate_context(result, select_ast.limit)
         return result
@@ -101,6 +106,61 @@ class Evaluator(object):
             context.append_row_to_context(full_result_row_context, 0,
                                           result_context)
         return result_context
+
+    def evaluate_orderings(self, overall_context, select_context,
+                           ordering_col):
+        """
+        Evaluate a context and order it by a list of given columns.
+
+        Arguments:
+            overall_context: A context with the data that the select statement
+                has access to.
+            select_context: A context with the data remaining after earlier
+            evaluations.
+            ordering_col: A list of order-by column objects having two
+                properties: column_id containing the name of the column and
+                is_ascending which is a boolean for the order in which the
+                column has to be arranged (True for ascending and False for
+                descending).
+
+        Returns:
+            A context with the results.
+        """
+        assert select_context.aggregate_context is None
+        all_values = []
+        sort_by_indexes = collections.OrderedDict()
+
+        for ((_, column_name), column) in overall_context.columns.iteritems():
+            all_values.append(column.values)
+
+        for order_by_column in ordering_col:
+            for count, ((_, column_name), column) in enumerate(
+                    overall_context.columns.iteritems()):
+                if order_by_column.column_id.name == column_name:
+                    sort_by_indexes[count] = order_by_column.is_ascending
+                    break
+        reversed_sort_by_indexes = collections.OrderedDict(
+            reversed(list(sort_by_indexes.items())))
+
+        t_all_values = map(list, zip(*all_values))
+        for index, is_ascending in reversed_sort_by_indexes.iteritems():
+            t_all_values.sort(key=lambda x: (x[index]),
+                              reverse=not is_ascending)
+        ordered_values = map(list, zip(*t_all_values))
+
+        for key in select_context.columns:
+            for count, (_, overall_key) in enumerate(overall_context.columns):
+                overall_context_loop_break = False
+                if overall_key == key[1]:
+                    select_context.columns[key] = context.Column(
+                        type=select_context.columns[key].type,
+                        mode=select_context.columns[key].mode,
+                        values=ordered_values[count])
+                    overall_context_loop_break = True
+                if overall_context_loop_break:
+                    break
+
+        return select_context
 
     def merge_contexts_for_select_fields(self, col_names, context1, context2):
         """Build a context that combines columns of two contexts.

@@ -7,7 +7,7 @@ import tq_modes
 
 class Select(collections.namedtuple(
         'Select', ['select_fields', 'table', 'where_expr', 'group_set',
-                   'having_expr', 'limit', 'type_ctx'])):
+                   'having_expr', 'orderings', 'limit', 'type_ctx'])):
     """A compiled query.
 
     Fields:
@@ -25,6 +25,10 @@ class Select(collections.namedtuple(
         having_expr: A filter to apply on the result of the select expresion.
             Note that this filter should always be valid; if the user didn't
             specify a HAVING clause, this is the literal true.
+        orderings: Either None, indicating that no ordering should be done, or
+            an OrderBySet object. If there were ordering instances explicitly
+            specified by ORDER BY, then the OrderBySet always exists and is
+            nonempty.
         limit: Either a number with the number of rows to limit the results to,
             or None if there is no limit.
         type_ctx: A type context describing the names and types of the fields
@@ -33,7 +37,8 @@ class Select(collections.namedtuple(
     """
     def with_type_ctx(self, type_ctx):
         return Select(self.select_fields, self.table, self.where_expr,
-                      self.group_set, self.having_expr, self.limit, type_ctx)
+                      self.group_set, self.having_expr, self.orderings,
+                      self.limit, type_ctx)
 
 
 class SelectField(collections.namedtuple('SelectField', ['expr', 'alias'])):
@@ -51,8 +56,6 @@ class GroupSet(collections.namedtuple(
         field_groups: A list of ColumnRefs referencing columns in the table
             expression of the SELECT statement.
     """
-
-
 # This special GroupSet means "group by nothing". In other words, everything
 # should end up in the same group (which happens when an aggregate function is
 # used, but no GROUP BY groups are specified explicitly). It's almost enough to
