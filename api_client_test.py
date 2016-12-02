@@ -26,8 +26,8 @@ class ApiClientTest(unittest.TestCase):
                 'tableReference': self.table_ref('test_table'),
                 'schema': {
                     'fields': [
-                        {'name': 'foo', 'type': 'INTEGER'},
-                        {'name': 'bar', 'type': 'BOOLEAN'},
+                        {'name': 'foo', 'type': 'INTEGER', 'mode': 'NULLABLE'},
+                        {'name': 'bar', 'type': 'BOOLEAN', 'mode': 'NULLABLE'},
                     ]
                 }
             }).execute()

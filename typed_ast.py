@@ -2,6 +2,7 @@
 
 import collections
 import type_context
+import tq_modes
 
 
 class Select(collections.namedtuple(
@@ -143,5 +144,8 @@ class Literal(collections.namedtuple(
 
 
 class ColumnRef(collections.namedtuple(
-        'ColumnRef', ['table', 'column', 'type']), Expression):
+        'ColumnRef', ['table', 'column', 'type', 'mode']), Expression):
     """References a column from the current context."""
+
+
+ColumnRef.__new__.__defaults__ = (tq_modes.NULLABLE,)

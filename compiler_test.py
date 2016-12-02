@@ -5,6 +5,7 @@ import compiler
 import context
 import runtime
 import tinyquery
+import tq_modes
 import tq_types
 import type_context
 import typed_ast
@@ -16,8 +17,10 @@ class CompilerTest(unittest.TestCase):
             'table1',
             0,
             collections.OrderedDict([
-                ('value', context.Column(tq_types.INT, [])),
-                ('value2', context.Column(tq_types.INT, []))
+                ('value', context.Column(type=tq_types.INT,
+                                         mode=tq_modes.NULLABLE, values=[])),
+                ('value2', context.Column(type=tq_types.INT,
+                                          mode=tq_modes.NULLABLE, values=[]))
             ]))
         self.table1_type_ctx = self.make_type_context(
             [('table1', 'value', tq_types.INT),
@@ -28,8 +31,10 @@ class CompilerTest(unittest.TestCase):
             'table2',
             0,
             collections.OrderedDict([
-                ('value', context.Column(tq_types.INT, [])),
-                ('value3', context.Column(tq_types.INT, []))
+                ('value', context.Column(type=tq_types.INT,
+                                         mode=tq_modes.NULLABLE, values=[])),
+                ('value3', context.Column(type=tq_types.INT,
+                                          mode=tq_modes.NULLABLE, values=[]))
             ])
         )
         self.table2_type_ctx = self.make_type_context(

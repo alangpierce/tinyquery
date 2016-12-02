@@ -6,6 +6,8 @@ It is the basic container for intermediate data when evaluating a query.
 import collections
 import itertools
 
+import tq_modes
+
 
 class Context(object):
     """Represents the columns accessible when evaluating an expression.
@@ -50,7 +52,7 @@ class Context(object):
             self.aggregate_context))
 
 
-class Column(collections.namedtuple('Column', ['type', 'values'])):
+class Column(collections.namedtuple('Column', ['type', 'mode', 'values'])):
     """Represents a single column of data.
 
     Fields:
@@ -88,7 +90,8 @@ def context_with_overlayed_type_context(context, type_context):
 def empty_context_from_type_context(type_context):
     assert type_context.aggregate_context is None
     result_columns = collections.OrderedDict(
-        (col_name, Column(col_type, []))
+        # TODO(Samantha): Fix this. Mode is not always nullable
+        (col_name, Column(type=col_type, mode=tq_modes.NULLABLE, values=[]))
         for col_name, col_type in type_context.columns.iteritems()
     )
     return Context(0, result_columns, None)
@@ -106,7 +109,9 @@ def mask_context(context, mask):
         'Cannot mask a context with an aggregate context.')
     new_columns = collections.OrderedDict([
         (column_name,
-         Column(column.type, list(itertools.compress(column.values, mask))))
+         # TODO(Samantha): Fix this. Mode is not always nullable
+         Column(type=column.type, mode=tq_modes.NULLABLE,
+                values=list(itertools.compress(column.values, mask))))
         for (column_name, column) in context.columns.iteritems()
     ])
     return Context(sum(mask), new_columns, None)
@@ -125,7 +130,7 @@ def empty_context_from_template(context):
 
 def empty_column_from_template(column):
     """Returns a new empty column with the same type as the given one."""
-    return Column(column.type, [])
+    return Column(type=column.type, mode=column.mode, values=[])
 
 
 def append_row_to_context(src_context, index, dest_context):
@@ -180,7 +185,9 @@ def row_context_from_context(src_context, index):
     """Pull a specific row out of a context as its own context."""
     assert src_context.aggregate_context is None
     columns = collections.OrderedDict(
-        (col_name, Column(col.type, [col.values[index]]))
+        # TODO(Samantha): Fix this. Mode is not always nullable
+        (col_name, Column(type=col.type, mode=tq_modes.NULLABLE,
+         values=[col.values[index]]))
         for col_name, col in src_context.columns.iteritems()
     )
     return Context(1, columns, None)
@@ -190,9 +197,11 @@ def cross_join_contexts(context1, context2):
     assert context1.aggregate_context is None
     assert context2.aggregate_context is None
     result_columns = collections.OrderedDict(
-        [(col_name, Column(col.type, []))
+        # TODO(Samantha): Fix this. Mode is not always nullable
+        [(col_name, Column(type=col.type, mode=tq_modes.NULLABLE, values=[]))
          for col_name, col in context1.columns.iteritems()] +
-        [(col_name, Column(col.type, []))
+        # TODO(Samantha): Fix this. Mode is not always nullable
+        [(col_name, Column(type=col.type, mode=tq_modes.NULLABLE, values=[]))
          for col_name, col in context2.columns.iteritems()])
 
     for index1 in xrange(context1.num_rows):

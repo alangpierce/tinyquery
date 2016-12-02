@@ -1,6 +1,7 @@
 import collections
 
 import context
+import tq_modes
 import typed_ast
 
 
@@ -138,12 +139,16 @@ class Evaluator(object):
             column_key = (field_group.table, field_group.column)
             source_column = select_context.columns[column_key]
             result_columns[column_key] = context.Column(
-                source_column.type, [source_column.values[index]])
+                # TODO(Samantha): This shouldn't just be nullable.
+                type=source_column.type, mode=tq_modes.NULLABLE,
+                values=[source_column.values[index]])
         for alias_group in alias_groups:
             column_key = (None, alias_group)
             source_column = alias_group_result_context.columns[column_key]
             result_columns[column_key] = context.Column(
-                source_column.type, [source_column.values[index]])
+                # TODO(Samantha): This shouldn't just be nullable.
+                type=source_column.type, mode=tq_modes.NULLABLE,
+                values=[source_column.values[index]])
         return context.Context(1, result_columns, None)
 
     def empty_context_from_select_fields(self, select_fields):
@@ -151,7 +156,9 @@ class Evaluator(object):
             0,
             collections.OrderedDict(
                 ((None, select_field.alias),
-                 context.Column(select_field.expr.type, []))
+                 # TODO(Samantha): This shouldn't just be nullable
+                 context.Column(type=select_field.expr.type,
+                                mode=tq_modes.NULLABLE, values=[]))
                 for select_field in select_fields
             ),
             None)
@@ -176,7 +183,9 @@ class Evaluator(object):
         assert isinstance(select_field, typed_ast.SelectField)
         results = self.evaluate_expr(select_field.expr, ctx)
         return (None, select_field.alias), context.Column(
-            select_field.expr.type, results)
+            # TODO(Samantha): This shouldn't just be nullable.
+            type=select_field.expr.type, mode=tq_modes.NULLABLE,
+            values=results)
 
     def evaluate_table_expr(self, table_expr):
         """Given a table expression, return a Context with its values."""
