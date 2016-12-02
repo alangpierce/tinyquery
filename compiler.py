@@ -243,7 +243,8 @@ class Compiler(object):
         result_fields = self.compile_join_fields(
             type_contexts,
             compiled_aliases,
-            [join_part.condition for join_part in table_expr.join_parts]
+            [join_part.condition for join_part in table_expr.join_parts],
+            [join_part.join_type for join_part in table_expr.join_parts]
         )
         result_type_ctx = type_context.TypeContext.join_contexts(
             type_contexts)
@@ -268,7 +269,8 @@ class Compiler(object):
         compiled_table = compiled_table.with_type_ctx(result_ctx)
         return compiled_table, alias
 
-    def compile_join_fields(self, type_contexts, aliases, conditions):
+    def compile_join_fields(self, type_contexts, aliases, conditions,
+                            join_types):
         """Traverse a join condition to find the joined fields.
 
         Arguments:
@@ -277,23 +279,29 @@ class Compiler(object):
             aliases: a list of aliases for the tables being joined.
             conditions: an list of instances of tq_ast.BinaryOperator
                 expressing the condition on which each table is being joined.
+            join_types: a list of instances of tq_ast.JoinType corresponding to
+                the type of each join
 
         Returns: A list of JoinFields instances for the expression.
 
         TODO(colin): is this where we should check that the conditions are
         sufficient for joining all the tables?
         """
-        def compile_join_field(expr):
+        def compile_join_field(expr, join_type):
             """Compile a single part of the join.
 
             This results in a list of one or more join fields, depending on
             whether or not multiple are ANDed together.
             """
+            if join_type is tq_ast.JoinType.CROSS:
+                assert expr is None, (
+                    "Cross joins do not allow join conditions.")
+                return [None]
             if isinstance(expr, tq_ast.BinaryOperator):
                 if expr.operator == 'and':
-                    return itertools.chain(
-                        compile_join_field(expr.left),
-                        compile_join_field(expr.right))
+                    return list(itertools.chain(
+                        compile_join_field(expr.left, join_type),
+                        compile_join_field(expr.right, join_type)))
                 elif (expr.operator == '=' and
                         isinstance(expr.left, tq_ast.ColumnId) and
                         isinstance(expr.right, tq_ast.ColumnId)):
@@ -306,12 +314,12 @@ class Compiler(object):
                     lhs_alias_idx = next(
                         idx
                         for idx, alias in enumerate(aliases)
-                        if expr.left.name.startswith(alias)
+                        if expr.left.name.startswith(alias + ".")
                     )
                     rhs_alias_idx = next(
                         idx
                         for idx, alias in enumerate(aliases)
-                        if expr.right.name.startswith(alias)
+                        if expr.right.name.startswith(alias + ".")
                     )
                     left_column_id = self.compile_ColumnId(
                         expr.left,
@@ -331,8 +339,8 @@ class Compiler(object):
             raise CompileError('JOIN conditions must consist of an AND of = '
                                'comparisons between two field on distinct '
                                'tables. Got expression %s' % expr)
-        return list(itertools.chain(
-            *[compile_join_field(expr) for expr in conditions]))
+        return [compile_join_field(expr, join_type)
+                for expr, join_type in zip(conditions, join_types)]
 
     def compile_table_expr_Select(self, table_expr):
         select_result = self.compile_select(table_expr)
