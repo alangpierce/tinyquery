@@ -435,7 +435,19 @@ class Compiler(object):
                 expr.name, [arg.type for arg in compiled_args]))
         return ast_type(func, compiled_args, result_type)
 
-    # TODO(colin): add support for compiling CASE expressions
+    def compile_CaseExpression(self, expr, type_ctx):
+        """Compile a CASE expression by converting to nested IF calls."""
+        def compile_helper(remaining_clauses):
+            if len(remaining_clauses) == 0:
+                return tq_ast.Literal(value=None)
+            clause = remaining_clauses[0]
+            return tq_ast.FunctionCall(
+                name='if',
+                args=[clause.condition,
+                      clause.result_expr,
+                      compile_helper(remaining_clauses[1:])])
+        case_as_nested_if = compile_helper(expr.clauses)
+        return self.compile_FunctionCall(case_as_nested_if, type_ctx)
 
     @classmethod
     def get_aliases(cls, select_field_list):
@@ -487,6 +499,8 @@ class Compiler(object):
             return (runtime.is_aggregate_func(expr.name) or
                     any(cls.expression_contains_aggregate(arg)
                         for arg in expr.args))
+        elif isinstance(expr, tq_ast.CaseExpression):
+            return False
         elif isinstance(expr, tq_ast.Literal):
             return False
         elif isinstance(expr, tq_ast.ColumnId):

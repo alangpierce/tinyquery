@@ -112,6 +112,11 @@ class EvaluatorTest(unittest.TestCase):
                 ])
             )
 
+    def test_case_expressions(self):
+        self.assert_query_result(
+            'SELECT CASE WHEN TRUE THEN 1 ELSE 0 END',
+            self.make_context([('f0_', tq_types.INT, [1])]))
+
     def test_select_from_table(self):
         self.assert_query_result(
             'SELECT val1 FROM test_table',

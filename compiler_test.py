@@ -136,6 +136,37 @@ class CompilerTest(unittest.TestCase):
             )
         )
 
+    def test_case(self):
+        self.assert_compiled_select(
+            'SELECT CASE WHEN TRUE THEN 1 WHEN FALSE THEN 2 END',
+            typed_ast.Select(
+                select_fields=[
+                    typed_ast.SelectField(
+                        typed_ast.FunctionCall(
+                            runtime.get_func('if'),
+                        [
+                            typed_ast.Literal(True, tq_types.BOOL),
+                            typed_ast.Literal(1, tq_types.INT),
+                            typed_ast.FunctionCall(
+                                runtime.get_func('if'),
+                                [
+                                    typed_ast.Literal(False, tq_types.BOOL),
+                                    typed_ast.Literal(2, tq_types.INT),
+                                    typed_ast.Literal(None, tq_types.NONETYPE),
+                                ],
+                                tq_types.INT)
+                        ],
+                        tq_types.INT),
+                    'f0_')
+                ],
+                table=typed_ast.NoTable(),
+                where_expr=typed_ast.Literal(True, tq_types.BOOL),
+                group_set=None,
+                limit=None,
+                type_ctx=self.make_type_context(
+                    [(None, 'f0_', tq_types.INT)],
+                    self.make_type_context([]))))
+
     def test_where(self):
         self.assert_compiled_select(
             'SELECT value FROM table1 WHERE value > 3',
