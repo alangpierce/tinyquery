@@ -4,6 +4,7 @@ import collections
 import compiler
 import context
 import evaluator
+import tq_modes
 import tq_types
 
 
@@ -34,13 +35,12 @@ class TinyQuery(object):
                         len(result_table.columns), line, len(tokens)))
                 for token, column in zip(tokens,
                                          result_table.columns.itervalues()):
-                    # All tinyquery types are currently nullable
-                    if token == 'null':
-                        token = None
-                    elif column.type == tq_types.INT:
-                        token = int(token)
-                    elif column.type == tq_types.FLOAT:
-                        token = float(token)
+                    # Run a casting function over the value we are given.
+                    token = (None if token is None else
+                             tq_types.CAST_FUNCTION_MAP[column.type](token))
+                    if not tq_modes.check_mode(token, column.mode):
+                        raise ValueError("Bad token for mode %s, got %s" %
+                                         (column.mode, token))
                     column.values.append(token)
                 result_table.num_rows += 1
         self.load_table_or_view(result_table)
@@ -48,12 +48,15 @@ class TinyQuery(object):
     def make_empty_table(self, table_name, raw_schema):
         columns = collections.OrderedDict()
         for field in raw_schema['fields']:
-            # TODO: Handle the mode here. We should default to NULLABLE, but
-            # allow other specifiers.
-            # TODO: Validate that the type is legal. Currently we take
-            # advantage of the fact that type names match the types defined in
-            # tq_types.py.
-            columns[field['name']] = context.Column(field['type'], [])
+            (value_type, mode) = (field['type'].upper(), field['mode'].upper())
+
+            # Type and Mode validation
+            if (value_type not in tq_types.TYPE_SET
+                    or mode not in tq_modes.MODE_SET):
+                raise ValueError("Type or Mode given was invalid.")
+
+            columns[field['name']] = context.Column(type=value_type, mode=mode,
+                                                    values=[])
         return Table(table_name, 0, columns)
 
     def make_view(self, view_name, query):
@@ -205,7 +208,9 @@ class TinyQuery(object):
 
     def load_empty_table_from_template(self, table_name, template_table):
         columns = collections.OrderedDict(
-            (col_name, context.Column(col.type, []))
+            # TODO(Samantha): This shouldn't just be nullable.
+            (col_name, context.Column(type=col.type, mode=tq_modes.NULLABLE,
+                                      values=[]))
             for col_name, col in template_table.columns.iteritems()
         )
         table = Table(table_name, 0, columns)

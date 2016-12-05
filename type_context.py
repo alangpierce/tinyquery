@@ -6,6 +6,9 @@ import tq_types
 import typed_ast
 
 
+# TODO(Samantha): Should checking modes go here?
+
+
 class TypeContext(collections.namedtuple(
         'TypeContext', ['columns', 'aliases', 'ambig_aliases',
                         'implicit_column_context', 'aggregate_context'])):

@@ -4,7 +4,10 @@ import unittest
 
 import context
 import tinyquery
+import tq_modes
 import tq_types
+
+# TODO(Samantha): Not all modes are nullable.
 
 
 class EvaluatorTest(unittest.TestCase):
@@ -14,40 +17,57 @@ class EvaluatorTest(unittest.TestCase):
             'test_table',
             5,
             collections.OrderedDict([
-                ('val1', context.Column(tq_types.INT, [4, 1, 8, 1, 2])),
-                ('val2', context.Column(tq_types.INT, [8, 2, 4, 1, 6]))
+                ('val1', context.Column(type=tq_types.INT,
+                                        mode=tq_modes.NULLABLE,
+                                        values=[4, 1, 8, 1, 2])),
+                ('val2', context.Column(type=tq_types.INT,
+                                        mode=tq_modes.NULLABLE,
+                                        values=[8, 2, 4, 1, 6]))
             ])))
         self.tq.load_table_or_view(tinyquery.Table(
             'test_table_2',
             2,
             collections.OrderedDict([
-                ('val3', context.Column(tq_types.INT, [3, 8])),
-                ('val2', context.Column(tq_types.INT, [2, 7])),
+                ('val3', context.Column(type=tq_types.INT,
+                                        mode=tq_modes.NULLABLE,
+                                        values=[3, 8])),
+                ('val2', context.Column(type=tq_types.INT,
+                                        mode=tq_modes.NULLABLE,
+                                        values=[2, 7])),
             ])))
         self.tq.load_table_or_view(tinyquery.Table(
             'test_table_3',
             5,
             collections.OrderedDict([
-                ('foo', context.Column(tq_types.INT, [1, 2, 4, 5, 1])),
-                ('bar', context.Column(tq_types.INT, [2, 7, 3, 1, 1])),
+                ('foo', context.Column(type=tq_types.INT,
+                                       mode=tq_modes.NULLABLE,
+                                       values=[1, 2, 4, 5, 1])),
+                ('bar', context.Column(type=tq_types.INT,
+                                       mode=tq_modes.NULLABLE,
+                                       values=[2, 7, 3, 1, 1])),
             ])))
         self.tq.load_table_or_view(tinyquery.Table(
             'null_table',
             4,
             collections.OrderedDict([
-                ('foo', context.Column(tq_types.INT, [1, None, None, 5])),
+                ('foo', context.Column(type=tq_types.INT,
+                                       mode=tq_modes.NULLABLE,
+                                       values=[1, None, None, 5])),
             ])))
         self.tq.load_table_or_view(tinyquery.Table(
             'string_table',
             2,
             collections.OrderedDict([
-                ('str', context.Column(tq_types.STRING, ['hello', 'world'])),
+                ('str', context.Column(type=tq_types.STRING,
+                                       mode=tq_modes.NULLABLE,
+                                       values=['hello', 'world'])),
             ])))
         self.tq.load_table_or_view(tinyquery.Table(
             'empty_table',
             0,
             collections.OrderedDict([
-                ('foo', context.Column(tq_types.INT, [])),
+                ('foo', context.Column(type=tq_types.INT,
+                                       mode=tq_modes.NULLABLE, values=[])),
             ])))
 
     def assert_query_result(self, query, expected_result):
@@ -61,7 +81,9 @@ class EvaluatorTest(unittest.TestCase):
         return context.Context(
             num_rows,
             collections.OrderedDict(
-                ((None, name), context.Column(col_type, values))
+                ((None, name), context.Column(type=col_type,
+                                              mode=tq_modes.NULLABLE,
+                                              values=values))
                 for name, col_type, values in name_type_values_triples),
             None)
 
