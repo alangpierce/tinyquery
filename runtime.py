@@ -327,6 +327,17 @@ class QuantilesFunction(Function):
         ]]
 
 
+class ContainsFunction(Function):
+    def check_types(self, type1, type2):
+        if type1 != tq_types.STRING or type2 != tq_types.STRING:
+            raise TypeError("CONTAINS must operate on strings.")
+        return tq_types.BOOL
+
+    def evaluate(self, num_rows, list1, list2):
+        if len(list1) == len(list2):
+            return [v2 in v1 for v1, v2 in zip(list1, list2)]
+
+
 _UNARY_OPERATORS = {
     '-': UnaryIntOperator(lambda a: -a),
     'is_null': UnaryBoolOperator(lambda a: a is None),
@@ -348,7 +359,7 @@ _BINARY_OPERATORS = {
     '<=': ComparisonOperator(lambda a, b: a <= b),
     'and': BooleanOperator(lambda a, b: a and b),
     'or': BooleanOperator(lambda a, b: a or b),
-    # TODO(colin): add support for CONTAINS
+    'contains': ContainsFunction(),
 }
 
 

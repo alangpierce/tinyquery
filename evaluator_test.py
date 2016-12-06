@@ -63,6 +63,17 @@ class EvaluatorTest(unittest.TestCase):
                                        values=['hello', 'world'])),
             ])))
         self.tq.load_table_or_view(tinyquery.Table(
+            'string_table_2',
+            2,
+            collections.OrderedDict([
+                ('str', context.Column(type=tq_types.STRING,
+                                       mode=tq_modes.NULLABLE,
+                                       values=['hello', 'world'])),
+                ('letters', context.Column(type=tq_types.STRING,
+                                           mode=tq_modes.NULLABLE,
+                                           values=['h', 'i'])),
+            ])))
+        self.tq.load_table_or_view(tinyquery.Table(
             'empty_table',
             0,
             collections.OrderedDict([
@@ -122,6 +133,31 @@ class EvaluatorTest(unittest.TestCase):
             'SELECT -3',
             self.make_context([('f0_', tq_types.INT, [-3])])
         )
+
+    def test_contains_when_true_both_literals(self):
+        self.assert_query_result(
+            'SELECT "xyz" CONTAINS "y"',
+            self.make_context([('f0_', tq_types.BOOL, [True])]))
+
+    def test_contains_when_false_both_literals(self):
+        self.assert_query_result(
+            'SELECT "xyz" CONTAINS "q"',
+            self.make_context([('f0_', tq_types.BOOL, [False])]))
+
+    def test_contains_lhs_literal(self):
+        self.assert_query_result(
+            'SELECT "tinyquery" CONTAINS letters FROM string_table_2',
+            self.make_context([('f0_', tq_types.BOOL, [False, True])]))
+
+    def test_contains_rhs_literal(self):
+        self.assert_query_result(
+            'SELECT str CONTAINS "h" FROM string_table_2',
+            self.make_context([('f0_', tq_types.BOOL, [True, False])]))
+
+    def test_contains_both_columns(self):
+        self.assert_query_result(
+            'SELECT str CONTAINS letters FROM string_table_2',
+            self.make_context([('f0_', tq_types.BOOL, [True, False])]))
 
     def test_function_calls(self):
         with mock.patch('time.time', lambda: 15):
