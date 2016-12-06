@@ -195,6 +195,18 @@ class EvaluatorTest(unittest.TestCase):
             self.make_context([('f0_', tq_types.INT, [6, 10, 4])])
         )
 
+    def test_having(self):
+        self.assert_query_result(
+            'SELECT val1 + 2 AS x FROM test_table HAVING x > 4',
+            self.make_context([('x', tq_types.INT, [6, 10])])
+        )
+
+    def test_having_with_out_of_scope_variable(self):
+        self.assertRaises(
+            Exception,
+            lambda: self.tq.evaluate_query(
+                'SELECT val1 + 2 AS x FROM test_table HAVING val2 > 3'))
+
     def test_multiple_select(self):
         self.assert_query_result(
             'SELECT val1 + 1 foo, val2, val2 * 2'

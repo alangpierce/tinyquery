@@ -30,6 +30,7 @@ class ParserTest(unittest.TestCase):
                 None,
                 None,
                 None,
+                None,
                 None))
 
     def test_select_from_table(self):
@@ -38,6 +39,7 @@ class ParserTest(unittest.TestCase):
             tq_ast.Select(
                 [tq_ast.SelectField(tq_ast.ColumnId('foo'), None)],
                 tq_ast.TableId('bar', None),
+                None,
                 None,
                 None,
                 None,
@@ -56,6 +58,7 @@ class ParserTest(unittest.TestCase):
                         tq_ast.ColumnId('bar')),
                     None)],
                 tq_ast.TableId('baz', None),
+                None,
                 None,
                 None,
                 None,
@@ -84,6 +87,7 @@ class ParserTest(unittest.TestCase):
                 None,
                 None,
                 None,
+                None,
                 None
             )
         )
@@ -105,6 +109,7 @@ class ParserTest(unittest.TestCase):
                 None,
                 None,
                 None,
+                None,
                 None
             )
         )
@@ -121,6 +126,7 @@ class ParserTest(unittest.TestCase):
                 None,
                 None,
                 None,
+                None,
                 None
             ),
         )
@@ -130,6 +136,7 @@ class ParserTest(unittest.TestCase):
             'SELECT 5.3',
             tq_ast.Select(
                 [tq_ast.SelectField(literal(5.3), None)],
+                None,
                 None,
                 None,
                 None,
@@ -162,6 +169,7 @@ class ParserTest(unittest.TestCase):
                 None,
                 None,
                 None,
+                None,
                 None
             )
         )
@@ -181,6 +189,27 @@ class ParserTest(unittest.TestCase):
                     tq_ast.ColumnId('foo'),
                     tq_ast.Literal(3)),
                 None,
+                None,
+                None,
+                None,
+                None))
+
+    def test_having(self):
+        self.assert_parsed_select(
+            'SELECT foo + 2 FROM bar HAVING foo > 3',
+            tq_ast.Select(
+                [tq_ast.SelectField(tq_ast.BinaryOperator(
+                    '+',
+                    tq_ast.ColumnId('foo'),
+                    tq_ast.Literal(2)),
+                    None)],
+                tq_ast.TableId('bar', None),
+                None,
+                None,
+                tq_ast.BinaryOperator(
+                    '>',
+                    tq_ast.ColumnId('foo'),
+                    tq_ast.Literal(3)),
                 None,
                 None,
                 None))
@@ -203,6 +232,7 @@ class ParserTest(unittest.TestCase):
                 None,
                 None,
                 None,
+                None,
                 None
             )
         )
@@ -216,6 +246,7 @@ class ParserTest(unittest.TestCase):
                     None
                 )],
                 tq_ast.TableId('bar', None),
+                None,
                 None,
                 None,
                 None,
@@ -234,6 +265,7 @@ class ParserTest(unittest.TestCase):
                 [tq_ast.ColumnId('baz')],
                 None,
                 None,
+                None,
                 None
             )
         )
@@ -247,6 +279,7 @@ class ParserTest(unittest.TestCase):
                     tq_ast.TableId('table1', None),
                     tq_ast.TableId('table2', None),
                 ]),
+                None,
                 None,
                 None,
                 None,
@@ -267,8 +300,10 @@ class ParserTest(unittest.TestCase):
                     None,
                     None,
                     None,
+                    None,
                     None
                 ),
+                None,
                 None,
                 None,
                 None,
@@ -287,6 +322,7 @@ class ParserTest(unittest.TestCase):
             tq_ast.Select(
                 [tq_ast.SelectField(tq_ast.ColumnId('table.foo'), None)],
                 tq_ast.TableId('table', None),
+                None,
                 None,
                 None,
                 None,
@@ -320,6 +356,7 @@ class ParserTest(unittest.TestCase):
                 None,
                 None,
                 None,
+                None,
                 None
             )
         )
@@ -345,6 +382,7 @@ class ParserTest(unittest.TestCase):
                         ),
                     ]
                 ),
+                None,
                 None,
                 None,
                 None,
@@ -416,6 +454,7 @@ class ParserTest(unittest.TestCase):
                 None,
                 None,
                 None,
+                None,
                 None
             )
         )
@@ -426,6 +465,7 @@ class ParserTest(unittest.TestCase):
             tq_ast.Select([
                 tq_ast.SelectField(tq_ast.ColumnId('foo'), None)],
                 tq_ast.TableId('dataset.table', None),
+                None,
                 None,
                 None,
                 None,
@@ -450,6 +490,7 @@ class ParserTest(unittest.TestCase):
                 None,
                 None,
                 None,
+                None,
                 None))
 
     def test_group_each_by(self):
@@ -460,6 +501,7 @@ class ParserTest(unittest.TestCase):
                 tq_ast.TableId('table', None),
                 None,
                 [tq_ast.ColumnId('foo')],
+                None,
                 None,
                 None,
                 None))
@@ -487,6 +529,7 @@ class ParserTest(unittest.TestCase):
                 None,
                 None,
                 None,
+                None,
                 None))
 
     def test_string_literal(self):
@@ -494,6 +537,7 @@ class ParserTest(unittest.TestCase):
             'SELECT "Hello" AS foo',
             tq_ast.Select([
                 tq_ast.SelectField(tq_ast.Literal('Hello'), 'foo')],
+                None,
                 None,
                 None,
                 None,
@@ -513,6 +557,7 @@ class ParserTest(unittest.TestCase):
                 None,
                 None,
                 None,
+                None,
                 None)
         )
 
@@ -525,6 +570,7 @@ class ParserTest(unittest.TestCase):
                 tq_ast.SelectField(
                     tq_ast.FunctionCall('count', [tq_ast.Literal(1)]), None)],
                 tq_ast.TableId('table', None),
+                None,
                 None,
                 None,
                 None,
@@ -547,6 +593,7 @@ class ParserTest(unittest.TestCase):
                         ),
                     ]
                 ),
+                None,
                 None,
                 None,
                 None,
@@ -574,6 +621,7 @@ class ParserTest(unittest.TestCase):
                 [tq_ast.ColumnId('col1'), tq_ast.ColumnId('col2')],
                 None,
                 None,
+                None,
                 None
             )
         )
@@ -593,6 +641,7 @@ class ParserTest(unittest.TestCase):
                 None,
                 [tq_ast.ColumnId('baz')],
                 None,
+                None,
                 10,
                 None
             )
@@ -606,6 +655,7 @@ class ParserTest(unittest.TestCase):
                 tq_ast.SelectField(tq_ast.ColumnId('bar'), None),
                 tq_ast.SelectField(tq_ast.ColumnId('baz'), None)],
                 tq_ast.TableId('table', None),
+                None,
                 None,
                 None, [
                     tq_ast.Ordering(tq_ast.ColumnId('foo'), False),
@@ -633,7 +683,7 @@ class ParserTest(unittest.TestCase):
                         None
                     )
                 ],
-                None, None, None, None, None, None
+                None, None, None, None, None, None, None
             )
         )
 
@@ -660,7 +710,7 @@ class ParserTest(unittest.TestCase):
                         None
                     )
                 ],
-                None, None, None, None, None, None
+                None, None, None, None, None, None, None
             )
         )
 
@@ -685,7 +735,7 @@ class ParserTest(unittest.TestCase):
                         None
                     )
                 ],
-                None, None, None, None, None, None
+                None, None, None, None, None, None, None
             )
         )
 

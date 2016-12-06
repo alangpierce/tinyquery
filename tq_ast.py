@@ -9,7 +9,7 @@ import collections
 
 class Select(collections.namedtuple(
         'Select', ['select_fields', 'table_expr', 'where_expr', 'groups',
-                   'orderings', 'limit', 'alias'])):
+                   'having_expr', 'orderings', 'limit', 'alias'])):
     """Represents a top-level select statement.
 
     Fields:
@@ -20,6 +20,8 @@ class Select(collections.namedtuple(
             no WHERE filter.
         groups: A list of strings for fields to group by, or None if there is
             no GROUP BY clause.
+        having_expr: An expression for the HAVING filter, or None if there is
+            no HAVING filter.
         orderings: A list of Ordering instances, or None if there was no
             ORDER BY clause.
         limit: An integer limit
@@ -36,6 +38,8 @@ class Select(collections.namedtuple(
         if self.groups:
             result += ' GROUP BY {}'.format(
                 ', '.join(str(group) for group in self.groups))
+        if self.having_expr:
+            result += ' HAVING {}'.format(self.having_expr)
         if self.orderings:
             result += ' ORDER BY {}'.format(
                 ', '.join(str(ordering) for ordering in self.orderings))

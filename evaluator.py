@@ -24,6 +24,8 @@ class Evaluator(object):
         else:
             result = self.evaluate_select_fields(
                 select_ast.select_fields, select_context)
+        having_mask = self.evaluate_expr(select_ast.having_expr, result)
+        result = context.mask_context(result, having_mask)
         if select_ast.limit is not None:
             context.truncate_context(result, select_ast.limit)
         return result

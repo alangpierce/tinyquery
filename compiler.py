@@ -32,7 +32,7 @@ class Compiler(object):
         assert isinstance(select, tq_ast.Select)
         table_expr = self.compile_table_expr(select.table_expr)
         table_ctx = table_expr.type_ctx
-        where_expr = self.compile_where_expr(select.where_expr, table_ctx)
+        where_expr = self.compile_filter_expr(select.where_expr, table_ctx)
         select_fields = self.expand_select_fields(select.select_fields,
                                                   table_expr)
         aliases = self.get_aliases(select_fields)
@@ -58,8 +58,11 @@ class Compiler(object):
             collections.OrderedDict(
                 (field.alias, field.expr.type) for field in select_fields),
             implicit_column_context=implicit_column_context)
+        having_expr = self.compile_filter_expr(select.having_expr,
+                                               result_context)
         return typed_ast.Select(select_fields, table_expr, where_expr,
-                                group_set, select.limit, result_context)
+                                group_set, having_expr, select.limit,
+                                result_context)
 
     def expand_select_fields(self, select_fields, table_expr):
         """Expand any stars into a list of all context columns.
@@ -405,13 +408,13 @@ class Compiler(object):
         compiled_expr = self.compile_expr(expr, type_ctx)
         return typed_ast.SelectField(compiled_expr, alias)
 
-    def compile_where_expr(self, where_expr, table_ctx):
-        """If there is a WHERE expression, compile it.
+    def compile_filter_expr(self, filter_expr, table_ctx):
+        """If there is a WHERE or HAVING expression, compile it.
 
-        If the WHERE expression is missing, we just use the literal true.
+        If the filter expression is missing, we just use the literal true.
         """
-        if where_expr:
-            return self.compile_expr(where_expr, table_ctx)
+        if filter_expr:
+            return self.compile_expr(filter_expr, table_ctx)
         else:
             return typed_ast.Literal(True, tq_types.BOOL)
 

@@ -10,6 +10,7 @@ reserved_words = {
     'as': 'AS',
     'from': 'FROM',
     'where': 'WHERE',
+    'having': 'HAVING',
     'join': 'JOIN',
     'on': 'ON',
     'group': 'GROUP',

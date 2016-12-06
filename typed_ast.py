@@ -7,7 +7,7 @@ import tq_modes
 
 class Select(collections.namedtuple(
         'Select', ['select_fields', 'table', 'where_expr', 'group_set',
-                   'limit', 'type_ctx'])):
+                   'having_expr', 'limit', 'type_ctx'])):
     """A compiled query.
 
     Fields:
@@ -22,6 +22,9 @@ class Select(collections.namedtuple(
             was no GROUP BY but the select is an aggregate select, the GroupSet
             exists and is empty (since grouping by nothing puts everything into
             the same group).
+        having_expr: A filter to apply on the result of the select expresion.
+            Note that this filter should always be valid; if the user didn't
+            specify a HAVING clause, this is the literal true.
         limit: Either a number with the number of rows to limit the results to,
             or None if there is no limit.
         type_ctx: A type context describing the names and types of the fields
@@ -30,7 +33,7 @@ class Select(collections.namedtuple(
     """
     def with_type_ctx(self, type_ctx):
         return Select(self.select_fields, self.table, self.where_expr,
-                      self.group_set, self.limit, type_ctx)
+                      self.group_set, self.having_expr, self.limit, type_ctx)
 
 
 class SelectField(collections.namedtuple('SelectField', ['expr', 'alias'])):

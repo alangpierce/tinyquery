@@ -86,6 +86,7 @@ class CompilerTest(unittest.TestCase):
                 typed_ast.Table('table1', self.table1_type_ctx),
                 typed_ast.Literal(True, tq_types.BOOL),
                 None,
+                typed_ast.Literal(True, tq_types.BOOL),
                 None,
                 self.make_type_context(
                     [(None, 'value', tq_types.INT)],
@@ -107,6 +108,7 @@ class CompilerTest(unittest.TestCase):
                 typed_ast.NoTable(),
                 typed_ast.Literal(True, tq_types.BOOL),
                 None,
+                typed_ast.Literal(True, tq_types.BOOL),
                 None,
                 self.make_type_context(
                     [(None, 'f0_', tq_types.INT)],
@@ -146,6 +148,7 @@ class CompilerTest(unittest.TestCase):
                 typed_ast.NoTable(),
                 typed_ast.Literal(True, tq_types.BOOL),
                 None,
+                typed_ast.Literal(True, tq_types.BOOL),
                 None,
                 self.make_type_context([
                     (None, 'f0_', tq_types.INT), (None, 'f1_', tq_types.INT),
@@ -180,6 +183,7 @@ class CompilerTest(unittest.TestCase):
                 table=typed_ast.NoTable(),
                 where_expr=typed_ast.Literal(True, tq_types.BOOL),
                 group_set=None,
+                having_expr=typed_ast.Literal(True, tq_types.BOOL),
                 limit=None,
                 type_ctx=self.make_type_context(
                     [(None, 'f0_', tq_types.INT)],
@@ -199,6 +203,30 @@ class CompilerTest(unittest.TestCase):
                      typed_ast.Literal(3, tq_types.INT)],
                     tq_types.BOOL),
                 None,
+                typed_ast.Literal(True, tq_types.BOOL),
+                None,
+                self.make_type_context(
+                    [(None, 'value', tq_types.INT)],
+                    self.make_type_context(
+                        [('table1', 'value', tq_types.INT)]))
+            )
+        )
+
+    def test_having(self):
+        self.assert_compiled_select(
+            'SELECT value FROM table1 HAVING value > 3',
+            typed_ast.Select(
+                [typed_ast.SelectField(
+                    typed_ast.ColumnRef('table1', 'value', tq_types.INT),
+                    'value')],
+                typed_ast.Table('table1', self.table1_type_ctx),
+                typed_ast.Literal(True, tq_types.BOOL),
+                None,
+                typed_ast.FunctionCall(
+                    runtime.get_binary_op('>'),
+                    [typed_ast.ColumnRef(None, 'value', tq_types.INT),
+                     typed_ast.Literal(3, tq_types.INT)],
+                    tq_types.BOOL),
                 None,
                 self.make_type_context(
                     [(None, 'value', tq_types.INT)],
@@ -242,6 +270,7 @@ class CompilerTest(unittest.TestCase):
                 typed_ast.Table('table1', self.table1_type_ctx),
                 typed_ast.Literal(True, tq_types.BOOL),
                 None,
+                typed_ast.Literal(True, tq_types.BOOL),
                 None,
                 self.make_type_context([
                     (None, 'foo', tq_types.INT),
@@ -279,6 +308,7 @@ class CompilerTest(unittest.TestCase):
                 typed_ast.Table('table1', self.table1_type_ctx),
                 typed_ast.Literal(True, tq_types.BOOL),
                 typed_ast.GroupSet(set(), []),
+                typed_ast.Literal(True, tq_types.BOOL),
                 None,
                 self.make_type_context([
                     (None, 'f0_', tq_types.INT),
@@ -305,6 +335,7 @@ class CompilerTest(unittest.TestCase):
                     alias_groups={'foo'},
                     field_groups=[]
                 ),
+                typed_ast.Literal(True, tq_types.BOOL),
                 None,
                 self.make_type_context(
                     [(None, 'foo', tq_types.INT)],
@@ -330,6 +361,7 @@ class CompilerTest(unittest.TestCase):
                     field_groups=[
                         typed_ast.ColumnRef('table1', 'value2', tq_types.INT)]
                 ),
+                typed_ast.Literal(True, tq_types.BOOL),
                 None,
                 self.make_type_context(
                     [(None, 'f0_', tq_types.INT)],
@@ -356,6 +388,7 @@ class CompilerTest(unittest.TestCase):
                     alias_groups={'value'},
                     field_groups=[]
                 ),
+                typed_ast.Literal(True, tq_types.BOOL),
                 None,
                 self.make_type_context(
                     [(None, 'value', tq_types.INT),
@@ -394,6 +427,7 @@ class CompilerTest(unittest.TestCase):
                 ),
                 typed_ast.Literal(True, tq_types.BOOL),
                 None,
+                typed_ast.Literal(True, tq_types.BOOL),
                 None,
                 self.make_type_context(
                     [(None, 'value', tq_types.INT),
@@ -433,6 +467,7 @@ class CompilerTest(unittest.TestCase):
                     typed_ast.Table('table1', self.table1_type_ctx),
                     typed_ast.Literal(True, tq_types.BOOL),
                     None,
+                    typed_ast.Literal(True, tq_types.BOOL),
                     None,
                     self.make_type_context(
                         [(None, 'foo', tq_types.INT)],
@@ -442,6 +477,7 @@ class CompilerTest(unittest.TestCase):
                 ),
                 typed_ast.Literal(True, tq_types.BOOL),
                 None,
+                typed_ast.Literal(True, tq_types.BOOL),
                 None,
                 self.make_type_context(
                     [(None, 'foo', tq_types.INT), (None, 'f0_', tq_types.INT)],
@@ -461,6 +497,7 @@ class CompilerTest(unittest.TestCase):
                      ('t', 'value2', tq_types.INT)])),
                 typed_ast.Literal(True, tq_types.BOOL),
                 None,
+                typed_ast.Literal(True, tq_types.BOOL),
                 None,
                 self.make_type_context(
                     [(None, 't.value', tq_types.INT)],
@@ -491,6 +528,7 @@ class CompilerTest(unittest.TestCase):
                     typed_ast.Table('table1', self.table1_type_ctx),
                     typed_ast.Literal(True, tq_types.BOOL),
                     None,
+                    typed_ast.Literal(True, tq_types.BOOL),
                     None,
                     self.make_type_context(
                         [(None, 'foo', tq_types.INT)],
@@ -498,6 +536,7 @@ class CompilerTest(unittest.TestCase):
                             [('table1', 'value', tq_types.INT)]))),
                 typed_ast.Literal(True, tq_types.BOOL),
                 None,
+                typed_ast.Literal(True, tq_types.BOOL),
                 None,
                 self.make_type_context(
                     [(None, 'table1.value', tq_types.INT)],
@@ -520,6 +559,7 @@ class CompilerTest(unittest.TestCase):
                     typed_ast.Table('table1', self.table1_type_ctx),
                     typed_ast.Literal(True, tq_types.BOOL),
                     None,
+                    typed_ast.Literal(True, tq_types.BOOL),
                     None,
                     self.make_type_context(
                         [(None, 'value', tq_types.INT)],
@@ -528,6 +568,7 @@ class CompilerTest(unittest.TestCase):
                 ),
                 typed_ast.Literal(True, tq_types.BOOL),
                 None,
+                typed_ast.Literal(True, tq_types.BOOL),
                 None,
                 self.make_type_context(
                     [(None, 't.value', tq_types.INT)],
@@ -570,6 +611,7 @@ class CompilerTest(unittest.TestCase):
                 ),
                 typed_ast.Literal(True, tq_types.BOOL),
                 None,
+                typed_ast.Literal(True, tq_types.BOOL),
                 None,
                 self.make_type_context(
                     [(None, 'value2', tq_types.INT)],
@@ -618,6 +660,7 @@ class CompilerTest(unittest.TestCase):
                 ),
                 where_expr=typed_ast.Literal(True, tq_types.BOOL),
                 group_set=None,
+                having_expr=typed_ast.Literal(True, tq_types.BOOL),
                 limit=None,
                 type_ctx=self.make_type_context(
                     [(None, 'f0_', tq_types.INT)],
@@ -673,6 +716,7 @@ class CompilerTest(unittest.TestCase):
                 ),
                 where_expr=typed_ast.Literal(True, tq_types.BOOL),
                 group_set=None,
+                having_expr=typed_ast.Literal(True, tq_types.BOOL),
                 limit=None,
                 type_ctx=self.make_type_context(
                     [(None, 'f0_', tq_types.INT)],
@@ -693,6 +737,7 @@ class CompilerTest(unittest.TestCase):
                 typed_ast.Table('table1', self.table1_type_ctx),
                 typed_ast.Literal(True, tq_types.BOOL),
                 None,
+                typed_ast.Literal(True, tq_types.BOOL),
                 None,
                 self.make_type_context([
                     (None, 'value', tq_types.INT),
