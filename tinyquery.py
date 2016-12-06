@@ -1,5 +1,6 @@
 """Implementation of the TinyQuery service."""
 import collections
+import json
 
 import compiler
 import context
@@ -43,6 +44,46 @@ class TinyQuery(object):
                                          (column.mode, token))
                     column.values.append(token)
                 result_table.num_rows += 1
+        self.load_table_or_view(result_table)
+
+    def make_raw_schema_from_file(self, schema_filename):
+        """Construct a fake schema in the manner that `make_empty_table`
+        expects. Omits any fields that are not required.
+        """
+        fake_raw_schema = {}
+        fake_raw_schema['fields'] = []
+        with open(schema_filename, 'r') as f:
+            contents = json.loads(f.read())
+            fake_raw_schema['fields'] = contents
+        return fake_raw_schema
+
+    def load_table_from_newline_delimited_json(self, table_name,
+                                               schema_filename,
+                                               table_filename):
+        """Loads a table on disk that is stored in the format of Newline
+        Delimited JSON. Requires a schema file in the same format that
+        BigQuery accepts. For an example, see
+        <https://cloud.google.com/bigquery/docs/personsDataSchema.json>.
+        """
+        fake_raw_schema = self.make_raw_schema_from_file(schema_filename)
+        result_table = self.make_empty_table(table_name, fake_raw_schema)
+
+        with open(table_filename, 'r') as f:
+            def run_cast_function(key, value):
+                cast_function = (
+                    tq_types.CAST_FUNCTION_MAP[result_table.columns[key].type])
+                return None if value is None else cast_function(value)
+
+            for line in f:
+                row = json.loads(line)
+                for (key, value) in row.iteritems():
+                    token = run_cast_function(key, value)
+                    mode = result_table.columns[key].mode
+                    if not tq_modes.check_mode(token, mode):
+                        raise ValueError("Bad token for mode %s, got %s" %
+                                         (mode, token))
+                    result_table.columns[key].values.append(token)
+
         self.load_table_or_view(result_table)
 
     def make_empty_table(self, table_name, raw_schema):
