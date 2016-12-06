@@ -3,8 +3,9 @@ import abc
 import random
 import time
 import math
-import compiler
+import re
 
+import compiler
 import tq_types
 
 
@@ -155,6 +156,60 @@ class RandFunction(Function):
 
     def evaluate(self, num_rows):
         return [random.random() for _ in xrange(num_rows)]
+
+
+def _check_regexp_types(*types):
+    if any(t != tq_types.STRING for t in types):
+        raise TypeError('Expected string arguments.')
+
+
+def _ensure_literal(regexps):
+    assert all(r == regexps[0] for r in regexps), "Must provide a literal."
+    return regexps[0]
+
+
+# TODO(colin): the regexp functions here use the python re module, while
+# bigquery uses the re2 library, which only has a subset of the functionality.
+# Investigate pulling in re2 here.
+
+class RegexpMatchFunction(Function):
+    def check_types(self, type1, type2):
+        _check_regexp_types(type1, type2)
+        return tq_types.BOOL
+
+    def evaluate(self, num_rows, strings, regexps):
+        regexp = _ensure_literal(regexps)
+        return [True if re.search(regexp, s) else False for s in strings]
+
+
+class RegexpExtractFunction(Function):
+    def check_types(self, type1, type2):
+        _check_regexp_types(type1, type2)
+        return tq_types.STRING
+
+    def evaluate(self, num_rows, strings, regexps):
+        regexp = _ensure_literal(regexps)
+        result = []
+        for s in strings:
+            match_result = re.search(regexp, s)
+            if match_result is None:
+                result.append(None)
+            else:
+                assert len(match_result.groups()) == 1, (
+                    "Exactly one capturing group required")
+                result.append(match_result.group(1))
+        return result
+
+
+class RegexpReplaceFunction(Function):
+    def check_types(self, re_type, str_type, repl_type):
+        _check_regexp_types(re_type, str_type, repl_type)
+        return tq_types.STRING
+
+    def evaluate(self, num_rows, strings, regexps, replacements):
+        regexp = _ensure_literal(regexps)
+        replacement = _ensure_literal(replacements)
+        return [re.sub(regexp, replacement, s) for s in strings]
 
 
 class NthFunction(Function):
@@ -376,6 +431,9 @@ _FUNCTIONS = {
     'if': IfFunction(),
     'ifnull': IfNullFunction(),
     'hash': HashFunction(),
+    'regexp_match': RegexpMatchFunction(),
+    'regexp_extract': RegexpExtractFunction(),
+    'regexp_replace': RegexpReplaceFunction(),
 }
 
 

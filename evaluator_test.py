@@ -559,3 +559,24 @@ class EvaluatorTest(unittest.TestCase):
         )
 
         # TODO(colin): test behavior on empty list in both cases
+
+    def test_regexp_match(self):
+        self.assert_query_result(
+            'SELECT REGEXP_MATCH(str, "e(l|q)lo") FROM string_table',
+            self.make_context([
+                ('f0_', tq_types.BOOL, [True, False]),
+            ]))
+
+    def test_regexp_extract(self):
+        self.assert_query_result(
+            'SELECT REGEXP_EXTRACT(str, "e(l|q)lo") FROM string_table',
+            self.make_context([
+                ('f0_', tq_types.STRING, ['l', None])
+            ]))
+
+    def test_regexp_replace(self):
+        self.assert_query_result(
+            'SELECT REGEXP_REPLACE(str, "e(l|q)lo", "i") FROM string_table',
+            self.make_context([
+                ('f0_', tq_types.STRING, ['hi', 'world'])
+            ]))
