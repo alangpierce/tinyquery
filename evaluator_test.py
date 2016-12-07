@@ -1,4 +1,5 @@
 import collections
+import datetime
 import mock
 import unittest
 
@@ -541,6 +542,26 @@ class EvaluatorTest(unittest.TestCase):
                 ('f0_', tq_types.FLOAT, [3.0])
             ])
         )
+
+    def test_timestamp(self):
+        self.assert_query_result(
+            'SELECT TIMESTAMP("2016-01-01 01:00:00")',
+            self.make_context([
+                ('f0_', tq_types.TIMESTAMP,
+                 [datetime.datetime(2016, 1, 1, 1, 0, 0)])
+            ]))
+        self.assert_query_result(
+            'SELECT TIMESTAMP("2016-01-01")',
+            self.make_context([
+                ('f0_', tq_types.TIMESTAMP,
+                 [datetime.datetime(2016, 1, 1, 0, 0, 0)])
+            ]))
+        self.assert_query_result(
+            'SELECT TIMESTAMP(1451610000000000)',
+            self.make_context([
+                ('f0_', tq_types.TIMESTAMP,
+                 [datetime.datetime(2016, 1, 1, 1, 0, 0)])
+            ]))
 
     def test_first(self):
         # Test over the equivalent of a GROUP BY

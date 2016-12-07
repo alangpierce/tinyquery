@@ -5,6 +5,8 @@ import time
 import math
 import re
 
+import arrow
+
 import compiler
 import tq_types
 
@@ -393,6 +395,29 @@ class ContainsFunction(Function):
             return [v2 in v1 for v1, v2 in zip(list1, list2)]
 
 
+class TimestampFunction(Function):
+    def check_types(self, type1):
+        if type1 not in (tq_types.STRING, tq_types.INT):
+            raise TypeError(
+                'TIMESTAMP requires an ISO8601 string or unix timestamp in '
+                'microseconds.')
+        return tq_types.TIMESTAMP
+
+    def evaluate(self, num_rows, list1):
+        converter = lambda ts: ts
+        if num_rows > 0 and isinstance(list1[0], int):
+            # Bigquery accepts integer number of microseconds since the unix
+            # epoch here, whereas arrow wants a unix timestamp, with possible
+            # decimal part representing microseconds.
+            converter = lambda ts: float(ts) / 1E6
+        return [
+            # arrow.get parses ISO8601 strings and int/float unix timestamps
+            # without a format parameter
+            arrow.get(converter(ts)).to('UTC').naive
+            for ts in list1
+        ]
+
+
 _UNARY_OPERATORS = {
     '-': UnaryIntOperator(lambda a: -a),
     'is_null': UnaryBoolOperator(lambda a: a is None),
@@ -434,6 +459,7 @@ _FUNCTIONS = {
     'regexp_match': RegexpMatchFunction(),
     'regexp_extract': RegexpExtractFunction(),
     'regexp_replace': RegexpReplaceFunction(),
+    'timestamp': TimestampFunction(),
 }
 
 
