@@ -82,7 +82,6 @@ to implement:
 
 * ORDER BY.
 * HAVING.
-* JOIN on more than two tables.
 * Repeated columns and record columns, and all of the features that go along
 with them:
     * FLATTEN
