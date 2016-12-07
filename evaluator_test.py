@@ -287,7 +287,7 @@ class EvaluatorTest(unittest.TestCase):
         # Four results for the 1 key, then one each for 2 and 4.
         self.assertEqual([1, 1, 2, 2, 3, 7], sorted(result_rows))
 
-    def test_multiple_join(self):
+    def test_multiple_condition_join(self):
         result = self.tq.evaluate_query(
             'SELECT foo, bar'
             '    FROM test_table t1 JOIN test_table_3 t2'
@@ -295,6 +295,88 @@ class EvaluatorTest(unittest.TestCase):
         result_rows = zip(result.columns[(None, 'foo')].values,
                           result.columns[(None, 'bar')].values)
         self.assertEqual([(1, 1), (1, 2)], sorted(result_rows))
+
+    def test_left_outer_join(self):
+        result = self.tq.evaluate_query(
+            'SELECT t1.val1, t3.bar'
+            '   FROM test_table t1'
+            '   LEFT JOIN test_table_3 t3'
+            '   ON t1.val1 = t3.foo')
+        result_rows = zip(result.columns[(None, 't1.val1')].values,
+                          result.columns[(None, 't3.bar')].values)
+        self.assertEqual(
+            [
+                (1, 1),
+                (1, 1),
+                (1, 2),
+                (1, 2),
+                (2, 7),
+                (4, 3),
+                (8, None),
+            ],
+            sorted(result_rows))
+
+    def test_left_outer_join_2(self):
+        self.assert_query_result(
+            'SELECT * FROM test_table t1 '
+            'LEFT OUTER JOIN EACH test_table_2 t2 ON t1.val1 = t2.val3',
+            self.make_context([
+                ('t1.val1', tq_types.INT, [4, 1, 8, 1, 2]),
+                ('t1.val2', tq_types.INT, [8, 2, 4, 1, 6]),
+                ('t2.val3', tq_types.INT, [None, None, 8, None, None]),
+                ('t2.val2', tq_types.INT, [None, None, 7, None, None])
+            ])
+        )
+
+    def test_cross_join(self):
+        result = self.tq.evaluate_query(
+            'SELECT t1.val1, val3'
+            '    FROM test_table t1'
+            '    CROSS JOIN test_table_2 t2')
+        result_rows = zip(result.columns[(None, 't1.val1')].values,
+                          result.columns[(None, 'val3')].values)
+        self.assertEqual(
+            [
+                (1, 3),
+                (1, 3),
+                (1, 8),
+                (1, 8),
+                (2, 3),
+                (2, 8),
+                (4, 3),
+                (4, 8),
+                (8, 3),
+                (8, 8),
+            ],
+            sorted(result_rows))
+
+    def test_cross_join_2(self):
+        self.assert_query_result(
+            'SELECT * FROM string_table t1 CROSS JOIN test_table_2 t2',
+            self.make_context([
+                ('t1.str', tq_types.STRING, ['hello', 'hello',
+                                             'world', 'world']),
+                ('t2.val3', tq_types.INT, [3, 8, 3, 8]),
+                ('t2.val2', tq_types.INT, [2, 7, 2, 7])
+            ])
+        )
+
+    def test_multiple_way_join(self):
+        result = self.tq.evaluate_query(
+            'SELECT t1.val1, t3.bar, t2.val2'
+            '   FROM test_table t1'
+            '   LEFT JOIN test_table_3 t3'
+            '   ON t1.val1 = t3.foo'
+            '   JOIN test_table_2 t2'
+            '   ON t2.val3 = t3.bar')
+        result_rows = zip(result.columns[(None, 't1.val1')].values,
+                          result.columns[(None, 't3.bar')].values,
+                          result.columns[(None, 't2.val2')].values)
+        self.assertEqual(
+            [
+                (4, 3, 2),
+            ],
+            sorted(result_rows))
 
     def test_null_comparisons(self):
         self.assert_query_result(
@@ -399,29 +481,6 @@ class EvaluatorTest(unittest.TestCase):
                 ('t1.val2', tq_types.INT, [4]),
                 ('t2.val3', tq_types.INT, [8]),
                 ('t2.val2', tq_types.INT, [7])
-            ])
-        )
-
-    def test_left_outer_join(self):
-        self.assert_query_result(
-            'SELECT * FROM test_table t1 '
-            'LEFT OUTER JOIN EACH test_table_2 t2 ON t1.val1 = t2.val3',
-            self.make_context([
-                ('t1.val1', tq_types.INT, [4, 1, 8, 1, 2]),
-                ('t1.val2', tq_types.INT, [8, 2, 4, 1, 6]),
-                ('t2.val3', tq_types.INT, [None, None, 8, None, None]),
-                ('t2.val2', tq_types.INT, [None, None, 7, None, None])
-            ])
-        )
-
-    def test_cross_join(self):
-        self.assert_query_result(
-            'SELECT * FROM string_table t1 CROSS JOIN test_table_2 t2',
-            self.make_context([
-                ('t1.str', tq_types.STRING, ['hello', 'hello',
-                                             'world', 'world']),
-                ('t2.val3', tq_types.INT, [3, 8, 3, 8]),
-                ('t2.val2', tq_types.INT, [2, 7, 2, 7])
             ])
         )
 

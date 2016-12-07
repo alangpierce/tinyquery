@@ -60,7 +60,7 @@ TRIVIAL_GROUP_SET = GroupSet(set(), [])
 
 class TableExpression(object):
     """Abstract class for all table expression ASTs."""
-    def __init__(self, *_):
+    def __init__(self, *_, **__):
         assert hasattr(self, 'type_ctx')
 
 
@@ -82,18 +82,17 @@ class TableUnion(collections.namedtuple('TableUnion', ['tables', 'type_ctx']),
     pass
 
 
-class Join(collections.namedtuple('Join', ['table1', 'table2',
-                                           'conditions', 'is_left_outer',
+class Join(collections.namedtuple('Join', ['base', 'tables', 'conditions',
                                            'type_ctx']),
            TableExpression):
     """Table expression for a join operation.
 
     Fields:
-        table1: A table expression on the left side of the join.
-        table2: A table expression on the right side of the join.
+        base: A table expression on the left side of the join
+        tables: A list of (table expression, join type) tuples.
         conditions: A list of JoinFields objects, each of which specifies a
-            field from table1 joined on a field from table2.
-        is_left_outer: A boolean for whether or not this is a left outer join.
+            field from one of the tables joined on a field from another of the
+            tables.
         type_ctx: The resulting type context.
     """
 

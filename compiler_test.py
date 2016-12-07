@@ -5,6 +5,7 @@ import compiler
 import context
 import runtime
 import tinyquery
+import tq_ast
 import tq_modes
 import tq_types
 import type_context
@@ -42,9 +43,21 @@ class CompilerTest(unittest.TestCase):
              ('table2', 'value3', tq_types.INT)]
         )
 
+        self.table3 = tinyquery.Table(
+            'table3',
+            0,
+            collections.OrderedDict([
+                ('value', context.Column(type=tq_types.INT,
+                                         mode=tq_modes.NULLABLE, values=[])),
+            ])
+        )
+        self.table3_type_ctx = self.make_type_context(
+            [('table3', 'value', tq_types.INT)]
+        )
         self.tables_by_name = {
             'table1': self.table1,
-            'table2': self.table2
+            'table2': self.table2,
+            'table3': self.table3,
         }
 
     def assert_compiled_select(self, text, expected_ast):
@@ -538,16 +551,16 @@ class CompilerTest(unittest.TestCase):
                                         ('t1', 'value', tq_types.INT),
                                         ('t1', 'value2', tq_types.INT),
                                     ])),
-                    typed_ast.Table('table2',
-                                    self.make_type_context([
-                                        ('t2', 'value', tq_types.INT),
-                                        ('t2', 'value3', tq_types.INT),
-                                    ])),
-                    [typed_ast.JoinFields(
+                    [(typed_ast.Table('table2',
+                                      self.make_type_context([
+                                          ('t2', 'value', tq_types.INT),
+                                          ('t2', 'value3', tq_types.INT),
+                                      ])),
+                      tq_ast.JoinType.INNER)],
+                    [[typed_ast.JoinFields(
                         typed_ast.ColumnRef('t1', 'value', tq_types.INT),
                         typed_ast.ColumnRef('t2', 'value', tq_types.INT)
-                    )],
-                    False,
+                    )]],
                     self.make_type_context([
                         ('t1', 'value', tq_types.INT),
                         ('t1', 'value2', tq_types.INT),
@@ -571,38 +584,97 @@ class CompilerTest(unittest.TestCase):
             'FROM table1 t1 JOIN table2 t2 '
             'ON t1.value = t2.value AND t2.value3 = t1.value2',
             typed_ast.Select(
-                [typed_ast.SelectField(
-                    typed_ast.Literal(0, tq_types.INT), 'f0_')],
-                typed_ast.Join(
-                    typed_ast.Table('table1',
-                                    self.make_type_context([
-                                        ('t1', 'value', tq_types.INT),
-                                        ('t1', 'value2', tq_types.INT),
-                                    ])),
-                    typed_ast.Table('table2',
-                                    self.make_type_context([
-                                        ('t2', 'value', tq_types.INT),
-                                        ('t2', 'value3', tq_types.INT),
-                                    ])),
-                    [typed_ast.JoinFields(
-                        typed_ast.ColumnRef('t1', 'value', tq_types.INT),
-                        typed_ast.ColumnRef('t2', 'value', tq_types.INT)
-                    ), typed_ast.JoinFields(
-                        typed_ast.ColumnRef('t1', 'value2', tq_types.INT),
-                        typed_ast.ColumnRef('t2', 'value3', tq_types.INT)
-                    )],
-                    False,
-                    self.make_type_context([
+                select_fields=[
+                    typed_ast.SelectField(
+                        typed_ast.Literal(0, tq_types.INT), 'f0_')],
+                table=typed_ast.Join(
+                    base=typed_ast.Table('table1',
+                                         self.make_type_context([
+                                             ('t1', 'value', tq_types.INT),
+                                             ('t1', 'value2', tq_types.INT),
+                                         ])),
+                    tables=[
+                        (typed_ast.Table(
+                            'table2',
+                            self.make_type_context([
+                                ('t2', 'value', tq_types.INT),
+                                ('t2', 'value3', tq_types.INT),
+                            ])),
+                         tq_ast.JoinType.INNER)],
+                    conditions=[[
+                        typed_ast.JoinFields(
+                            typed_ast.ColumnRef('t1', 'value', tq_types.INT),
+                            typed_ast.ColumnRef('t2', 'value', tq_types.INT)
+                        ), typed_ast.JoinFields(
+                            typed_ast.ColumnRef('t1', 'value2', tq_types.INT),
+                            typed_ast.ColumnRef('t2', 'value3', tq_types.INT)
+                        )]],
+                    type_ctx=self.make_type_context([
                         ('t1', 'value', tq_types.INT),
                         ('t1', 'value2', tq_types.INT),
                         ('t2', 'value', tq_types.INT),
                         ('t2', 'value3', tq_types.INT),
                     ])
                 ),
-                typed_ast.Literal(True, tq_types.BOOL),
-                None,
-                None,
-                self.make_type_context(
+                where_expr=typed_ast.Literal(True, tq_types.BOOL),
+                group_set=None,
+                limit=None,
+                type_ctx=self.make_type_context(
+                    [(None, 'f0_', tq_types.INT)],
+                    self.make_type_context([]))
+            )
+        )
+
+    def test_multi_way_join(self):
+        self.assert_compiled_select(
+            'SELECT 0 '
+            'FROM table1 t1 JOIN table2 t2 ON t1.value = t2.value '
+            'LEFT JOIN table3 t3 ON t2.value3 = t3.value',
+            typed_ast.Select(
+                select_fields=[
+                    typed_ast.SelectField(
+                        typed_ast.Literal(0, tq_types.INT), 'f0_')],
+                table=typed_ast.Join(
+                    base=typed_ast.Table('table1',
+                                         self.make_type_context([
+                                             ('t1', 'value', tq_types.INT),
+                                             ('t1', 'value2', tq_types.INT),
+                                         ])),
+                    tables=[
+                        (typed_ast.Table(
+                            'table2',
+                            self.make_type_context([
+                                ('t2', 'value', tq_types.INT),
+                                ('t2', 'value3', tq_types.INT),
+                            ])),
+                         tq_ast.JoinType.INNER),
+                        (typed_ast.Table(
+                            'table3',
+                            self.make_type_context([
+                                ('t3', 'value', tq_types.INT)
+                            ])),
+                         tq_ast.JoinType.LEFT_OUTER
+                         )],
+                    conditions=[
+                        [typed_ast.JoinFields(
+                            typed_ast.ColumnRef('t1', 'value', tq_types.INT),
+                            typed_ast.ColumnRef('t2', 'value', tq_types.INT)
+                        )], [typed_ast.JoinFields(
+                            typed_ast.ColumnRef('t2', 'value3', tq_types.INT),
+                            typed_ast.ColumnRef('t3', 'value', tq_types.INT)
+                        )]],
+                    type_ctx=self.make_type_context([
+                        ('t1', 'value', tq_types.INT),
+                        ('t1', 'value2', tq_types.INT),
+                        ('t2', 'value', tq_types.INT),
+                        ('t2', 'value3', tq_types.INT),
+                        ('t3', 'value', tq_types.INT),
+                    ])
+                ),
+                where_expr=typed_ast.Literal(True, tq_types.BOOL),
+                group_set=None,
+                limit=None,
+                type_ctx=self.make_type_context(
                     [(None, 'f0_', tq_types.INT)],
                     self.make_type_context([]))
             )

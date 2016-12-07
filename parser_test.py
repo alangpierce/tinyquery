@@ -304,13 +304,17 @@ class ParserTest(unittest.TestCase):
                 tq_ast.SelectField(tq_ast.ColumnId('t2.bar'), None)],
                 tq_ast.Join(
                     tq_ast.TableId('table1', 't1'),
-                    tq_ast.TableId('table2', 't2'),
-                    tq_ast.BinaryOperator(
-                        '=',
-                        tq_ast.ColumnId('t1.id'),
-                        tq_ast.ColumnId('t2.id')
-                    ),
-                    is_left_outer=False
+                    [
+                        tq_ast.PartialJoin(
+                            tq_ast.TableId('table2', 't2'),
+                            tq_ast.JoinType.INNER,
+                            tq_ast.BinaryOperator(
+                                '=',
+                                tq_ast.ColumnId('t1.id'),
+                                tq_ast.ColumnId('t2.id')
+                            ),
+                        ),
+                    ]
                 ),
                 None,
                 None,
@@ -329,13 +333,17 @@ class ParserTest(unittest.TestCase):
                 tq_ast.SelectField(tq_ast.ColumnId('t2.bar'), None)],
                 tq_ast.Join(
                     tq_ast.TableId('table1', 't1'),
-                    tq_ast.TableId('table2', 't2'),
-                    tq_ast.BinaryOperator(
-                        '=',
-                        tq_ast.ColumnId('t1.id'),
-                        tq_ast.ColumnId('t2.id')
-                    ),
-                    is_left_outer=True
+                    [
+                        tq_ast.PartialJoin(
+                            tq_ast.TableId('table2', 't2'),
+                            tq_ast.JoinType.LEFT_OUTER,
+                            tq_ast.BinaryOperator(
+                                '=',
+                                tq_ast.ColumnId('t1.id'),
+                                tq_ast.ColumnId('t2.id')
+                            ),
+                        ),
+                    ]
                 ),
                 None,
                 None,
@@ -352,13 +360,57 @@ class ParserTest(unittest.TestCase):
                 tq_ast.SelectField(tq_ast.ColumnId('t2.bar'), None)],
                 tq_ast.Join(
                     tq_ast.TableId('table1', 't1'),
-                    tq_ast.TableId('table2', 't2'),
-                    tq_ast.BinaryOperator(
-                        '=',
-                        tq_ast.ColumnId('t1.id'),
-                        tq_ast.ColumnId('t2.id')
-                    ),
-                    is_left_outer=True
+                    [
+                        tq_ast.PartialJoin(
+                            tq_ast.TableId('table2', 't2'),
+                            tq_ast.JoinType.LEFT_OUTER,
+                            tq_ast.BinaryOperator(
+                                '=',
+                                tq_ast.ColumnId('t1.id'),
+                                tq_ast.ColumnId('t2.id')
+                            ),
+                        ),
+                    ]
+                ),
+                None,
+                None,
+                None,
+                None,
+                None
+            )
+        )
+
+    def test_multi_part_join(self):
+        self.assert_parsed_select(
+            'SELECT t1.foo, t2.bar, t3.baz '
+            'FROM table1 t1 LEFT OUTER JOIN EACH table2 t2 ON t1.id = t2.id '
+            'JOIN table3 t3 ON t3.id = t1.id',
+            tq_ast.Select([
+                tq_ast.SelectField(tq_ast.ColumnId('t1.foo'), None),
+                tq_ast.SelectField(tq_ast.ColumnId('t2.bar'), None),
+                tq_ast.SelectField(tq_ast.ColumnId('t3.baz'), None)],
+                tq_ast.Join(
+                    tq_ast.TableId('table1', 't1'),
+                    [
+                        tq_ast.PartialJoin(
+                            tq_ast.TableId('table2', 't2'),
+                            tq_ast.JoinType.LEFT_OUTER,
+                            tq_ast.BinaryOperator(
+                                '=',
+                                tq_ast.ColumnId('t1.id'),
+                                tq_ast.ColumnId('t2.id')
+                            ),
+                        ),
+                        tq_ast.PartialJoin(
+                            tq_ast.TableId('table3', 't3'),
+                            tq_ast.JoinType.INNER,
+                            tq_ast.BinaryOperator(
+                                '=',
+                                tq_ast.ColumnId('t3.id'),
+                                tq_ast.ColumnId('t1.id')
+                            ),
+                        ),
+                    ]
                 ),
                 None,
                 None,
@@ -419,13 +471,18 @@ class ParserTest(unittest.TestCase):
                 tq_ast.SelectField(tq_ast.Literal(0), None)],
                 tq_ast.Join(
                     tq_ast.TableId('table1', 't1'),
-                    tq_ast.TableId('table2', 't2'),
-                    tq_ast.BinaryOperator(
-                        '=',
-                        tq_ast.ColumnId('t1.foo'),
-                        tq_ast.ColumnId('t2.bar')
-                    ),
-                    is_left_outer=False),
+                    [
+                        tq_ast.PartialJoin(
+                            tq_ast.TableId('table2', 't2'),
+                            tq_ast.JoinType.INNER,
+                            tq_ast.BinaryOperator(
+                                '=',
+                                tq_ast.ColumnId('t1.foo'),
+                                tq_ast.ColumnId('t2.bar')
+                            ),
+                        ),
+                    ]
+                ),
                 None,
                 None,
                 None,
@@ -480,8 +537,16 @@ class ParserTest(unittest.TestCase):
             'SELECT 0 FROM table1 t1 CROSS JOIN table2 t2',
             tq_ast.Select(
                 [tq_ast.SelectField(tq_ast.Literal(0), None)],
-                tq_ast.CrossJoin(tq_ast.TableId('table1', 't1'),
-                                 tq_ast.TableId('table2', 't2')),
+                tq_ast.Join(
+                    tq_ast.TableId('table1', 't1'),
+                    [
+                        tq_ast.PartialJoin(
+                            tq_ast.TableId('table2', 't2'),
+                            tq_ast.JoinType.CROSS,
+                            None
+                        ),
+                    ]
+                ),
                 None,
                 None,
                 None,

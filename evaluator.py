@@ -1,6 +1,7 @@
 import collections
 
 import context
+import tq_ast
 import tq_modes
 import typed_ast
 
@@ -222,45 +223,55 @@ class Evaluator(object):
         return result_context
 
     def eval_table_Join(self, table_expr):
-        result_context_1 = self.evaluate_table_expr(table_expr.table1)
-        result_context_2 = self.evaluate_table_expr(table_expr.table2)
+        base_context = self.evaluate_table_expr(table_expr.base)
+        rhs_tables, join_types = zip(*table_expr.tables)
+        other_contexts = map(self.evaluate_table_expr, rhs_tables)
 
-        table_1_key_refs = [cond.column1 for cond in table_expr.conditions]
-        table_2_key_refs = [cond.column2 for cond in table_expr.conditions]
+        lhs_context = base_context
 
-        # Build a map from table 2 key to value.
-        table_2_key_contexts = {}
-        for i in xrange(result_context_2.num_rows):
-            key = self.get_join_key(result_context_2, table_2_key_refs, i)
-            if key not in table_2_key_contexts:
-                new_group_context = context.empty_context_from_template(
-                    result_context_2)
-                table_2_key_contexts[key] = new_group_context
-            context.append_row_to_context(
-                src_context=result_context_2, index=i,
-                dest_context=table_2_key_contexts[key])
+        for rhs_context, join_type, conditions in zip(other_contexts,
+                                                      join_types,
+                                                      table_expr.conditions):
 
-        result_context = context.cross_join_contexts(
-            context.empty_context_from_template(result_context_1),
-            context.empty_context_from_template(result_context_2),
-        )
-        for i in xrange(result_context_1.num_rows):
-            key = self.get_join_key(result_context_1, table_1_key_refs, i)
-            if key not in table_2_key_contexts:
-                # Left outer join means that if we didn't find something, we
-                # still put in a row with nulls on the right.
-                if table_expr.is_left_outer:
-                    row_context = context.row_context_from_context(
-                        result_context_1, i)
-                    context.append_context_to_context(row_context,
-                                                      result_context)
+            if join_type is tq_ast.JoinType.CROSS:
+                lhs_context = context.cross_join_contexts(
+                    lhs_context, rhs_context)
                 continue
-            row_context = context.row_context_from_context(result_context_1, i)
-            new_rows = context.cross_join_contexts(row_context,
-                                                   table_2_key_contexts[key])
-            context.append_context_to_context(new_rows, result_context)
 
-        return result_context
+            # We reordered the join conditions in the compilation step, so
+            # column1 always refers to the lhs of the current join.
+            lhs_key_refs = [cond.column1 for cond in conditions]
+            rhs_key_refs = [cond.column2 for cond in conditions]
+            rhs_key_contexts = {}
+            for i in xrange(rhs_context.num_rows):
+                rhs_key = self.get_join_key(rhs_context, rhs_key_refs, i)
+                if rhs_key not in rhs_key_contexts:
+                    rhs_key_contexts[rhs_key] = (
+                        context.empty_context_from_template(rhs_context))
+                context.append_row_to_context(
+                    src_context=rhs_context, index=i,
+                    dest_context=rhs_key_contexts[rhs_key])
+
+            result_context = context.cross_join_contexts(
+                context.empty_context_from_template(lhs_context),
+                context.empty_context_from_template(rhs_context))
+
+            for i in xrange(lhs_context.num_rows):
+                lhs_key = self.get_join_key(lhs_context, lhs_key_refs, i)
+                lhs_row_context = context.row_context_from_context(
+                    lhs_context, i)
+                if lhs_key in rhs_key_contexts:
+                    new_rows = context.cross_join_contexts(
+                        lhs_row_context, rhs_key_contexts[lhs_key])
+                    context.append_context_to_context(new_rows, result_context)
+                elif join_type is tq_ast.JoinType.LEFT_OUTER:
+                    # For a left outer join, we still want to in a row with
+                    # nulls on the right.
+                    context.append_context_to_context(lhs_row_context,
+                                                      result_context)
+            lhs_context = result_context
+
+        return lhs_context
 
     def get_join_key(self, table_context, key_column_refs, index):
         """Get the join key for a row in a table that is part of a join.

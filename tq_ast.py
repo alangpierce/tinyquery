@@ -114,29 +114,46 @@ class TableUnion(collections.namedtuple('TableUnion', ['tables'])):
         return ', '.join(str(table) for table in self.tables)
 
 
-class Join(collections.namedtuple('Join', ['table1', 'table2', 'condition',
-                                           'is_left_outer'])):
-    """Table expression for a join of two tables.
+class JoinType(object):
+    """A namespace for holding constants for different types of join.
 
-    Joining more than two tables currently isn't supported.
+    TODO(colin): if/when running python 3.5+ replace with an enum.
+    """
+    def __init__(self, name):
+        self.name = name
+
+    def __str__(self):
+        return '%s JOIN' % self.name
+
+JoinType.LEFT_OUTER = JoinType('LEFT OUTER')
+JoinType.INNER = JoinType('INNER')
+JoinType.CROSS = JoinType('CROSS')
+
+
+class PartialJoin(collections.namedtuple('PartialJoin',
+                                         ['table_expr', 'join_type',
+                                          'condition'])):
+    """Expression for the right side of a join, its type, and condition.
+
+    This represents something like `LEFT JOIN [dataset.table] ON x = y`
     """
     def __str__(self):
-        if self.is_left_outer:
-            return '{} LEFT OUTER JOIN {} ON {}'.format(
-                self.table1, self.table2, self.condition)
+        if self.join_type is JoinType.CROSS:
+            return '%s %s' % (self.join_type, self.table_expr)
         else:
-            return '{} JOIN {} ON {}'.format(
-                self.table1, self.table2, self.condition)
+            return '%s %s ON %s' % (
+                self.join_type, self.table_expr, self.condition)
 
 
-class CrossJoin(collections.namedtuple('CrossJoin', ['table1', 'table2'])):
-    """Table expression for a cross join of two tables.
+class Join(collections.namedtuple('Join', ['base', 'join_parts'])):
+    """Expression for a join of two or more tables.
 
-    This needs to be parsed separately instead of joining on true since there's
-    no way to write a regular JOIN that behaves as a CROSS JOIN.
+    base is the expression in the leftmost part of the join
+    join_parts is an array of one or more `PartialJoin`s
     """
     def __str__(self):
-        return '{} CROSS JOIN {}'.format(self.table1, self.table2)
+        return '%s %s' % (self.base,
+                          ' '.join(str(part) for part in self.join_parts))
 
 
 class CaseClause(collections.namedtuple('CaseClause',
