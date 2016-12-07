@@ -1,5 +1,6 @@
 """Implementation of the standard built-in functions."""
 import abc
+import datetime
 import random
 import time
 import math
@@ -256,11 +257,12 @@ class FirstFunction(Function):
 
 
 class NoArgFunction(Function):
-    def __init__(self, func):
+    def __init__(self, func, return_type=tq_types.INT):
         self.func = func
+        self.type = return_type
 
     def check_types(self):
-        return tq_types.INT
+        return self.type
 
     def evaluate(self, num_rows):
         return [self.func() for _ in xrange(num_rows)]
@@ -460,6 +462,15 @@ _FUNCTIONS = {
     'regexp_extract': RegexpExtractFunction(),
     'regexp_replace': RegexpReplaceFunction(),
     'timestamp': TimestampFunction(),
+    'current_date': NoArgFunction(
+        lambda: datetime.datetime.utcnow().strftime('%Y-%m-%d'),
+        return_type=tq_types.STRING),
+    'current_time': NoArgFunction(
+        lambda: datetime.datetime.utcnow().strftime('%H:%M:%S'),
+        return_type=tq_types.STRING),
+    'current_timestamp': NoArgFunction(
+        lambda: datetime.datetime.utcnow(),
+        return_type=tq_types.TIMESTAMP),
 }
 
 

@@ -11,6 +11,19 @@ import tq_types
 # TODO(Samantha): Not all modes are nullable.
 
 
+class fake_datetime(object):
+    """A mock version of the datetime.datetime class
+
+    Unfortunately we can't just mock out methods on datetime.datetime as
+    needed, since datetime.datetime is defined in native code.
+    """
+    fake_curr_dt = datetime.datetime(2019, 1, 3, 4, 43, 23)
+
+    @classmethod
+    def utcnow(cls):
+        return cls.fake_curr_dt
+
+
 class EvaluatorTest(unittest.TestCase):
     def setUp(self):
         self.tq = tinyquery.TinyQuery()
@@ -562,6 +575,25 @@ class EvaluatorTest(unittest.TestCase):
                 ('f0_', tq_types.TIMESTAMP,
                  [datetime.datetime(2016, 1, 1, 1, 0, 0)])
             ]))
+
+    def test_current_dt_functions(self):
+        with mock.patch('datetime.datetime',
+                        fake_datetime):
+            self.assert_query_result(
+                'SELECT CURRENT_TIMESTAMP()',
+                self.make_context([
+                    ('f0_', tq_types.TIMESTAMP,
+                     [fake_datetime.fake_curr_dt])]))
+
+            self.assert_query_result(
+                'SELECT CURRENT_TIME()',
+                self.make_context([
+                    ('f0_', tq_types.STRING, ['04:43:23'])]))
+
+            self.assert_query_result(
+                'SELECT CURRENT_DATE()',
+                self.make_context([
+                    ('f0_', tq_types.STRING, ['2019-01-03'])]))
 
     def test_first(self):
         # Test over the equivalent of a GROUP BY
