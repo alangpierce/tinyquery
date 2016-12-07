@@ -102,7 +102,8 @@ versa).
 
 ## Contributing
 
-This project is no longer in active development, but pull requests, bug
-reports, and questions are welcome. When submitting pull requests, please
-include tests with any changes you make and try to match the style of the
-surrounding code.
+See [CONTRIBUTING.md](https://github.com/Khan/tinyquery/blob/master/CONTRIBUTING.md)
+
+## License
+
+tinyquery is licensed under the [MIT License](http://opensource.org/licenses/MIT).
