@@ -69,19 +69,15 @@ want to patch `tinyquery.api_client.FakeHttpError` with that class.
 
 ## Features
 
-* Almost all of the core SQL language: SELECT, FROM, WHERE, GROUP BY, JOIN
-(including LEFT OUTER JOIN and CROSS JOIN), LIMIT, subqueries.
+* Almost all of the core SQL language: SELECT, FROM, WHERE, HAVING, GROUP BY,
+JOIN (including LEFT OUTER JOIN and CROSS JOIN), LIMIT, subqueries.
 * Many of the common functions and operators. See runtime.py for a list.
 * Importing from CSV.
 * API wrappers for creating, getting, and deleting tables, and for creating and
 managing query and copy jobs and getting query results.
 
 ## What's missing?
-Quite a bit, currently, although many of these things shouldn't be *that* hard
-to implement:
-
 * ORDER BY.
-* HAVING.
 * Repeated columns and record columns, and all of the features that go along
 with them:
     * FLATTEN
