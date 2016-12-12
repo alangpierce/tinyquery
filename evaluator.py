@@ -186,9 +186,8 @@ class Evaluator(object):
         assert isinstance(select_field, typed_ast.SelectField)
         results = self.evaluate_expr(select_field.expr, ctx)
         return (None, select_field.alias), context.Column(
-            # TODO(Samantha): This shouldn't just be nullable.
-            type=select_field.expr.type, mode=tq_modes.NULLABLE,
-            values=results)
+            type=results.type, mode=results.mode,
+            values=results.values)
 
     def evaluate_table_expr(self, table_expr):
         """Given a table expression, return a Context with its values."""
@@ -330,9 +329,10 @@ class Evaluator(object):
                        for arg in func_call.args]
         return func_call.func.evaluate(context.num_rows, *arg_results)
 
-    def evaluate_Literal(self, literal, context):
-        return [literal.value for _ in xrange(context.num_rows)]
+    def evaluate_Literal(self, literal, context_object):
+        values = [literal.value for _ in xrange(context_object.num_rows)]
+        return context.Column(type=literal.type, mode=tq_modes.NULLABLE,
+                              values=values)
 
     def evaluate_ColumnRef(self, column_ref, ctx):
-        column = ctx.columns[(column_ref.table, column_ref.column)]
-        return column.values
+        return ctx.columns[(column_ref.table, column_ref.column)]

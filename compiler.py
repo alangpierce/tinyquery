@@ -444,12 +444,16 @@ class Compiler(object):
             raise NotImplementedError('Unrecognized type: {}'.format(
                 type(expr.value)))
 
+    # TODO(Samantha): Don't pass the type, just pass the column so that mode is
+    # included.
     def compile_UnaryOperator(self, expr, type_ctx):
         func = runtime.get_unary_op(expr.operator)
         compiled_val = self.compile_expr(expr.expr, type_ctx)
         result_type = func.check_types(compiled_val.type)
         return typed_ast.FunctionCall(func, [compiled_val], result_type)
 
+    # TODO(Samantha): Don't pass the type, just pass the column so that mode is
+    # included.
     def compile_BinaryOperator(self, expr, type_ctx):
         func = runtime.get_binary_op(expr.operator)
 
@@ -461,6 +465,8 @@ class Compiler(object):
         return typed_ast.FunctionCall(
             func, [compiled_left, compiled_right], result_type)
 
+    # TODO(Samantha): Don't pass the type, just pass the column so that mode is
+    # included.
     def compile_FunctionCall(self, expr, type_ctx):
         # Innermost aggregates are special, since the context to use changes
         # inside them. We also need to generate an AggregateFunctionCall AST so

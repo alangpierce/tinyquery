@@ -9,7 +9,9 @@ import re
 import arrow
 
 import compiler
+import context
 import tq_types
+import tq_modes
 
 
 class Function(object):
@@ -51,8 +53,12 @@ class ArithmeticOperator(Function):
         else:
             return tq_types.INT
 
-    def evaluate(self, num_rows, list1, list2):
-        return [self.func(arg1, arg2) for arg1, arg2 in zip(list1, list2)]
+    def evaluate(self, num_rows, column1, column2):
+        values = [self.func(arg1, arg2) for arg1, arg2 in zip(column1.values,
+                                                              column2.values)]
+        # TODO(Samantha): Code smell incoming
+        t = self.check_types(column1.type, column2.type)
+        return context.Column(type=t, mode=tq_modes.NULLABLE, values=values)
 
 
 class ComparisonOperator(Function):
@@ -63,8 +69,11 @@ class ComparisonOperator(Function):
         # TODO: Fail if types are wrong.
         return tq_types.BOOL
 
-    def evaluate(self, num_rows, list1, list2):
-        return [self.func(arg1, arg2) for arg1, arg2 in zip(list1, list2)]
+    def evaluate(self, num_rows, column1, column2):
+        values = [self.func(arg1, arg2) for arg1, arg2 in zip(column1.values,
+                                                              column2.values)]
+        return context.Column(type=tq_types.BOOL, mode=tq_modes.NULLABLE,
+                              values=values)
 
 
 class BooleanOperator(Function):
@@ -75,8 +84,11 @@ class BooleanOperator(Function):
         # TODO: Fail if types are wrong.
         return tq_types.BOOL
 
-    def evaluate(self, num_rows, list1, list2):
-        return [self.func(arg1, arg2) for arg1, arg2 in zip(list1, list2)]
+    def evaluate(self, num_rows, column1, column2):
+        values = [self.func(arg1, arg2) for arg1, arg2 in zip(column1.values,
+                                                              column2.values)]
+        return context.Column(type=tq_types.BOOL, mode=tq_modes.NULLABLE,
+                              values=values)
 
 
 class UnaryIntOperator(Function):
@@ -88,8 +100,10 @@ class UnaryIntOperator(Function):
             raise TypeError('Expected int type')
         return tq_types.INT
 
-    def evaluate(self, num_rows, arg_list):
-        return [self.func(arg) for arg in arg_list]
+    def evaluate(self, num_rows, column):
+        values = [self.func(arg) for arg in column.values]
+        return context.Column(type=tq_types.INT, mode=tq_modes.NULLABLE,
+                              values=values)
 
 
 class UnaryBoolOperator(Function):
@@ -99,8 +113,10 @@ class UnaryBoolOperator(Function):
     def check_types(self, arg):
         return tq_types.BOOL
 
-    def evaluate(self, num_rows, arg_list):
-        return [self.func(arg) for arg in arg_list]
+    def evaluate(self, num_rows, column):
+        values = [self.func(arg) for arg in column.values]
+        return context.Column(type=tq_types.BOOL, mode=tq_modes.NULLABLE,
+                              values=values)
 
 
 class IfFunction(Function):
@@ -115,9 +131,14 @@ class IfFunction(Function):
             raise TypeError('Expected types to be the same.')
         return arg1
 
-    def evaluate(self, num_rows, cond_list, arg1_list, arg2_list):
-        return [arg1 if cond else arg2
-                for cond, arg1, arg2 in zip(cond_list, arg1_list, arg2_list)]
+    def evaluate(self, num_rows, condition_column, then_column, else_column):
+        values = [arg1 if cond else arg2
+                  for cond, arg1, arg2 in zip(condition_column.values,
+                                              then_column.values,
+                                              else_column.values)]
+        t = self.check_types(condition_column.type, then_column.type,
+                             else_column.type)
+        return context.Column(type=t, mode=tq_modes.NULLABLE, values=values)
 
 
 class IfNullFunction(Function):
@@ -138,9 +159,10 @@ class HashFunction(Function):
     def check_types(self, arg):
         return tq_types.INT
 
-    def evaluate(self, num_rows, arg_list):
+    def evaluate(self, num_rows, column):
         # TODO: Use CityHash.
-        return [hash(arg) for arg in arg_list]
+        return context.Column(type=tq_types.INT, mode=tq_modes.NULLABLE,
+                              values=[hash(arg) for arg in column.values])
 
 
 class FloorFunction(Function):
@@ -149,8 +171,10 @@ class FloorFunction(Function):
             raise TypeError('Expected type int or float.')
         return tq_types.FLOAT
 
-    def evaluate(self, num_rows, arg_list):
-        return [math.floor(arg) for arg in arg_list]
+    def evaluate(self, num_rows, column):
+        values = [math.floor(arg) for arg in column.values]
+        return context.Column(type=tq_types.FLOAT, mode=tq_modes.NULLABLE,
+                              values=values)
 
 
 class RandFunction(Function):
@@ -158,7 +182,10 @@ class RandFunction(Function):
         return tq_types.FLOAT
 
     def evaluate(self, num_rows):
-        return [random.random() for _ in xrange(num_rows)]
+        values = [random.random() for _ in xrange(num_rows)]
+        # TODO(Samantha): Should this be required?
+        return context.Column(type=tq_types.FLOAT, mode=tq_modes.NULLABLE,
+                              values=values)
 
 
 def _check_regexp_types(*types):
@@ -181,8 +208,11 @@ class RegexpMatchFunction(Function):
         return tq_types.BOOL
 
     def evaluate(self, num_rows, strings, regexps):
-        regexp = _ensure_literal(regexps)
-        return [True if re.search(regexp, s) else False for s in strings]
+        regexp = _ensure_literal(regexps.values)
+        values = (
+            [True if re.search(regexp, s) else False for s in strings.values])
+        return context.Column(type=tq_types.BOOL, mode=tq_modes.NULLABLE,
+                              values=values)
 
 
 class RegexpExtractFunction(Function):
@@ -191,17 +221,18 @@ class RegexpExtractFunction(Function):
         return tq_types.STRING
 
     def evaluate(self, num_rows, strings, regexps):
-        regexp = _ensure_literal(regexps)
-        result = []
-        for s in strings:
+        regexp = _ensure_literal(regexps.values)
+        values = []
+        for s in strings.values:
             match_result = re.search(regexp, s)
             if match_result is None:
-                result.append(None)
+                values.append(None)
             else:
                 assert len(match_result.groups()) == 1, (
                     "Exactly one capturing group required")
-                result.append(match_result.group(1))
-        return result
+                values.append(match_result.group(1))
+        return context.Column(type=tq_types.STRING, mode=tq_modes.NULLABLE,
+                              values=values)
 
 
 class RegexpReplaceFunction(Function):
@@ -210,11 +241,14 @@ class RegexpReplaceFunction(Function):
         return tq_types.STRING
 
     def evaluate(self, num_rows, strings, regexps, replacements):
-        regexp = _ensure_literal(regexps)
-        replacement = _ensure_literal(replacements)
-        return [re.sub(regexp, replacement, s) for s in strings]
+        regexp = _ensure_literal(regexps.values)
+        replacement = _ensure_literal(replacements.values)
+        values = [re.sub(regexp, replacement, s) for s in strings.values]
+        return context.Column(type=tq_types.STRING, mode=tq_modes.NULLABLE,
+                              values=values)
 
 
+# TODO(Samantha): I'm not sure how this actually works, leaving for now.
 class NthFunction(Function):
     # TODO(alan): Enforce that NTH takes a constant as its first arg.
     def check_types(self, index_type, rep_list_type):
@@ -223,12 +257,16 @@ class NthFunction(Function):
         # TODO(alan): Add a list type instead of assuming ints.
         return tq_types.INT
 
-    def evaluate(self, num_rows, index_list, rep_list):
+    def evaluate(self, num_rows, index_list, column):
         # Ideally, this would take a constant and not a full expression, but to
         # hack around it for now, we'll just take the value at the first "row",
         # which works if the expression was a constant.
-        index = index_list[0]
-        return [self.safe_index(rep_elem, index) for rep_elem in rep_list]
+        index = index_list.values[0]
+        values = [self.safe_index(rep_elem, index)
+                  for rep_elem in column.values]
+        # TODO(Samantha): This is almost certainly incorrect.
+        return context.Column(type=tq_types.INT, mode=tq_modes.NULLABLE,
+                              values=values)
 
     @staticmethod
     def safe_index(rep_elem, index):
@@ -243,17 +281,18 @@ class FirstFunction(Function):
     def check_types(self, rep_list_type):
         return rep_list_type
 
-    def evaluate(self, num_rows, rep_list):
-        if len(rep_list) == 0:
-            return [None]
+    def evaluate(self, num_rows, column):
+        values = []
+        if len(column.values) == 0:
+            values = [None]
 
-        if (type(rep_list[0]) is list):
-            # FIRST over something repeated
-            return [rep_row[0] if len(rep_row) > 0 else None
-                    for rep_row in rep_list]
+        if column.mode == tq_modes.REPEATED:
+            values = [repeated_row[0] if len(repeated_row) > 0 else None
+                      for repeated_row in column.values]
         else:
-            # FIRST over rows
-            return [rep_list[0]]
+            values = [column.values[0]]
+        return context.Column(type=column.type, mode=tq_modes.NULLABLE,
+                              values=values)
 
 
 class NoArgFunction(Function):
@@ -265,7 +304,8 @@ class NoArgFunction(Function):
         return self.type
 
     def evaluate(self, num_rows):
-        return [self.func() for _ in xrange(num_rows)]
+        return context.Column(type=self.type, mode=tq_modes.NULLABLE,
+                              values=[self.func() for _ in xrange(num_rows)])
 
 
 class InFunction(Function):
@@ -273,8 +313,12 @@ class InFunction(Function):
         return tq_types.BOOL
 
     def evaluate(self, num_rows, arg1, *other_args):
-        return [val1 in val_list
-                for val1, val_list in zip(arg1, zip(*other_args))]
+        values = [val1 in val_list
+                  for val1, val_list in zip(arg1.values,
+                                            zip(*(map(lambda x: x.values,
+                                                      other_args))))]
+        return context.Column(type=tq_types.BOOL, mode=tq_modes.NULLABLE,
+                              values=values)
 
 
 class ConcatFunction(Function):
@@ -283,16 +327,21 @@ class ConcatFunction(Function):
             raise TypeError('CONCAT only takes string arguments.')
         return tq_types.STRING
 
-    def evaluate(self, num_rows, *args):
-        return [''.join(strs) for strs in zip(*args)]
+    def evaluate(self, num_rows, *columns):
+        values = [''.join(strs) for strs in zip(*map(lambda x: x.values,
+                                                     columns))]
+        return context.Column(tq_types.STRING, tq_modes.NULLABLE,
+                              values=values)
 
 
 class StringFunction(Function):
     def check_types(self, arg_type):
         return tq_types.STRING
 
-    def evaluate(self, num_rows, arg_list):
-        return [str(arg) for arg in arg_list]
+    def evaluate(self, num_rows, column):
+        values = [str(arg) for arg in column.values]
+        return context.Column(type=tq_types.STRING, mode=tq_modes.NULLABLE,
+                              values=values)
 
 
 class MinMaxFunction(Function):
@@ -302,8 +351,10 @@ class MinMaxFunction(Function):
     def check_types(self, arg):
         return arg
 
-    def evaluate(self, num_rows, arg_list):
-        return [self.func(arg_list)]
+    def evaluate(self, num_rows, column):
+        return context.Column(type=self.check_types(column.type),
+                              mode=tq_modes.NULLABLE,
+                              values=[self.func(column.values)])
 
 
 class SumFunction(Function):
@@ -315,45 +366,51 @@ class SumFunction(Function):
         else:
             raise TypeError('Unexpected type.')
 
-    def evaluate(self, num_rows, arg_list):
-        return [sum([0 if arg is None else arg for arg in arg_list])]
+    def evaluate(self, num_rows, column):
+        values = [sum([0 if arg is None else arg for arg in column.values])]
+        return context.Column(type=tq_types.INT, mode=tq_modes.NULLABLE,
+                              values=values)
 
 
 class CountFunction(Function):
     def check_types(self, arg):
         return tq_types.INT
 
-    def evaluate(self, num_rows, arg_list):
-        return [len([0 for arg in arg_list if arg is not None])]
+    def evaluate(self, num_rows, column):
+        values = [len([0 for arg in column.values if arg is not None])]
+        return context.Column(type=tq_types.INT, mode=tq_modes.NULLABLE,
+                              values=values)
 
 
 class AvgFunction(Function):
     def check_types(self, arg):
         return tq_types.FLOAT
 
-    def evaluate(self, num_rows, arg_list):
-        filtered_args = [arg for arg in arg_list if arg is not None]
-        if not filtered_args:
-            return [None]
-        else:
-            return [float(sum(filtered_args)) / len(filtered_args)]
+    def evaluate(self, num_rows, column):
+        filtered_args = [arg for arg in column.values if arg is not None]
+        values = ([None] if not filtered_args else
+                  [float(sum(filtered_args)) / len(filtered_args)])
+        return context.Column(type=tq_types.FLOAT, mode=tq_modes.NULLABLE,
+                              values=values)
 
 
 class CountDistinctFunction(Function):
     def check_types(self, arg):
         return tq_types.INT
 
-    def evaluate(self, num_rows, arg_list):
-        return [len(set(arg_list))]
+    def evaluate(self, num_rows, column):
+        return context.Column(type=tq_types.INT, mode=tq_modes.NULLABLE,
+                              values=[len(set(column.values))])
 
 
 class StddevSampFunction(Function):
     def check_types(self, arg):
         return tq_types.FLOAT
 
-    def evaluate(self, num_rows, arg_list):
+    def evaluate(self, num_rows, column):
         # TODO(alan): Implement instead of returning 0.
-        return [0.0]
+        return context.Column(type=tq_types.FLOAT, mode=tq_modes.NULLABLE,
+                              values=[0.0])
 
 
 class QuantilesFunction(Function):
@@ -365,25 +422,28 @@ class QuantilesFunction(Function):
         # list type.
         return tq_types.INT
 
-    def evaluate(self, num_rows, arg_list, num_quantiles_list):
-        sorted_args = sorted(arg for arg in arg_list if arg is not None)
+    def evaluate(self, num_rows, column, num_quantiles_list):
+        sorted_args = sorted(arg for arg in column.values if arg is not None)
+        values = []
         if not sorted_args:
-            return [None]
+            values = [None]
         # QUANTILES is special because it takes a constant, not an expression
         # that gets repeated for each column. To hack around this for now, just
         # take the first element off.
-        num_quantiles = num_quantiles_list[0]
+        num_quantiles = num_quantiles_list.values[0]
         # Stretch the quantiles out so the first is always the min of the list
         # and the last is always the max of the list, but make sure it stays
         # within the bounds of the list so we don't get an IndexError.
         # This returns a single repeated field rather than one row per
         # quantile, so we need one more set of brackets than you might expect.
-        return [[
+        values = [[
             sorted_args[
                 min(len(sorted_args) * i / (num_quantiles - 1),
                     len(sorted_args) - 1)
             ] for i in xrange(num_quantiles)
         ]]
+        return context.Column(type=tq_types.INT, mode=tq_modes.REPEATED,
+                              values=values)
 
 
 class ContainsFunction(Function):
@@ -392,9 +452,12 @@ class ContainsFunction(Function):
             raise TypeError("CONTAINS must operate on strings.")
         return tq_types.BOOL
 
-    def evaluate(self, num_rows, list1, list2):
-        if len(list1) == len(list2):
-            return [v2 in v1 for v1, v2 in zip(list1, list2)]
+    def evaluate(self, num_rows, column1, column2):
+        if len(column1.values) == len(column2.values):
+            values = (
+                [v2 in v1 for v1, v2 in zip(column1.values, column2.values)])
+            return context.Column(type=tq_types.BOOL, mode=tq_modes.NULLABLE,
+                                  values=values)
 
 
 class TimestampFunction(Function):
@@ -405,19 +468,21 @@ class TimestampFunction(Function):
                 'microseconds.')
         return tq_types.TIMESTAMP
 
-    def evaluate(self, num_rows, list1):
+    def evaluate(self, num_rows, column):
         converter = lambda ts: ts
-        if num_rows > 0 and isinstance(list1[0], int):
+        if num_rows > 0 and column.type == tq_types.INT:
             # Bigquery accepts integer number of microseconds since the unix
             # epoch here, whereas arrow wants a unix timestamp, with possible
             # decimal part representing microseconds.
             converter = lambda ts: float(ts) / 1E6
-        return [
+        values = [
             # arrow.get parses ISO8601 strings and int/float unix timestamps
             # without a format parameter
             arrow.get(converter(ts)).to('UTC').naive
-            for ts in list1
+            for ts in column.values
         ]
+        return context.Column(type=tq_types.TIMESTAMP, mode=tq_modes.NULLABLE,
+                              values=values)
 
 
 _UNARY_OPERATORS = {

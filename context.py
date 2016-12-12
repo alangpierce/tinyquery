@@ -109,12 +109,11 @@ def mask_context(context, mask):
         'Cannot mask a context with an aggregate context.')
     new_columns = collections.OrderedDict([
         (column_name,
-         # TODO(Samantha): Fix this. Mode is not always nullable
-         Column(type=column.type, mode=tq_modes.NULLABLE,
-                values=list(itertools.compress(column.values, mask))))
+         Column(type=column.type, mode=column.mode,
+                values=list(itertools.compress(column.values, mask.values))))
         for (column_name, column) in context.columns.iteritems()
     ])
-    return Context(sum(mask), new_columns, None)
+    return Context(sum(mask.values), new_columns, None)
 
 
 def empty_context_from_template(context):
