@@ -686,6 +686,105 @@ class EvaluatorTest(unittest.TestCase):
             self.make_context([
                 ('f0_', tq_types.INT, [2016])]))
 
+    def test_other_timestamp_functions(self):
+        # These query test cases are taken from the examples in the bigquery
+        # documentation, with some additions.
+
+        self.assert_query_result(
+            'SELECT DATE_ADD(TIMESTAMP("2012-10-01 02:03:04"), 5, "YEAR")',
+            self.make_context([
+                ('f0_', tq_types.TIMESTAMP, [
+                    datetime.datetime(2017, 10, 1, 2, 3, 4)])]))
+
+        self.assert_query_result(
+            'SELECT DATE_ADD(TIMESTAMP("2012-10-01 02:03:04"), -5, "YEAR")',
+            self.make_context([
+                ('f0_', tq_types.TIMESTAMP, [
+                    datetime.datetime(2007, 10, 1, 2, 3, 4)])]))
+
+        self.assert_query_result(
+            'SELECT DATE_ADD(TIMESTAMP("2012-10-01 02:03:04"), 5, "MONTH")',
+            self.make_context([
+                ('f0_', tq_types.TIMESTAMP, [
+                    datetime.datetime(2013, 3, 1, 2, 3, 4)])]))
+
+        self.assert_query_result(
+            'SELECT DATE_ADD(TIMESTAMP("2012-10-01 02:03:04"), -5, "MONTH")',
+            self.make_context([
+                ('f0_', tq_types.TIMESTAMP, [
+                    datetime.datetime(2012, 5, 1, 2, 3, 4)])]))
+
+        self.assert_query_result(
+            'SELECT DATE_ADD(TIMESTAMP("2012-10-01 02:03:04"), 5, "DAY")',
+            self.make_context([
+                ('f0_', tq_types.TIMESTAMP, [
+                    datetime.datetime(2012, 10, 6, 2, 3, 4)])]))
+
+        self.assert_query_result(
+            'SELECT DATE_ADD(TIMESTAMP("2012-10-01 02:03:04"), -5, "DAY")',
+            self.make_context([
+                ('f0_', tq_types.TIMESTAMP, [
+                    datetime.datetime(2012, 9, 26, 2, 3, 4)])]))
+
+        self.assert_query_result(
+            'SELECT DATEDIFF(TIMESTAMP("2012-10-02 05:23:48"),'
+            '                 TIMESTAMP("2011-06-24 12:18:35"))',
+            self.make_context([
+                ('f0_', tq_types.INT, [466])]))
+
+        self.assert_query_result(
+            'SELECT MSEC_TO_TIMESTAMP(1349053323000)',
+            self.make_context([
+                ('f0_', tq_types.TIMESTAMP, [
+                    datetime.datetime(2012, 10, 1, 1, 2, 3)])]))
+
+        self.assert_query_result(
+            'SELECT PARSE_UTC_USEC("2012-10-01 02:03:04")',
+            self.make_context([
+                ('f0_', tq_types.INT, [1349056984000000])]))
+
+        self.assert_query_result(
+            'SELECT SEC_TO_TIMESTAMP(1355968987)',
+            self.make_context([
+                ('f0_', tq_types.TIMESTAMP, [
+                    datetime.datetime(2012, 12, 20, 2, 3, 7)])]))
+
+        self.assert_query_result(
+            'SELECT STRFTIME_UTC_USEC(1274259481071200, "%Y-%m-%d")',
+            self.make_context([
+                ('f0_', tq_types.STRING, ['2010-05-19'])]))
+
+        self.assert_query_result(
+            'SELECT USEC_TO_TIMESTAMP(1349053323000000)',
+            self.make_context([
+                ('f0_', tq_types.TIMESTAMP, [
+                    datetime.datetime(2012, 10, 1, 1, 2, 3)])]))
+
+        self.assert_query_result(
+            'SELECT UTC_USEC_TO_DAY(1274259481071200)',
+            self.make_context([
+                ('f0_', tq_types.INT, [1274227200000000])]))
+
+        self.assert_query_result(
+            'SELECT UTC_USEC_TO_HOUR(1274259481071200)',
+            self.make_context([
+                ('f0_', tq_types.INT, [1274256000000000])]))
+
+        self.assert_query_result(
+            'SELECT UTC_USEC_TO_MONTH(1274259481071200)',
+            self.make_context([
+                ('f0_', tq_types.INT, [1272672000000000])]))
+
+        self.assert_query_result(
+            'SELECT UTC_USEC_TO_WEEK(1207929480000000, 2)',
+            self.make_context([
+                ('f0_', tq_types.INT, [1207612800000000])]))
+
+        self.assert_query_result(
+            'SELECT UTC_USEC_TO_YEAR(1274259481071200)',
+            self.make_context([
+                ('f0_', tq_types.INT, [1262304000000000])]))
+
     def test_first(self):
         # Test over the equivalent of a GROUP BY
         self.assert_query_result(

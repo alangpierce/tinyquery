@@ -501,6 +501,175 @@ class TimestampExtractFunction(Function):
                               values=values)
 
 
+class DateAddFunction(Function):
+    VALID_INTERVALS = ('YEAR', 'MONTH', 'DAY', 'HOUR', 'MINUTE', 'SECOND')
+
+    def check_types(self, type1, type2, type3):
+        if not (type1 == tq_types.TIMESTAMP and
+                type2 == tq_types.INT and
+                type3 == tq_types.STRING):
+            raise TypeError(
+                'DATE_ADD takes a timestamp, integer, and string specifying '
+                'the interval. Got: (%s, %s, %s)' % (type1, type2, type3))
+
+        return tq_types.TIMESTAMP
+
+    def evaluate(self, num_rows, timestamps, nums_intervals, interval_types):
+        num_intervals = _ensure_literal(nums_intervals.values)
+        interval_type = _ensure_literal(interval_types.values)
+        if interval_type not in self.VALID_INTERVALS:
+            raise ValueError(
+                'Valid values for the DATE_ADD interval are: %s.  Got %s.' % (
+                    ', '.join(self.VALID_INTERVALS), interval_type))
+
+        if interval_type == 'MONTH':
+            def adder(ts):
+                year = ts.year + (ts.month - 1 + num_intervals) // 12
+                month = 1 + (ts.month - 1 + num_intervals) % 12
+                return ts.replace(year=year, month=month)
+            values = map(adder, timestamps.values)
+        elif interval_type == 'YEAR':
+            values = [ts.replace(year=(ts.year + num_intervals))
+                      for ts in timestamps.values]
+        else:
+            # All of the other valid options for bigquery are also valid
+            # keyword arguments to datetime.timedelta, when lowercased and
+            # pluralized.
+            python_interval_name = interval_type.lower() + 's'
+            values = [
+                ts + datetime.timedelta(
+                    **{python_interval_name: num_intervals})
+                for ts in timestamps.values]
+
+        return context.Column(type=tq_types.TIMESTAMP, mode=tq_modes.NULLABLE,
+                              values=values)
+
+
+class DateDiffFunction(Function):
+    def check_types(self, type1, type2):
+        if not (type1 == tq_types.TIMESTAMP and type2 == tq_types.TIMESTAMP):
+            raise TypeError('DATEDIFF requires two timestamps.')
+
+        return tq_types.INT
+
+    def evaluate(self, num_rows, lhs_ts, rhs_ts):
+        values = [int(round((lhs - rhs).total_seconds() / 24 / 3600))
+                  for lhs, rhs in zip(lhs_ts.values, rhs_ts.values)]
+        return context.Column(type=tq_types.INT, mode=tq_modes.NULLABLE,
+                              values=values)
+
+
+class Compose(Function):
+    """Function implementing function composition.
+
+    Note that this is not actually a bigquery function, but a tool for
+    combining them in implementations.
+    """
+    def __init__(self, *functions):
+        self.functions = list(reversed(functions))
+        assert len(self.functions) > 1, (
+            'Compose requires at least two functions.')
+
+    def check_types(self, *types):
+        result = self.functions[0].check_types(*types)
+        for f in self.functions[1:]:
+            result = f.check_types(result)
+
+        return result
+
+    def evaluate(self, num_rows, *args):
+        result = self.functions[0].evaluate(num_rows, *args)
+        for f in self.functions[1:]:
+            result = f.evaluate(num_rows, result)
+        return result
+
+
+class TimestampShiftFunction(Function):
+    """Shift a timestamp to the beginning of the specified interval."""
+    def __init__(self, interval):
+        self.interval = interval
+        assert interval in ('day', 'hour', 'month', 'year')
+
+    def check_types(self, type1):
+        if type1 != tq_types.TIMESTAMP:
+            raise TypeError("Expected a timestamp.")
+        return tq_types.TIMESTAMP
+
+    def _hour_truncate(self, ts):
+        return ts.replace(minute=0, second=0, microsecond=0)
+
+    def _day_truncate(self, ts):
+        return self._hour_truncate(ts).replace(hour=0)
+
+    def _month_truncate(self, ts):
+        return self._day_truncate(ts).replace(day=1)
+
+    def _year_truncate(self, ts):
+        return self._month_truncate(ts).replace(month=1)
+
+    def evaluate(self, num_rows, timestamps):
+        truncate_fn = getattr(self, '_%s_truncate' % self.interval)
+        values = map(truncate_fn, timestamps.values)
+        return context.Column(type=tq_types.TIMESTAMP, mode=tq_modes.NULLABLE,
+                              values=values)
+
+
+class UnixTimestampToWeekdayFunction(Function):
+    """Shift a timestamp to the beginning of the specified day in the week.
+
+    Note that in contrast to other day of week functions, days run from
+    0 == Sunday to 6 == Saturday (for consistency with bigquery).
+    """
+    def check_types(self, type1, type2):
+        if not (type1 == tq_types.INT and type2 == tq_types.INT):
+            raise TypeError(
+                'Expected a unix (integer) timestamp and an integer, '
+                'got %s.' % [type1, type2])
+        return tq_types.TIMESTAMP
+
+    def _weekday_from_ts(self, ts):
+        # isoweekday goes from 1 == Monday to 7 == Sunday
+        return ts.isoweekday() % 7
+
+    def evaluate(self, num_rows, unix_timestamps, weekdays):
+        weekday = _ensure_literal(weekdays.values)
+        timestamps = TimestampFunction().evaluate(num_rows, unix_timestamps)
+        truncated = TimestampShiftFunction('day').evaluate(
+            num_rows, timestamps)
+        values = [
+            ts + datetime.timedelta(
+                days=(weekday - self._weekday_from_ts(ts)))
+            for ts in truncated.values]
+        ts_result = context.Column(
+            type=tq_types.TIMESTAMP, mode=tq_modes.NULLABLE, values=values)
+        return timestamp_to_usec.evaluate(num_rows, ts_result)
+
+
+class StrftimeFunction(Function):
+    """Format a unix timestamp in microseconds by the supplied format.
+
+    TODO(colin): it appears that bigquery and python strftime behave
+    identically.  Are there any differences?
+    """
+    def check_types(self, type1, type2):
+        if not (type1 == tq_types.INT and type2 == tq_types.STRING):
+            raise TypeError('Expected an integer and a string, got %s.' % (
+                [type1, type2]))
+        return tq_types.STRING
+
+    def evaluate(self, num_rows, unix_timestamps, formats):
+        format_str = _ensure_literal(formats.values)
+        timestamps = TimestampFunction().evaluate(num_rows, unix_timestamps)
+        values = [ts.strftime(format_str) for ts in timestamps.values]
+        return context.Column(type=tq_types.STRING, mode=tq_modes.NULLABLE,
+                              values=values)
+
+
+timestamp_to_usec = TimestampExtractFunction(
+    lambda dt: int(1E6 * arrow.get(dt).float_timestamp),
+    return_type=tq_types.INT)
+
+
 _UNARY_OPERATORS = {
     '-': UnaryIntOperator(lambda a: -a),
     'is_null': UnaryBoolOperator(lambda a: a is None),
@@ -555,6 +724,8 @@ _FUNCTIONS = {
     'date': TimestampExtractFunction(
         lambda dt: dt.strftime('%Y-%m-%d'),
         return_type=tq_types.STRING),
+    'date_add': DateAddFunction(),
+    'datediff': DateDiffFunction(),
     'day': TimestampExtractFunction(
         lambda dt: dt.day,
         return_type=tq_types.INT),
@@ -578,12 +749,22 @@ _FUNCTIONS = {
     'month': TimestampExtractFunction(
         lambda dt: dt.month,
         return_type=tq_types.INT),
+    'msec_to_timestamp': Compose(
+        TimestampFunction(),
+        UnaryIntOperator(lambda msec: msec * 1E3)),
+    'parse_utc_usec': Compose(
+        timestamp_to_usec,
+        TimestampFunction()),
     'quarter': TimestampExtractFunction(
         lambda dt: dt.month // 3 + 1,
         return_type=tq_types.INT),
     'second': TimestampExtractFunction(
         lambda dt: dt.second,
         return_type=tq_types.INT),
+    'sec_to_timestamp': Compose(
+        TimestampFunction(),
+        UnaryIntOperator(lambda sec: sec * 1E6)),
+    'strftime_utc_usec': StrftimeFunction(),
     'time': TimestampExtractFunction(
         lambda dt: dt.strftime('%H:%M:%S'),
         return_type=tq_types.STRING),
@@ -593,9 +774,25 @@ _FUNCTIONS = {
     'timestamp_to_sec': TimestampExtractFunction(
         lambda dt: arrow.get(dt).timestamp,
         return_type=tq_types.INT),
-    'timestamp_to_usec': TimestampExtractFunction(
-        lambda dt: int(1E6 * arrow.get(dt).float_timestamp),
-        return_type=tq_types.INT),
+    'timestamp_to_usec': timestamp_to_usec,
+    'usec_to_timestamp': TimestampFunction(),
+    'utc_usec_to_day': Compose(
+        timestamp_to_usec,
+        TimestampShiftFunction('day'),
+        TimestampFunction()),
+    'utc_usec_to_hour': Compose(
+        timestamp_to_usec,
+        TimestampShiftFunction('hour'),
+        TimestampFunction()),
+    'utc_usec_to_month': Compose(
+        timestamp_to_usec,
+        TimestampShiftFunction('month'),
+        TimestampFunction()),
+    'utc_usec_to_week': UnixTimestampToWeekdayFunction(),
+    'utc_usec_to_year': Compose(
+        timestamp_to_usec,
+        TimestampShiftFunction('year'),
+        TimestampFunction()),
     'week': TimestampExtractFunction(
         # TODO(colin): can this ever be 54?
         # Bigquery returns 1...53 inclusive
