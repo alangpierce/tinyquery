@@ -485,6 +485,22 @@ class TimestampFunction(Function):
                               values=values)
 
 
+class TimestampExtractFunction(Function):
+    def __init__(self, extractor, return_type):
+        self.extractor = extractor
+        self.type = return_type
+
+    def check_types(self, type1):
+        if type1 != tq_types.TIMESTAMP:
+            raise TypeError('Expected a timestamp, got %s.' % type1)
+        return self.type
+
+    def evaluate(self, num_rows, column1):
+        values = map(self.extractor, column1.values)
+        return context.Column(type=self.type, mode=tq_modes.NULLABLE,
+                              values=values)
+
+
 _UNARY_OPERATORS = {
     '-': UnaryIntOperator(lambda a: -a),
     'is_null': UnaryBoolOperator(lambda a: a is None),
@@ -536,6 +552,61 @@ _FUNCTIONS = {
     'current_timestamp': NoArgFunction(
         lambda: datetime.datetime.utcnow(),
         return_type=tq_types.TIMESTAMP),
+    'date': TimestampExtractFunction(
+        lambda dt: dt.strftime('%Y-%m-%d'),
+        return_type=tq_types.STRING),
+    'day': TimestampExtractFunction(
+        lambda dt: dt.day,
+        return_type=tq_types.INT),
+    'dayofweek': TimestampExtractFunction(
+        # isoweekday uses Sunday == 7, but it's 1 in bigquery, so we need to
+        # convert.
+        lambda dt: (dt.isoweekday() % 7 + 1),
+        return_type=tq_types.INT),
+    'dayofyear': TimestampExtractFunction(
+        lambda dt: int(dt.strftime('%j'), 10),
+        return_type=tq_types.INT),
+    'format_utc_usec': TimestampExtractFunction(
+        lambda dt: dt.strftime('%Y-%m-%d %H:%M:%S.%f'),
+        return_type=tq_types.STRING),
+    'hour': TimestampExtractFunction(
+        lambda dt: dt.hour,
+        return_type=tq_types.INT),
+    'minute': TimestampExtractFunction(
+        lambda dt: dt.minute,
+        return_type=tq_types.INT),
+    'month': TimestampExtractFunction(
+        lambda dt: dt.month,
+        return_type=tq_types.INT),
+    'quarter': TimestampExtractFunction(
+        lambda dt: dt.month // 3 + 1,
+        return_type=tq_types.INT),
+    'second': TimestampExtractFunction(
+        lambda dt: dt.second,
+        return_type=tq_types.INT),
+    'time': TimestampExtractFunction(
+        lambda dt: dt.strftime('%H:%M:%S'),
+        return_type=tq_types.STRING),
+    'timestamp_to_msec': TimestampExtractFunction(
+        lambda dt: int(round(1E3 * arrow.get(dt).float_timestamp)),
+        return_type=tq_types.INT),
+    'timestamp_to_sec': TimestampExtractFunction(
+        lambda dt: arrow.get(dt).timestamp,
+        return_type=tq_types.INT),
+    'timestamp_to_usec': TimestampExtractFunction(
+        lambda dt: int(1E6 * arrow.get(dt).float_timestamp),
+        return_type=tq_types.INT),
+    'week': TimestampExtractFunction(
+        # TODO(colin): can this ever be 54?
+        # Bigquery returns 1...53 inclusive
+        # Python returns 0...53 inclusive
+        # Both say that the first week may be < 7 days, but python calls that
+        # 0, and bigquery calls that 1.
+        lambda dt: int(dt.strftime('%U'), 10) + 1,
+        return_type=tq_types.INT),
+    'year': TimestampExtractFunction(
+        lambda dt: dt.year,
+        return_type=tq_types.INT),
 }
 
 

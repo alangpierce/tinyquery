@@ -95,6 +95,16 @@ class EvaluatorTest(unittest.TestCase):
                                        mode=tq_modes.NULLABLE, values=[])),
             ])))
 
+        self.tq.load_table_or_view(tinyquery.Table(
+            'timely_table',
+            1,
+            collections.OrderedDict([
+                ('ts', context.Column(
+                    type=tq_types.TIMESTAMP,
+                    mode=tq_modes.NULLABLE,
+                    values=[datetime.datetime(2016, 4, 5, 10, 37, 0, 123456)]
+                ))])))
+
     def assert_query_result(self, query, expected_result):
         result = self.tq.evaluate_query(query)
         self.assertEqual(expected_result, result)
@@ -594,6 +604,87 @@ class EvaluatorTest(unittest.TestCase):
                 'SELECT CURRENT_DATE()',
                 self.make_context([
                     ('f0_', tq_types.STRING, ['2019-01-03'])]))
+
+    def test_timestamp_extraction_functions(self):
+        self.assert_query_result(
+            'SELECT DATE(ts) FROM timely_table',
+            self.make_context([
+                ('f0_', tq_types.STRING, ['2016-04-05'])]))
+
+        self.assert_query_result(
+            'SELECT DAY(ts) FROM timely_table',
+            self.make_context([
+                ('f0_', tq_types.INT, [5])]))
+
+        self.assert_query_result(
+            'SELECT DAYOFWEEK(ts) FROM timely_table',
+            self.make_context([
+                ('f0_', tq_types.INT, [3])]))
+
+        self.assert_query_result(
+            'SELECT DAYOFYEAR(ts) FROM timely_table',
+            self.make_context([
+                ('f0_', tq_types.INT, [96])]))
+
+        self.assert_query_result(
+            'SELECT FORMAT_UTC_USEC(ts) FROM timely_table',
+            self.make_context([
+                ('f0_', tq_types.STRING, ['2016-04-05 10:37:00.123456'])]))
+
+        self.assert_query_result(
+            'SELECT HOUR(ts) FROM timely_table',
+            self.make_context([
+                ('f0_', tq_types.INT, [10])]))
+
+        self.assert_query_result(
+            'SELECT MINUTE(ts) FROM timely_table',
+            self.make_context([
+                ('f0_', tq_types.INT, [37])]))
+
+        self.assert_query_result(
+            'SELECT MONTH(ts) FROM timely_table',
+            self.make_context([
+                ('f0_', tq_types.INT, [4])]))
+
+        self.assert_query_result(
+            'SELECT QUARTER(ts) FROM timely_table',
+            self.make_context([
+                ('f0_', tq_types.INT, [2])]))
+
+        self.assert_query_result(
+            'SELECT SECOND(ts) FROM timely_table',
+            self.make_context([
+                ('f0_', tq_types.INT, [0])]))
+
+        self.assert_query_result(
+            'SELECT TIME(ts) FROM timely_table',
+            self.make_context([
+                ('f0_', tq_types.STRING, ['10:37:00'])]))
+
+        self.assert_query_result(
+            'SELECT TIMESTAMP_TO_MSEC(ts) FROM timely_table',
+            self.make_context([
+                ('f0_', tq_types.INT, [1459852620123])]))
+
+        self.assert_query_result(
+            'SELECT TIMESTAMP_TO_SEC(ts) FROM timely_table',
+            self.make_context([
+                ('f0_', tq_types.INT, [1459852620])]))
+
+        self.assert_query_result(
+            'SELECT TIMESTAMP_TO_USEC(ts) FROM timely_table',
+            self.make_context([
+                ('f0_', tq_types.INT, [1459852620123456])]))
+
+        self.assert_query_result(
+            'SELECT WEEK(ts) FROM timely_table',
+            self.make_context([
+                ('f0_', tq_types.INT, [15])]))
+
+        self.assert_query_result(
+            'SELECT YEAR(ts) FROM timely_table',
+            self.make_context([
+                ('f0_', tq_types.INT, [2016])]))
 
     def test_first(self):
         # Test over the equivalent of a GROUP BY
