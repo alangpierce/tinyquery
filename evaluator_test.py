@@ -94,6 +94,33 @@ class EvaluatorTest(unittest.TestCase):
                 ('foo', context.Column(type=tq_types.INT,
                                        mode=tq_modes.NULLABLE, values=[])),
             ])))
+        self.tq.load_table_or_view(tinyquery.Table(
+            'rainbow_table',
+            3,
+            collections.OrderedDict([
+                ('ints', context.Column(type=tq_types.INT,
+                                        mode=tq_modes.NULLABLE,
+                                        values=[-2147483649, -0, 2147483648])),
+                ('floats', context.Column(type=tq_types.FLOAT,
+                                          mode=tq_modes.NULLABLE,
+                                          values=[1.41, 2.72,
+                                                  float('infinity')])),
+                ('bools', context.Column(type=tq_types.BOOL,
+                                         mode=tq_modes.NULLABLE,
+                                         values=[True, False, True])),
+                ('strings', context.Column(type=tq_types.STRING,
+                                           mode=tq_modes.NULLABLE,
+                                           values=["infrared", "indigo",
+                                                   "ultraviolet"])),
+                ('times', context.Column(type=tq_types.TIMESTAMP,
+                                         mode=tq_modes.NULLABLE,
+                                         values=[
+                                             datetime.datetime(1969, 12, 31,
+                                                               23, 59, 59),
+                                             datetime.datetime(1999, 12, 31,
+                                                               23, 59, 59),
+                                             datetime.datetime(2038, 1, 19,
+                                                               3, 14, 8)]))])))
 
         self.tq.load_table_or_view(tinyquery.Table(
             'timely_table',
@@ -182,6 +209,14 @@ class EvaluatorTest(unittest.TestCase):
         self.assert_query_result(
             'SELECT str CONTAINS letters FROM string_table_2',
             self.make_context([('f0_', tq_types.BOOL, [True, False])]))
+
+    def test_bad_string_timestamp_comparison(self):
+        # Strings and timestamps are totally fine to compare typewise in the
+        # compiler, it's only in the evaluator that we're able to tell if those
+        # strings are iso8601.
+        with self.assertRaises(TypeError) as context:
+            self.tq.evaluate_query('SELECT times < strings FROM rainbow_table')
+        self.assertTrue('Invalid comparison' in str(context.exception))
 
     def test_function_calls(self):
         with mock.patch('time.time', lambda: 15):

@@ -1,4 +1,5 @@
 import collections
+import datetime
 import unittest
 
 import compiler
@@ -54,10 +55,47 @@ class CompilerTest(unittest.TestCase):
         self.table3_type_ctx = self.make_type_context(
             [('table3', 'value', tq_types.INT)]
         )
+
+        self.rainbow_table = tinyquery.Table(
+            'rainbow_table',
+            3,
+            collections.OrderedDict([
+                ('ints', context.Column(type=tq_types.INT,
+                                        mode=tq_modes.NULLABLE,
+                                        values=[-2147483649, -0, 2147483648])),
+                ('floats', context.Column(type=tq_types.FLOAT,
+                                          mode=tq_modes.NULLABLE,
+                                          values=[1.41, 2.72,
+                                                  float('infinity')])),
+                ('bools', context.Column(type=tq_types.BOOL,
+                                         mode=tq_modes.NULLABLE,
+                                         values=[True, False, True])),
+                ('strings', context.Column(type=tq_types.STRING,
+                                           mode=tq_modes.NULLABLE,
+                                           values=["infrared", "indigo",
+                                                   "ultraviolet"])),
+                ('times', context.Column(type=tq_types.TIMESTAMP,
+                                         mode=tq_modes.NULLABLE,
+                                         values=[
+                                             datetime.datetime(1969, 12, 31,
+                                                               23, 59, 59),
+                                             datetime.datetime(1999, 12, 31,
+                                                               23, 59, 59),
+                                             datetime.datetime(2038, 1, 19,
+                                                               3, 14, 8)]))]))
+        self.rainbow_table_type_ctx = self.make_type_context(
+            [('rainbow_table', 'ints', tq_types.INT),
+             ('rainbow_table', 'floats', tq_types.FLOAT),
+             ('rainbow_table', 'bools', tq_types.BOOL),
+             ('rainbow_table', 'strings', tq_types.STRING),
+             ('rainbow_table', 'times', tq_types.TIMESTAMP)]
+        )
+
         self.tables_by_name = {
             'table1': self.table1,
             'table2': self.table2,
             'table3': self.table3,
+            'rainbow_table': self.rainbow_table
         }
 
     def assert_compiled_select(self, text, expected_ast):
@@ -116,6 +154,27 @@ class CompilerTest(unittest.TestCase):
             )
         )
 
+    def test_mistyped_unary_operator(self):
+        with self.assertRaises(compiler.CompileError) as context:
+            compiler.compile_text('SELECT -strings FROM rainbow_table',
+                                  self.tables_by_name)
+        self.assertTrue('Invalid type for operator' in str(context.exception))
+
+    def test_strange_arithmetic(self):
+        try:
+            compiler.compile_text('SELECT times + ints + floats + bools FROM '
+                                  'rainbow_table', self.tables_by_name)
+        except compiler.CompileError:
+            self.fail('Compiler exception on arithmetic across all numeric '
+                      'types.')
+
+    def test_mistyped_binary_operator(self):
+        with self.assertRaises(compiler.CompileError) as context:
+            compiler.compile_text('SELECT ints CONTAINS strings FROM '
+                                  'rainbow_table',
+                                  self.tables_by_name)
+        self.assertTrue('Invalid types for operator' in str(context.exception))
+
     def test_function_calls(self):
         self.assert_compiled_select(
             'SELECT ABS(-3), POW(2, 3), NOW()',
@@ -156,6 +215,12 @@ class CompilerTest(unittest.TestCase):
                     self.make_type_context([]))
             )
         )
+
+    def test_mistyped_function_call(self):
+        with self.assertRaises(compiler.CompileError) as context:
+            compiler.compile_text('SELECT SUM(strings) FROM rainbow_table',
+                                  self.tables_by_name)
+        self.assertTrue('Invalid types for function' in str(context.exception))
 
     def test_case(self):
         self.assert_compiled_select(

@@ -21,7 +21,7 @@ class Function(object):
     def check_types(self, *arg_types):
         """Return the type of the result as a function of the arg types.
 
-        Raises a SyntaxError if the types are disallowed.
+        Raises a TypeError if the types are disallowed.
         """
 
     @abc.abstractmethod
@@ -45,10 +45,9 @@ class ArithmeticOperator(Function):
         self.func = func
 
     def check_types(self, type1, type2):
-        numeric_types = (tq_types.FLOAT, tq_types.INT)
-        if type1 not in numeric_types or type2 not in numeric_types:
-            raise TypeError('Expected int or float type')
-        if type1 == tq_types.FLOAT or type2 == tq_types.FLOAT:
+        if not (set([type1, type2]) <= tq_types.NUMERIC_TYPE_SET):
+            raise TypeError('Expected numeric type.')
+        if tq_types.FLOAT in set([type1, type2]):
             return tq_types.FLOAT
         else:
             return tq_types.INT
@@ -66,10 +65,70 @@ class ComparisonOperator(Function):
         self.func = func
 
     def check_types(self, type1, type2):
-        # TODO: Fail if types are wrong.
-        return tq_types.BOOL
+        # TODO(Samantha): This would make a lot more sense if we had a column
+        # here. That way we could determine in the case of string vs timestamp
+        # that the string was formatted iso8601.
+        # TODO(Samantha): This does not even begin to account for record types!
+
+        column_type_set = set([type1, type2])
+
+        # If the types are the same, this is easy.
+        if type1 == type2:
+            return tq_types.BOOL
+        # If the types are both in the numeric set, this is also sane.
+        elif column_type_set <= tq_types.NUMERIC_TYPE_SET:
+            return tq_types.BOOL
+        # If the types are string and timestamp, things get a bit more
+        # complicated.
+        elif column_type_set == set([tq_types.STRING, tq_types.TIMESTAMP]):
+            return tq_types.BOOL
+        else:
+            raise TypeError('Unexpected types.')
 
     def evaluate(self, num_rows, column1, column2):
+        """Implements BigQuery type adherent comparisons on columns, converting
+        to other types when necessary to properly emulate BigQuery.
+        """
+        values = []
+        # If one and only one value we are trying to compare is a timestamp,
+        # there is some special casing required due to how BQ implicitly
+        # converts some types.
+        if (tq_types.TIMESTAMP in set([column1.type, column2.type]) and
+                column1.type != column2.type):
+
+            (timestamp_column, other_column) = (
+                (column1, column2) if column1.type == tq_types.TIMESTAMP
+                else (column2, column1))
+            converted = []
+
+            if other_column.type == tq_types.STRING:
+                # Convert that string to datetime if we can.
+                try:
+                    converted = map(lambda x: arrow.get(x).to('UTC').naive,
+                                    other_column.values)
+                except:
+                    raise TypeError('Invalid comparison on timestamp, '
+                                    'expected numeric type or ISO8601 '
+                                    'formatted string.')
+            elif other_column.type in tq_types.NUMERIC_TYPE_SET:
+                # Cast that numeric to a float accounting for microseconds and
+                # then to a datetime.
+                converted = map(lambda x: arrow.get(float(x) / 1E6).to('UTC')
+                                                                   .naive,
+                                other_column.values)
+            else:
+                # No other way to compare a timestamp with anything other than
+                # itself at this point.
+                raise TypeError('Invalid comparison on timestamp, expected '
+                                'numeric type or ISO8601 formatted string.')
+
+            # Reassign our column variables so we may properly run this
+            # comparison.
+            column1 = timestamp_column
+            column2 = context.Column(type=other_column.type,
+                                     mode=other_column.mode,
+                                     values=converted)
+
         values = [self.func(arg1, arg2) for arg1, arg2 in zip(column1.values,
                                                               column2.values)]
         return context.Column(type=tq_types.BOOL, mode=tq_modes.NULLABLE,
@@ -81,7 +140,8 @@ class BooleanOperator(Function):
         self.func = func
 
     def check_types(self, type1, type2):
-        # TODO: Fail if types are wrong.
+        if type1 != type2 != tq_types.BOOL:
+            raise TypeError('Expected bool type.')
         return tq_types.BOOL
 
     def evaluate(self, num_rows, column1, column2):
@@ -96,8 +156,8 @@ class UnaryIntOperator(Function):
         self.func = func
 
     def check_types(self, arg):
-        if arg != tq_types.INT:
-            raise TypeError('Expected int type')
+        if arg not in tq_types.INT_TYPE_SET:
+            raise TypeError('Expected int type.')
         return tq_types.INT
 
     def evaluate(self, num_rows, column):
@@ -167,7 +227,7 @@ class HashFunction(Function):
 
 class FloorFunction(Function):
     def check_types(self, arg):
-        if arg not in (tq_types.INT, tq_types.FLOAT):
+        if arg not in tq_types.NUMERIC_TYPE_SET:
             raise TypeError('Expected type int or float.')
         return tq_types.FLOAT
 
@@ -193,9 +253,9 @@ def _check_regexp_types(*types):
         raise TypeError('Expected string arguments.')
 
 
-def _ensure_literal(regexps):
-    assert all(r == regexps[0] for r in regexps), "Must provide a literal."
-    return regexps[0]
+def _ensure_literal(elements):
+    assert all(r == elements[0] for r in elements), "Must provide a literal."
+    return elements[0]
 
 
 # TODO(colin): the regexp functions here use the python re module, while
@@ -252,20 +312,16 @@ class RegexpReplaceFunction(Function):
 class NthFunction(Function):
     # TODO(alan): Enforce that NTH takes a constant as its first arg.
     def check_types(self, index_type, rep_list_type):
+        # TODO(Samantha): This should probably be tq_types.INT_TYPE_SET.
         if index_type != tq_types.INT:
-            raise SyntaxError('Expected an int index.')
-        # TODO(alan): Add a list type instead of assuming ints.
-        return tq_types.INT
+            raise TypeError('Expected an int index.')
+        return rep_list_type
 
     def evaluate(self, num_rows, index_list, column):
-        # Ideally, this would take a constant and not a full expression, but to
-        # hack around it for now, we'll just take the value at the first "row",
-        # which works if the expression was a constant.
-        index = index_list.values[0]
+        index = _ensure_literal(index_list.values)
         values = [self.safe_index(rep_elem, index)
                   for rep_elem in column.values]
-        # TODO(Samantha): This is almost certainly incorrect.
-        return context.Column(type=tq_types.INT, mode=tq_modes.NULLABLE,
+        return context.Column(type=column.type, mode=tq_modes.NULLABLE,
                               values=values)
 
     @staticmethod
@@ -359,16 +415,17 @@ class MinMaxFunction(Function):
 
 class SumFunction(Function):
     def check_types(self, arg):
-        if arg == tq_types.BOOL:
+        if arg in tq_types.INT_TYPE_SET:
             return tq_types.INT
-        elif arg == tq_types.INT or arg == tq_types.FLOAT:
-            return arg
+        elif arg in tq_types.NUMERIC_TYPE_SET:
+            return tq_types.FLOAT
         else:
             raise TypeError('Unexpected type.')
 
     def evaluate(self, num_rows, column):
         values = [sum([0 if arg is None else arg for arg in column.values])]
-        return context.Column(type=tq_types.INT, mode=tq_modes.NULLABLE,
+        return context.Column(type=self.check_types(column.type),
+                              mode=tq_modes.NULLABLE,
                               values=values)
 
 
@@ -384,6 +441,8 @@ class CountFunction(Function):
 
 class AvgFunction(Function):
     def check_types(self, arg):
+        if arg not in tq_types.NUMERIC_TYPE_SET:
+            raise TypeError('Unexpected type.')
         return tq_types.FLOAT
 
     def evaluate(self, num_rows, column):
@@ -417,7 +476,7 @@ class QuantilesFunction(Function):
     # TODO(alan): Enforce that QUANTILES takes a constant as its second arg.
     def check_types(self, arg_list_type, num_quantiles_type):
         if num_quantiles_type != tq_types.INT:
-            raise SyntaxError('Expected an int number of quantiles.')
+            raise TypeError('Expected an int number of quantiles.')
         # TODO(alan): This should actually return a repeated version of the arg
         # list type.
         return tq_types.INT
@@ -427,10 +486,7 @@ class QuantilesFunction(Function):
         values = []
         if not sorted_args:
             values = [None]
-        # QUANTILES is special because it takes a constant, not an expression
-        # that gets repeated for each column. To hack around this for now, just
-        # take the first element off.
-        num_quantiles = num_quantiles_list.values[0]
+        num_quantiles = _ensure_literal(num_quantiles_list.values)
         # Stretch the quantiles out so the first is always the min of the list
         # and the last is always the max of the list, but make sure it stays
         # within the bounds of the list so we don't get an IndexError.

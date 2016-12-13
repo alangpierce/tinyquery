@@ -448,8 +448,14 @@ class Compiler(object):
     # included.
     def compile_UnaryOperator(self, expr, type_ctx):
         func = runtime.get_unary_op(expr.operator)
+
         compiled_val = self.compile_expr(expr.expr, type_ctx)
-        result_type = func.check_types(compiled_val.type)
+
+        try:
+            result_type = func.check_types(compiled_val.type)
+        except TypeError:
+            raise CompileError('Invalid type for operator {}: {}'.format(
+                expr.operator, [compiled_val.type]))
         return typed_ast.FunctionCall(func, [compiled_val], result_type)
 
     # TODO(Samantha): Don't pass the type, just pass the column so that mode is
@@ -460,7 +466,13 @@ class Compiler(object):
         compiled_left = self.compile_expr(expr.left, type_ctx)
         compiled_right = self.compile_expr(expr.right, type_ctx)
 
-        result_type = func.check_types(compiled_left.type, compiled_right.type)
+        try:
+            result_type = func.check_types(compiled_left.type,
+                                           compiled_right.type)
+        except TypeError:
+            raise CompileError('Invalid types for operator {}: {}'.format(
+                expr.operator, [arg.type for arg in [compiled_left,
+                                                     compiled_right]]))
 
         return typed_ast.FunctionCall(
             func, [compiled_left, compiled_right], result_type)
