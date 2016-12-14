@@ -84,7 +84,6 @@ with them:
     * WITHIN and scoped aggregation
     * POSITION and NEST
 * Window functions and OVER/PARTITION BY.
-* Native timestamps and timestamp functions.
 * Import from JSON.
 * Various operators and functions.
 * The existing functions probably don't do type checking or null handling in
