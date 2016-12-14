@@ -462,13 +462,16 @@ class ContainsFunction(Function):
 
 class TimestampFunction(Function):
     def check_types(self, type1):
-        if type1 not in (tq_types.STRING, tq_types.INT):
+        if type1 not in (tq_types.STRING, tq_types.INT, tq_types.TIMESTAMP):
             raise TypeError(
                 'TIMESTAMP requires an ISO8601 string or unix timestamp in '
-                'microseconds.')
+                'microseconds (or something that is already a timestamp).')
         return tq_types.TIMESTAMP
 
     def evaluate(self, num_rows, column):
+        if column.type == tq_types.TIMESTAMP:
+            return column
+
         converter = lambda ts: ts
         if num_rows > 0 and column.type == tq_types.INT:
             # Bigquery accepts integer number of microseconds since the unix
@@ -721,53 +724,75 @@ _FUNCTIONS = {
     'current_timestamp': NoArgFunction(
         lambda: datetime.datetime.utcnow(),
         return_type=tq_types.TIMESTAMP),
-    'date': TimestampExtractFunction(
-        lambda dt: dt.strftime('%Y-%m-%d'),
-        return_type=tq_types.STRING),
+    'date': Compose(
+        TimestampExtractFunction(
+            lambda dt: dt.strftime('%Y-%m-%d'),
+            return_type=tq_types.STRING),
+        TimestampFunction()),
     'date_add': DateAddFunction(),
     'datediff': DateDiffFunction(),
-    'day': TimestampExtractFunction(
-        lambda dt: dt.day,
-        return_type=tq_types.INT),
-    'dayofweek': TimestampExtractFunction(
-        # isoweekday uses Sunday == 7, but it's 1 in bigquery, so we need to
-        # convert.
-        lambda dt: (dt.isoweekday() % 7 + 1),
-        return_type=tq_types.INT),
-    'dayofyear': TimestampExtractFunction(
-        lambda dt: int(dt.strftime('%j'), 10),
-        return_type=tq_types.INT),
-    'format_utc_usec': TimestampExtractFunction(
-        lambda dt: dt.strftime('%Y-%m-%d %H:%M:%S.%f'),
-        return_type=tq_types.STRING),
-    'hour': TimestampExtractFunction(
-        lambda dt: dt.hour,
-        return_type=tq_types.INT),
-    'minute': TimestampExtractFunction(
-        lambda dt: dt.minute,
-        return_type=tq_types.INT),
-    'month': TimestampExtractFunction(
-        lambda dt: dt.month,
-        return_type=tq_types.INT),
+    'day': Compose(
+        TimestampExtractFunction(
+            lambda dt: dt.day,
+            return_type=tq_types.INT),
+        TimestampFunction()),
+    'dayofweek': Compose(
+        TimestampExtractFunction(
+            # isoweekday uses Sunday == 7, but it's 1 in bigquery, so we need
+            # to convert.
+            lambda dt: (dt.isoweekday() % 7 + 1),
+            return_type=tq_types.INT),
+        TimestampFunction()),
+    'dayofyear': Compose(
+        TimestampExtractFunction(
+            lambda dt: int(dt.strftime('%j'), 10),
+            return_type=tq_types.INT),
+        TimestampFunction()),
+    'format_utc_usec': Compose(
+        TimestampExtractFunction(
+            lambda dt: dt.strftime('%Y-%m-%d %H:%M:%S.%f'),
+            return_type=tq_types.STRING),
+        TimestampFunction()),
+    'hour': Compose(
+        TimestampExtractFunction(
+            lambda dt: dt.hour,
+            return_type=tq_types.INT),
+        TimestampFunction()),
+    'minute': Compose(
+        TimestampExtractFunction(
+            lambda dt: dt.minute,
+            return_type=tq_types.INT),
+        TimestampFunction()),
+    'month': Compose(
+        TimestampExtractFunction(
+            lambda dt: dt.month,
+            return_type=tq_types.INT),
+        TimestampFunction()),
     'msec_to_timestamp': Compose(
         TimestampFunction(),
         UnaryIntOperator(lambda msec: msec * 1E3)),
     'parse_utc_usec': Compose(
         timestamp_to_usec,
         TimestampFunction()),
-    'quarter': TimestampExtractFunction(
-        lambda dt: dt.month // 3 + 1,
-        return_type=tq_types.INT),
-    'second': TimestampExtractFunction(
-        lambda dt: dt.second,
-        return_type=tq_types.INT),
+    'quarter': Compose(
+        TimestampExtractFunction(
+            lambda dt: dt.month // 3 + 1,
+            return_type=tq_types.INT),
+        TimestampFunction()),
+    'second': Compose(
+        TimestampExtractFunction(
+            lambda dt: dt.second,
+            return_type=tq_types.INT),
+        TimestampFunction()),
     'sec_to_timestamp': Compose(
         TimestampFunction(),
         UnaryIntOperator(lambda sec: sec * 1E6)),
     'strftime_utc_usec': StrftimeFunction(),
-    'time': TimestampExtractFunction(
-        lambda dt: dt.strftime('%H:%M:%S'),
-        return_type=tq_types.STRING),
+    'time': Compose(
+        TimestampExtractFunction(
+            lambda dt: dt.strftime('%H:%M:%S'),
+            return_type=tq_types.STRING),
+        TimestampFunction()),
     'timestamp_to_msec': TimestampExtractFunction(
         lambda dt: int(round(1E3 * arrow.get(dt).float_timestamp)),
         return_type=tq_types.INT),
@@ -793,17 +818,21 @@ _FUNCTIONS = {
         timestamp_to_usec,
         TimestampShiftFunction('year'),
         TimestampFunction()),
-    'week': TimestampExtractFunction(
-        # TODO(colin): can this ever be 54?
-        # Bigquery returns 1...53 inclusive
-        # Python returns 0...53 inclusive
-        # Both say that the first week may be < 7 days, but python calls that
-        # 0, and bigquery calls that 1.
-        lambda dt: int(dt.strftime('%U'), 10) + 1,
-        return_type=tq_types.INT),
-    'year': TimestampExtractFunction(
-        lambda dt: dt.year,
-        return_type=tq_types.INT),
+    'week': Compose(
+        TimestampExtractFunction(
+            # TODO(colin): can this ever be 54?
+            # Bigquery returns 1...53 inclusive
+            # Python returns 0...53 inclusive
+            # Both say that the first week may be < 7 days, but python calls
+            # that 0, and bigquery calls that 1.
+            lambda dt: int(dt.strftime('%U'), 10) + 1,
+            return_type=tq_types.INT),
+        TimestampFunction()),
+    'year': Compose(
+        TimestampExtractFunction(
+            lambda dt: dt.year,
+            return_type=tq_types.INT),
+        TimestampFunction()),
 }
 
 
