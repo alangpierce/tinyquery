@@ -1021,3 +1021,14 @@ class EvaluatorTest(unittest.TestCase):
             self.make_context([
                 ('f0_', tq_types.STRING, ['hi', 'world'])
             ]))
+
+    def test_least_greatest(self):
+        self.assert_query_result(
+            'SELECT LEAST(val1, val2) FROM test_table',
+            self.make_context([
+                ('f0_', tq_types.INT, [4, 1, 4, 1, 2])]))
+
+        self.assert_query_result(
+            'SELECT GREATEST(val1, val2) FROM test_table',
+            self.make_context([
+                ('f0_', tq_types.INT, [8, 2, 8, 1, 6])]))

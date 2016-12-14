@@ -757,6 +757,37 @@ class StrftimeFunction(Function):
                               values=values)
 
 
+class NumericArgReduceFunction(Function):
+    def __init__(self, reducer):
+        self.reducer = reducer
+
+    def check_types(self, *types):
+        if len(types) < 2:
+            raise ValueError("Requires at least two arguments.")
+        if not all(t == tq_types.FLOAT or t == tq_types.INT
+                   # TODO(colin): use tq_types.NUMERIC_TYPE_SET once landed
+                   for t in types):
+            raise TypeError("Only operates on numeric types.")
+        if not all(t == types[0] for t in types):
+            raise TypeError("All arguments must have the same type.")
+
+        return types[0]
+
+    def evaluate(self, num_rows, *columns):
+        def apply(*args):
+            # Rather than assigning NULL a numeric value, bigquery's behavior
+            # is usually to return NULL if any arguments are NULL.
+            if any(arg is None for arg in args):
+                return None
+            return reduce(self.reducer, args)
+
+        values = [apply(*vals)
+                  for vals in zip(*[col.values for col in columns])]
+        return context.Column(
+            type=columns[0].type, mode=tq_modes.NULLABLE,
+            values=values)
+
+
 timestamp_to_usec = TimestampExtractFunction(
     lambda dt: int(1E6 * arrow.get(dt).float_timestamp),
     return_type=tq_types.INT)
@@ -803,6 +834,8 @@ _FUNCTIONS = {
     'regexp_match': RegexpMatchFunction(),
     'regexp_extract': RegexpExtractFunction(),
     'regexp_replace': RegexpReplaceFunction(),
+    'least': NumericArgReduceFunction(min),
+    'greatest': NumericArgReduceFunction(max),
     'timestamp': TimestampFunction(),
     'current_date': NoArgFunction(
         lambda: datetime.datetime.utcnow().strftime('%Y-%m-%d'),
