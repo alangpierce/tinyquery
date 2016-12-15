@@ -84,10 +84,7 @@ with them:
     * WITHIN and scoped aggregation
     * POSITION and NEST
 * Window functions and OVER/PARTITION BY.
-* Import from JSON.
 * Various operators and functions.
-* The existing functions probably don't do type checking or null handling in
-quite the same way that BigQuery does.
 * Lots of API operations are unsupported. The ones that are supported are
 missing various return fields from the API.
 * There are some edge cases in the core language where BigQuery and tinyquery

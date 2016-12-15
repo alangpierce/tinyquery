@@ -121,6 +121,32 @@ class EvaluatorTest(unittest.TestCase):
                                                                23, 59, 59),
                                              datetime.datetime(2038, 1, 19,
                                                                3, 14, 8)]))])))
+        self.tq.load_table_or_view(tinyquery.Table(
+            'some_nulls_table',
+            3,
+            collections.OrderedDict([
+                ('val1', context.Column(
+                    type=tq_types.INT,
+                    mode=tq_modes.NULLABLE,
+                    values=[1, None, 3])),
+                ('val2', context.Column(
+                    type=tq_types.INT,
+                    mode=tq_modes.REQUIRED,
+                    values=[1, 2, 3])),
+                ('val3', context.Column(
+                    type=tq_types.TIMESTAMP,
+                    mode=tq_modes.NULLABLE,
+                    values=[
+                        datetime.datetime(2016, 4, 5, 10, 37, 0, 123456),
+                        datetime.datetime(1970, 1, 1, 0, 0, 0, 0),
+                        None])),
+                ('val4', context.Column(
+                    type=tq_types.TIMESTAMP,
+                    mode=tq_modes.REQUIRED,
+                    values=[
+                        datetime.datetime(2018, 4, 5, 10, 37, 0, 123456),
+                        datetime.datetime(2019, 4, 5, 10, 37, 0, 123456),
+                        datetime.datetime(2020, 4, 5, 10, 37, 0, 123456)]))])))
 
         self.tq.load_table_or_view(tinyquery.Table(
             'timely_table',
@@ -159,6 +185,12 @@ class EvaluatorTest(unittest.TestCase):
         self.assert_query_result(
             'SELECT 1 + 2',
             self.make_context([('f0_', tq_types.INT, [3])])
+        )
+
+    def test_null_arithmetic(self):
+        self.assert_query_result(
+            'SELECT val1 + val2 FROM some_nulls_table',
+            self.make_context([('f0_', tq_types.INT, [2, None, 6])])
         )
 
     def test_float_arithmetic(self):
@@ -210,6 +242,15 @@ class EvaluatorTest(unittest.TestCase):
             'SELECT str CONTAINS letters FROM string_table_2',
             self.make_context([('f0_', tq_types.BOOL, [True, False])]))
 
+    def test_contains_null(self):
+        self.assert_query_result(
+            'SELECT STRING(NULL) contains STRING(NULL), '
+            '"asdf" CONTAINS STRING(NULL), STRING(NULL) CONTAINS "asdf"',
+            self.make_context([
+                ('f0_', tq_types.BOOL, [None]),
+                ('f1_', tq_types.BOOL, [None]),
+                ('f2_', tq_types.BOOL, [None])]))
+
     def test_bad_string_timestamp_comparison(self):
         # Strings and timestamps are totally fine to compare typewise in the
         # compiler, it's only in the evaluator that we're able to tell if those
@@ -217,6 +258,12 @@ class EvaluatorTest(unittest.TestCase):
         with self.assertRaises(TypeError) as context:
             self.tq.evaluate_query('SELECT times < strings FROM rainbow_table')
         self.assertTrue('Invalid comparison' in str(context.exception))
+
+    def test_null_comparisons(self):
+        self.assert_query_result(
+            'SELECT val1 < val2, val3 < val4 FROM some_nulls_table',
+            self.make_context([('f0_', tq_types.BOOL, [False, None, False]),
+                               ('f1_', tq_types.BOOL, [True, True, None])]))
 
     def test_function_calls(self):
         with mock.patch('time.time', lambda: 15):
@@ -282,6 +329,13 @@ class EvaluatorTest(unittest.TestCase):
             'SELECT SUM(val1) + MIN(val2) FROM test_table',
             self.make_context([('f0_', tq_types.INT, [17])])
         )
+
+    def test_null_minmax(self):
+        self.assert_query_result(
+            'SELECT MIN(val1), max(val1) FROM some_nulls_table',
+            self.make_context([
+                ('f0_', tq_types.INT, [1]),
+                ('f1_', tq_types.INT, [3])]))
 
     def test_aggregate_evaluation(self):
         self.assert_query_result(
@@ -449,13 +503,41 @@ class EvaluatorTest(unittest.TestCase):
             ],
             sorted(result_rows))
 
-    def test_null_comparisons(self):
+    def test_null_test(self):
         self.assert_query_result(
             'SELECT foo IS NULL, foo IS NOT NULL FROM null_table',
             self.make_context([
                 ('f0_', tq_types.BOOL, [False, True, True, False]),
                 ('f1_', tq_types.BOOL, [True, False, False, True]),
             ]))
+
+    def test_if_null(self):
+        self.assert_query_result(
+            'SELECT IFNULL(val1, val2) FROM some_nulls_table',
+            self.make_context([('f0_', tq_types.INT, [1, 2, 3])]))
+
+    def test_hash(self):
+        self.assert_query_result(
+            'SELECT HASH(floats) FROM rainbow_table',
+            self.make_context([
+                ('f0_', tq_types.INT,
+                 map(hash, [1.41, 2.72, float('infinity')]))]))
+
+    def test_null_hash(self):
+        self.assert_query_result(
+            'SELECT HASH(val1) FROM some_nulls_table',
+            self.make_context([
+                ('f0_', tq_types.INT, [hash(1), None, hash(3)])]))
+
+    def test_string_functon(self):
+        self.assert_query_result(
+            'SELECT STRING(val1) FROM some_nulls_table',
+            self.make_context([('f0_', tq_types.STRING, ["1", None, "3"])]))
+
+    def test_string_concat(self):
+        self.assert_query_result(
+            'SELECT CONCAT(STRING(val1), STRING(val2)) FROM some_nulls_table',
+            self.make_context([('f0_', tq_types.STRING, ["11", None, "33"])]))
 
     def test_string_comparison(self):
         self.assert_query_result(
@@ -510,6 +592,11 @@ class EvaluatorTest(unittest.TestCase):
             self.make_context([
                 ('f0_', tq_types.INT, [2])]))
 
+    def test_null_count(self):
+        self.assert_query_result(
+            'SELECT COUNT(val1) FROM some_nulls_table',
+            self.make_context([('f0_', tq_types.INT, [2])]))
+
     def test_count_empty_table(self):
         self.assert_query_result(
             'SELECT COUNT(*) FROM empty_table',
@@ -524,6 +611,11 @@ class EvaluatorTest(unittest.TestCase):
             self.make_context([
                 ('f0_', tq_types.INT, [4])
             ]))
+
+    def test_null_count_distinct(self):
+        self.assert_query_result(
+            'SELECT COUNT(DISTINCT val1) FROM some_nulls_table',
+            self.make_context([('f0_', tq_types.INT, [2])]))
 
     def test_count_star(self):
         self.assert_query_result(
@@ -620,6 +712,13 @@ class EvaluatorTest(unittest.TestCase):
                 ('f0_', tq_types.TIMESTAMP,
                  [datetime.datetime(2016, 1, 1, 1, 0, 0)])
             ]))
+        self.assert_query_result(
+            'SELECT TIMESTAMP(STRING(NULL))',
+            self.make_context([
+                ('f0_', tq_types.TIMESTAMP, [None])]))
+        with self.assertRaises(TypeError) as context:
+            self.tq.evaluate_query('SELECT TIMESTAMP("infrared")')
+        self.assertTrue('TIMESTAMP requires' in str(context.exception))
 
     def test_current_dt_functions(self):
         with mock.patch('datetime.datetime',
