@@ -91,6 +91,13 @@ class Compiler(object):
         for field in select_fields:
             if isinstance(field, tq_ast.Star):
                 result_fields.extend(star_select_fields)
+            elif (field.expr and isinstance(field.expr, tq_ast.ColumnId) and
+                  field.expr.name.endswith('.*')):
+                prefix = field.expr.name[:-len('.*')]
+                record_star_fields = filter(
+                    lambda f: f.alias.startswith(prefix),
+                    star_select_fields)
+                result_fields.extend(record_star_fields)
             else:
                 result_fields.append(field)
         return result_fields

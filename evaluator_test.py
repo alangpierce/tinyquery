@@ -188,6 +188,23 @@ class EvaluatorTest(unittest.TestCase):
                     values=[datetime.datetime(2016, 4, 5, 10, 37, 0, 123456)]
                 ))])))
 
+        self.tq.load_table_or_view(tinyquery.Table(
+            'record_table',
+            2,
+            collections.OrderedDict([
+                ('r1.i', context.Column(
+                    type=tq_types.INT,
+                    mode=tq_modes.NULLABLE,
+                    values=[4, 5])),
+                ('r1.s', context.Column(
+                    type=tq_types.STRING,
+                    mode=tq_modes.NULLABLE,
+                    values=['four', 'five'])),
+                ('r2.i', context.Column(
+                    type=tq_types.INT,
+                    mode=tq_modes.NULLABLE,
+                    values=[6, 7]))])))
+
     def assert_query_result(self, query, expected_result):
         result = self.tq.evaluate_query(query)
         self.assertEqual(expected_result, result)
@@ -1032,3 +1049,10 @@ class EvaluatorTest(unittest.TestCase):
             'SELECT GREATEST(val1, val2) FROM test_table',
             self.make_context([
                 ('f0_', tq_types.INT, [8, 2, 8, 1, 6])]))
+
+    def test_record(self):
+        self.assert_query_result(
+            'SELECT r1.* FROM record_table',
+            self.make_context([
+                ('r1.i', tq_types.INT, [4, 5]),
+                ('r1.s', tq_types.STRING, ['four', 'five'])]))

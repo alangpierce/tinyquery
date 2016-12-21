@@ -91,11 +91,30 @@ class CompilerTest(unittest.TestCase):
              ('rainbow_table', 'times', tq_types.TIMESTAMP)]
         )
 
+        self.record_table = tinyquery.Table(
+            'record_table',
+            0,
+            collections.OrderedDict([
+                ('r1.i', context.Column(type=tq_types.INT,
+                                        mode=tq_modes.NULLABLE, values=[])),
+                ('r1.s', context.Column(type=tq_types.STRING,
+                                        mode=tq_modes.NULLABLE, values=[])),
+                ('r2.i', context.Column(type=tq_types.INT,
+                                        mode=tq_modes.NULLABLE, values=[])),
+            ])
+        )
+        self.record_table_type_ctx = self.make_type_context(
+            [('record_table', 'r1.i', tq_types.INT),
+             ('record_table', 'r1.s', tq_types.STRING),
+             ('record_table', 'r2.i', tq_types.INT)]
+        )
+
         self.tables_by_name = {
             'table1': self.table1,
             'table2': self.table2,
             'table3': self.table3,
-            'rainbow_table': self.rainbow_table
+            'rainbow_table': self.rainbow_table,
+            'record_table': self.record_table,
         }
 
     def assert_compiled_select(self, text, expected_ast):
@@ -872,3 +891,50 @@ class CompilerTest(unittest.TestCase):
                     self.make_type_context([
                         ('table1', 'value', tq_types.INT),
                         ('table1', 'value2', tq_types.INT)]))))
+
+    def test_select_record(self):
+        self.assert_compiled_select(
+            'SELECT r1.s FROM record_table',
+            typed_ast.Select(
+                select_fields=[
+                    typed_ast.SelectField(
+                        typed_ast.ColumnRef('record_table', 'r1.s',
+                                            tq_types.STRING),
+                        'r1.s')],
+                table=typed_ast.Table('record_table',
+                                      self.record_table_type_ctx),
+                where_expr=typed_ast.Literal(True, tq_types.BOOL),
+                group_set=None,
+                having_expr=typed_ast.Literal(True, tq_types.BOOL),
+                limit=None,
+                type_ctx=self.make_type_context(
+                    [(None, 'r1.s', tq_types.STRING)],
+                    self.make_type_context([
+                        ('record_table', 'r1.s', tq_types.STRING)]))))
+
+    def test_record_star(self):
+        self.assert_compiled_select(
+            'SELECT r1.* FROM record_table',
+            typed_ast.Select(
+                select_fields=[
+                    typed_ast.SelectField(
+                        typed_ast.ColumnRef('record_table', 'r1.i',
+                                            tq_types.INT),
+                        'r1.i'),
+                    typed_ast.SelectField(
+                        typed_ast.ColumnRef('record_table', 'r1.s',
+                                            tq_types.STRING),
+                        'r1.s'),
+                ],
+                table=typed_ast.Table('record_table',
+                                      self.record_table_type_ctx),
+                where_expr=typed_ast.Literal(True, tq_types.BOOL),
+                group_set=None,
+                having_expr=typed_ast.Literal(True, tq_types.BOOL),
+                limit=None,
+                type_ctx=self.make_type_context(
+                    [(None, 'r1.i', tq_types.INT),
+                     (None, 'r1.s', tq_types.STRING)],
+                    self.make_type_context([
+                        ('record_table', 'r1.i', tq_types.INT),
+                        ('record_table', 'r1.s', tq_types.STRING)]))))

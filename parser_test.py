@@ -331,6 +331,36 @@ class ParserTest(unittest.TestCase):
             )
         )
 
+    def test_record(self):
+        self.assert_parsed_select(
+            'SELECT foo.bar.baz FROM table',
+            tq_ast.Select(
+                [tq_ast.SelectField(tq_ast.ColumnId('foo.bar.baz'), None)],
+                tq_ast.TableId('table', None),
+                None,
+                None,
+                None,
+                None,
+                None,
+                None
+            )
+        )
+
+    def test_record_star(self):
+        self.assert_parsed_select(
+            'SELECT foo.* FROM table',
+            tq_ast.Select(
+                [tq_ast.SelectField(tq_ast.ColumnId('foo.*'), None)],
+                tq_ast.TableId('table', None),
+                None,
+                None,
+                None,
+                None,
+                None,
+                None
+            )
+        )
+
     def test_join(self):
         self.assert_parsed_select(
             'SELECT t1.foo, t2.bar '

@@ -409,8 +409,12 @@ def p_expr_column_id(p):
 
 
 def p_column_id(p):
-    """column_id : id_component_list"""
-    p[0] = tq_ast.ColumnId(p[1])
+    """column_id : id_component_list
+                 | id_component_list DOT STAR"""
+    if len(p) == 2:
+        p[0] = tq_ast.ColumnId(p[1])
+    else:
+        p[0] = tq_ast.ColumnId(p[1] + '.*')
 
 
 def p_id_component_list(p):

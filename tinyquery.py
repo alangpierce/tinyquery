@@ -50,58 +50,87 @@ class TinyQuery(object):
                 result_table.num_rows += 1
         self.load_table_or_view(result_table)
 
-    def make_raw_schema_from_file(self, schema_filename):
+    def make_raw_schema(self, schema):
         """Construct a fake schema in the manner that `make_empty_table`
         expects. Omits any fields that are not required.
         """
         fake_raw_schema = {}
-        fake_raw_schema['fields'] = []
-        with open(schema_filename, 'r') as f:
-            contents = json.loads(f.read())
-            fake_raw_schema['fields'] = contents
+        fake_raw_schema['fields'] = json.loads(schema)
         return fake_raw_schema
 
+    def make_raw_schema_from_file(self, schema_filename):
+        with open(schema_filename, 'r') as f:
+            schema = f.read()
+        return self.make_raw_schema(schema)
+
+    def load_table_from_newline_delimited_json_files(
+            self, table_name, schema_filename, table_filename):
+        with open(schema_filename, 'r') as f:
+            schema = f.read()
+        with open(table_filename, 'r') as f:
+            table_lines = [line for line in f]
+        return self.load_table_from_newline_delimited_json(
+            table_name, schema, table_lines)
+
     def load_table_from_newline_delimited_json(self, table_name,
-                                               schema_filename,
-                                               table_filename):
+                                               schema,
+                                               table_lines):
         """Loads a table on disk that is stored in the format of Newline
         Delimited JSON. Requires a schema file in the same format that
         BigQuery accepts. For an example, see
         <https://cloud.google.com/bigquery/docs/personsDataSchema.json>.
         """
-        fake_raw_schema = self.make_raw_schema_from_file(schema_filename)
+        fake_raw_schema = self.make_raw_schema(schema)
         result_table = self.make_empty_table(table_name, fake_raw_schema)
 
-        with open(table_filename, 'r') as f:
-            def run_cast_function(key, value):
-                cast_function = (
-                    tq_types.CAST_FUNCTION_MAP[result_table.columns[key].type])
-                return None if value is None else cast_function(value)
+        def run_cast_function(key, value):
+            cast_function = (
+                tq_types.CAST_FUNCTION_MAP[result_table.columns[key].type])
+            return None if value is None else cast_function(value)
 
-            for line in f:
-                row = json.loads(line)
+        for line in table_lines:
+            row = json.loads(line)
+
+            def process_row(row, name_prefix=''):
                 for (key, value) in row.iteritems():
-                    token = run_cast_function(key, value)
-                    mode = result_table.columns[key].mode
-                    if not tq_modes.check_mode(token, mode):
-                        raise ValueError("Bad token for mode %s, got %s" %
-                                         (mode, token))
-                    result_table.columns[key].values.append(token)
+                    prefixed_key = name_prefix + key
+                    if isinstance(value, dict):
+                        process_row(value, name_prefix=(prefixed_key + '.'))
+                    else:
+                        token = run_cast_function(prefixed_key, value)
+                        mode = result_table.columns[prefixed_key].mode
+                        if not tq_modes.check_mode(token, mode):
+                            raise ValueError(
+                                "Bad token for mode %s, got %s" % (
+                                    mode, token))
+                        result_table.columns[prefixed_key].values.append(
+                            token)
+
+            process_row(row)
 
         self.load_table_or_view(result_table)
 
-    def make_empty_table(self, table_name, raw_schema):
+    @staticmethod
+    def make_empty_table(table_name, raw_schema):
         columns = collections.OrderedDict()
-        for field in raw_schema['fields']:
-            (value_type, mode) = (field['type'].upper(), field['mode'].upper())
 
-            # Type and Mode validation
-            if (value_type not in tq_types.TYPE_SET
-                    or mode not in tq_modes.MODE_SET):
-                raise ValueError("Type or Mode given was invalid.")
-
-            columns[field['name']] = context.Column(type=value_type, mode=mode,
-                                                    values=[])
+        def make_columns(schema, name_prefix=''):
+            # TODO(colin): handle repeated mode correctly when there are
+            # multiple possible places the field could be repeated.
+            for field in schema['fields']:
+                prefixed_name = name_prefix + field['name']
+                value_type = field['type'].upper()
+                mode = field['mode'].upper()
+                if value_type == 'RECORD':
+                    make_columns(field, name_prefix=(prefixed_name + '.'))
+                # Type and Mode validation
+                elif (value_type not in tq_types.TYPE_SET
+                        or mode not in tq_modes.MODE_SET):
+                    raise ValueError("Type or Mode given was invalid.")
+                else:
+                    columns[prefixed_name] = context.Column(
+                        type=value_type, mode=mode, values=[])
+        make_columns(raw_schema)
         return Table(table_name, 0, columns)
 
     def make_view(self, view_name, query):
@@ -145,6 +174,7 @@ class TinyQuery(object):
         # Will throw KeyError if the table doesn't exist.
         table = self.tables_by_name[dataset + '.' + table_name]
         schema_fields = []
+        # TODO(colin): record fields should appear grouped.
         for col_name, column in table.columns.iteritems():
             schema_fields.append({
                 'name': col_name,
