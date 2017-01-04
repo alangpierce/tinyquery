@@ -113,7 +113,8 @@ def mask_context(context, mask):
                 values=list(itertools.compress(column.values, mask.values))))
         for (column_name, column) in context.columns.iteritems()
     ])
-    return Context(sum(mask.values), new_columns, None)
+    return Context(sum([value or 0 for value in mask.values]),
+                   new_columns, None)
 
 
 def empty_context_from_template(context):

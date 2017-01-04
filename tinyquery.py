@@ -37,8 +37,12 @@ class TinyQuery(object):
                 for token, column in zip(tokens,
                                          result_table.columns.itervalues()):
                     # Run a casting function over the value we are given.
-                    token = (None if token is None else
-                             tq_types.CAST_FUNCTION_MAP[column.type](token))
+                    # CSV doesn't have a null value, so the string 'null' is
+                    # used as the null value.
+                    if token != 'null' or column.mode != tq_modes.NULLABLE:
+                        token = tq_types.CAST_FUNCTION_MAP[column.type](token)
+                    else:
+                        token = None
                     if not tq_modes.check_mode(token, column.mode):
                         raise ValueError("Bad token for mode %s, got %s" %
                                          (column.mode, token))
