@@ -1,4 +1,5 @@
 import collections
+import contextlib
 import datetime
 import mock
 import unittest
@@ -23,6 +24,22 @@ class fake_datetime(object):
     @classmethod
     def utcnow(cls):
         return cls.fake_curr_dt
+
+
+@contextlib.contextmanager
+def dt_patch():
+    """Mock out the datetime class.
+
+    TODO(colin): for reasons I don't quite understand, using mock.patch does
+    not interact correctly with the KA webapp's mocking of datetimes, and the
+    tests thus fail.  Figure out how to eliminate this workaround.
+    """
+    old_dt = datetime.datetime
+    datetime.datetime = fake_datetime
+    try:
+        yield
+    finally:
+        datetime.datetime = old_dt
 
 
 class EvaluatorTest(unittest.TestCase):
@@ -769,8 +786,7 @@ class EvaluatorTest(unittest.TestCase):
         self.assertTrue('TIMESTAMP requires' in str(context.exception))
 
     def test_current_dt_functions(self):
-        with mock.patch('datetime.datetime',
-                        fake_datetime):
+        with dt_patch():
             self.assert_query_result(
                 'SELECT CURRENT_TIMESTAMP()',
                 self.make_context([
