@@ -262,6 +262,21 @@ class RandFunction(Function):
                               values=values)
 
 
+class LeftFunction(Function):
+    def check_types(self, type1, type2):
+        if type1 != tq_types.STRING:
+            raise TypeError('First argument to LEFT must be a string.')
+        if type2 != tq_types.INT:
+            raise TypeError('Second argument to LEFT must be an int.')
+        return tq_types.STRING
+
+    def evaluate(self, num_rows, string_col, int_col):
+        values = [s[:i] if s is not None else None
+                  for s, i in zip(string_col.values, int_col.values)]
+        return context.Column(type=tq_types.STRING, mode=tq_modes.NULLABLE,
+                              values=values)
+
+
 def _check_regexp_types(*types):
     if any(t != tq_types.STRING for t in types):
         raise TypeError('Expected string arguments.')
@@ -831,6 +846,7 @@ _FUNCTIONS = {
     'if': IfFunction(),
     'ifnull': IfNullFunction(),
     'hash': HashFunction(),
+    'left': LeftFunction(),
     'regexp_match': RegexpMatchFunction(),
     'regexp_extract': RegexpExtractFunction(),
     'regexp_replace': RegexpReplaceFunction(),

@@ -307,7 +307,11 @@ def p_expression_binary(p):
 
 
 def p_expression_func_call(p):
-    """expression : ID LPAREN arg_list RPAREN"""
+    """expression : ID LPAREN arg_list RPAREN
+                  | LEFT LPAREN arg_list RPAREN
+    """
+    # Note: we have to special-case LEFT, since it's both a keyword appearing
+    # in LEFT JOIN, as well as a function.
     p[0] = tq_ast.FunctionCall(p[1].lower(), p[3])
 
 

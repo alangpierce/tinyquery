@@ -1018,6 +1018,12 @@ class EvaluatorTest(unittest.TestCase):
 
         # TODO(colin): test behavior on empty list in both cases
 
+    def test_left(self):
+        self.assert_query_result(
+            'SELECT LEFT(str, 3) FROM string_table',
+            self.make_context([
+                ('f0_', tq_types.STRING, ['hel', 'wor'])]))
+
     def test_regexp_match(self):
         self.assert_query_result(
             'SELECT REGEXP_MATCH(str, "e(l|q)lo") FROM string_table',
