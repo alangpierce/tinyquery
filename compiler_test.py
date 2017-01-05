@@ -906,6 +906,7 @@ class CompilerTest(unittest.TestCase):
                 where_expr=typed_ast.Literal(True, tq_types.BOOL),
                 group_set=None,
                 having_expr=typed_ast.Literal(True, tq_types.BOOL),
+                orderings=None,
                 limit=None,
                 type_ctx=self.make_type_context(
                     [(None, 'r1.s', tq_types.STRING)],
@@ -931,6 +932,7 @@ class CompilerTest(unittest.TestCase):
                 where_expr=typed_ast.Literal(True, tq_types.BOOL),
                 group_set=None,
                 having_expr=typed_ast.Literal(True, tq_types.BOOL),
+                orderings=None,
                 limit=None,
                 type_ctx=self.make_type_context(
                     [(None, 'r1.i', tq_types.INT),
