@@ -550,7 +550,7 @@ class ContainsFunction(Function):
 
 class TimestampFunction(Function):
     def check_types(self, type1):
-        if type1 not in (tq_types.STRING, tq_types.INT, tq_types.TIMESTAMP):
+        if type1 not in tq_types.DATETIME_TYPE_SET:
             raise TypeError(
                 'TIMESTAMP requires an ISO8601 string or unix timestamp in '
                 'microseconds (or something that is already a timestamp).')
@@ -757,7 +757,8 @@ class StrftimeFunction(Function):
     identically.  Are there any differences?
     """
     def check_types(self, type1, type2):
-        if not (type1 == tq_types.INT and type2 == tq_types.STRING):
+        if not (type1 in tq_types.DATETIME_TYPE_SET and
+                type2 == tq_types.STRING):
             raise TypeError('Expected an integer and a string, got %s.' % (
                 [type1, type2]))
         return tq_types.STRING

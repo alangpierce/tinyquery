@@ -25,5 +25,6 @@ CAST_FUNCTION_MAP = {
     NONETYPE: lambda _: None,
     'null': lambda _: None
 }
+DATETIME_TYPE_SET = set([INT, STRING, TIMESTAMP])
 
 TYPE_TYPE = basestring
