@@ -1062,3 +1062,9 @@ class EvaluatorTest(unittest.TestCase):
             self.make_context([
                 ('r1.i', tq_types.INT, [4, 5]),
                 ('r1.s', tq_types.STRING, ['four', 'five'])]))
+
+    def test_log(self):
+        self.assert_query_result(
+            'SELECT LOG2(32)',
+            self.make_context([
+                ('f0_', tq_types.FLOAT, [5.0])]))
