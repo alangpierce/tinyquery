@@ -801,14 +801,13 @@ class NumericArgReduceFunction(Function):
     def check_types(self, *types):
         if len(types) < 2:
             raise ValueError("Requires at least two arguments.")
-        if not all(t == tq_types.FLOAT or t == tq_types.INT
-                   # TODO(colin): use tq_types.NUMERIC_TYPE_SET once landed
-                   for t in types):
+        if not all(t in tq_types.NUMERIC_TYPE_SET for t in types):
             raise TypeError("Only operates on numeric types.")
-        if not all(t == types[0] for t in types):
-            raise TypeError("All arguments must have the same type.")
 
-        return types[0]
+        if any(t == tq_types.FLOAT for t in types):
+            return tq_types.FLOAT
+
+        return tq_types.INT
 
     def evaluate(self, num_rows, *columns):
         def apply(*args):
