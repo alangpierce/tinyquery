@@ -307,7 +307,15 @@ def _check_regexp_types(*types):
         raise TypeError('Expected string arguments.')
 
 
+# This is a sentinal value that we use with _ensure_literal when there are no
+# rows.  We use this rather than None since many downstream functions know how
+# to handle None, and we want to ensure this value cannot be used accidentally.
+NO_VALUE = object()
+
+
 def _ensure_literal(elements):
+    if len(elements) == 0:
+        return NO_VALUE
     assert all(r == elements[0] for r in elements), "Must provide a literal."
     return elements[0]
 

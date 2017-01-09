@@ -652,6 +652,19 @@ class EvaluatorTest(unittest.TestCase):
             ])
         )
 
+    def test_literals_when_no_rows_present(self):
+        """Check we handle providing a literal when there are no rows.
+
+        (At one point we would have crashed because a literal is represented as
+        a column with all the same value, and there would be no values.)
+        """
+        self.assert_query_result(
+            'SELECT REGEXP_REPLACE(str, "e(l|q)lo", "i") FROM string_table'
+            '    WHERE str CONTAINS "bye"',
+            self.make_context([
+                ('f0_', tq_types.STRING, [])
+            ]))
+
     def test_if(self):
         self.assert_query_result(
             'SELECT IF(val1 % 2 = 0, "a", "b") FROM test_table',
