@@ -39,12 +39,21 @@ def get_column_data(rows, column):
     ]
 
 
-def make_column(column, data):
-    return "('%s', context.Column(type='%s', mode='%s', values=[%s]))," % (
-        column['name'],
+def make_column(column, rows, prefix=''):
+    if column['type'] == 'RECORD':
+        result = [
+            make_column(field, [row.get(column['name']) for row in rows],
+                        prefix=column['name'] + '.')
+            for field in column['fields']
+        ]
+        return '\n'.join(result)
+    column_template = (
+        "('%s', context.Column(type='%s', mode='%s', values=[\n    %s])),")
+    return column_template % (
+        prefix + column['name'],
         column['type'],
         column['mode'],
-        ', '.join(data)
+        ',\n    '.join(get_column_data(rows, column))
     )
 
 
@@ -53,8 +62,7 @@ def write_sample_table_code(dataset, table):
     rows = sample_table_data(dataset, table)
     indent = ' ' * 8
     column_lines = [
-        indent + make_column(column,
-                             get_column_data(rows, column))
+        indent + make_column(column, rows).replace('\n', '\n' + indent)
         for column in schema
     ]
     return """tinyquery.table(
