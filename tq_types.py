@@ -1,6 +1,6 @@
 """Defines the valid types. Currently we just uses strings to identify them.
 """
-import datetime
+import arrow
 
 # TODO(Samantha): Structs.
 
@@ -21,7 +21,7 @@ CAST_FUNCTION_MAP = {
     FLOAT: float,
     BOOL: bool,
     STRING: str,
-    TIMESTAMP: datetime.datetime,
+    TIMESTAMP: lambda val: arrow.get(val).to('UTC').naive,
     NONETYPE: lambda _: None,
     'null': lambda _: None
 }

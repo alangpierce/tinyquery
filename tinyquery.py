@@ -83,10 +83,15 @@ class TinyQuery(object):
         fake_raw_schema = self.make_raw_schema(schema)
         result_table = self.make_empty_table(table_name, fake_raw_schema)
 
-        def run_cast_function(key, value):
+        def run_cast_function(key, mode, value):
             cast_function = (
                 tq_types.CAST_FUNCTION_MAP[result_table.columns[key].type])
-            return None if value is None else cast_function(value)
+            if value is None:
+                return None
+            elif mode == tq_modes.REPEATED:
+                return map(cast_function, value)
+            else:
+                return cast_function(value)
 
         for line in table_lines:
             row = json.loads(line)
@@ -97,8 +102,8 @@ class TinyQuery(object):
                     if isinstance(value, dict):
                         process_row(value, name_prefix=(prefixed_key + '.'))
                     else:
-                        token = run_cast_function(prefixed_key, value)
                         mode = result_table.columns[prefixed_key].mode
+                        token = run_cast_function(prefixed_key, mode, value)
                         if not tq_modes.check_mode(token, mode):
                             raise ValueError(
                                 "Bad token for mode %s, got %s" % (
