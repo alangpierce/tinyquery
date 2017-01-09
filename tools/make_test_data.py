@@ -9,8 +9,8 @@ you have the project set to the one you want to use.
 
 Usage: tools/make_test_data.py <dataset> <table>
 
-This will print out python code suitable for creating the tinyquery table
-object containing 5 rows of data from the specified bigquery table.
+This will print out a JSON formatted schema, a blank line, and then
+newline-delimited JSON containing some data from the table.
 """
 import json
 import subprocess
@@ -19,7 +19,7 @@ import sys
 
 def json_bq_command(*args):
     return json.loads(subprocess.check_output(
-        ['bq', '--format', 'prettyjson'] + list(args)))
+        ['bq', '--format', 'json'] + list(args)))
 
 
 def fetch_table_schema(dataset, table):
@@ -32,47 +32,15 @@ def sample_table_data(dataset, table):
         'head', '-n', '5', '%s.%s' % (dataset, table))
 
 
-def get_column_data(rows, column):
-    return [
-        repr(row.get(column['name']))
-        for row in rows
-    ]
-
-
-def make_column(column, rows, prefix=''):
-    if column['type'] == 'RECORD':
-        result = [
-            make_column(field, [row.get(column['name']) for row in rows],
-                        prefix=column['name'] + '.')
-            for field in column['fields']
-        ]
-        return '\n'.join(result)
-    column_template = (
-        "('%s', context.Column(type='%s', mode='%s', values=[\n    %s])),")
-    return column_template % (
-        prefix + column['name'],
-        column['type'],
-        column['mode'],
-        ',\n    '.join(get_column_data(rows, column))
-    )
-
-
 def write_sample_table_code(dataset, table):
     schema = fetch_table_schema(dataset, table)
     rows = sample_table_data(dataset, table)
-    indent = ' ' * 8
-    column_lines = [
-        indent + make_column(column, rows).replace('\n', '\n' + indent)
-        for column in schema
-    ]
-    return """tinyquery.table(
-    '%s',
-    %d,
-    collections.OrderedDict([
-%s
-    ]))
-""" % (table, len(rows), '\n'.join(column_lines))
+    return (json.dumps(schema), map(json.dumps, rows))
 
 
 if __name__ == '__main__':
-    print write_sample_table_code(sys.argv[1], sys.argv[2])
+    schema, rows = write_sample_table_code(sys.argv[1], sys.argv[2])
+    print schema
+    print ''
+    for row in rows:
+        print row
