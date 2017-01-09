@@ -453,6 +453,13 @@ class EvaluatorTest(unittest.TestCase):
             ])
         )
 
+    def test_order_no_rows(self):
+        self.assert_query_result(
+            'SELECT str FROM string_table WHERE str CONTAINS "bye" '
+            'ORDER BY str',
+            self.make_context([
+                ('str', tq_types.STRING, [])]))
+
     def test_select_multiple_tables(self):
         self.assert_query_result(
             'SELECT val1, val2, val3 FROM test_table, test_table_2',

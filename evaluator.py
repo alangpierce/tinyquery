@@ -147,6 +147,15 @@ class Evaluator(object):
             t_all_values.sort(key=lambda x: (x[index]),
                               reverse=not is_ascending)
         ordered_values = map(list, zip(*t_all_values))
+        # If we started evaluating an ordering over 0 rows,
+        # all_values was originally [[], [], [], ...], i.e. the empty list for
+        # each column, but now ordered_values is just the empty list, since
+        # when going to a list of rows, we lost any notion of how many columns
+        # there were.  In that case, we just set back to all_values, since
+        # there isn't any data to order by anyway.
+        # TODO(colin): can we exit early if there's no data to order?
+        if len(t_all_values) == 0:
+            ordered_values = all_values
 
         for key in select_context.columns:
             for count, (_, overall_key) in enumerate(overall_context.columns):
