@@ -64,3 +64,21 @@ class TinyQueryTest(unittest.TestCase):
         table = tq.tables_by_name['test_table']
         self.assertIn('r.r2.d2', table.columns)
         self.assertIn(3, table.columns['r.r2.d2'].values)
+
+    def test_load_json_with_null_records(self):
+        record_json = json.dumps({
+            'i': 1,
+            'r': {
+                's': 'hello!',
+                'r2': None,
+            },
+        })
+        tq = tinyquery.TinyQuery()
+        tq.load_table_from_newline_delimited_json(
+            'test_table',
+            json.dumps(self.record_schema['fields']),
+            [record_json])
+        self.assertIn('test_table', tq.tables_by_name)
+        table = tq.tables_by_name['test_table']
+        self.assertIn('r.r2.d2', table.columns)
+        self.assertIn(None, table.columns['r.r2.d2'].values)

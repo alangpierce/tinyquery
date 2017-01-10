@@ -93,25 +93,36 @@ class TinyQuery(object):
             else:
                 return cast_function(value)
 
+        def flatten_row(output, row, schema, prefix=''):
+            # Tinyquery treats record fields as a set of toplevel leaf
+            # fields with a .-separated prefix.  In the input data, they're
+            # nested.  It's a lot easier if we flatten them all first.
+            for field in schema['fields']:
+                if field['type'] == 'RECORD':
+                    flatten_row(output,
+                                row.get(field['name']) or {},
+                                field,
+                                prefix='%s%s.' % (prefix, field['name']))
+                else:
+                    full_name = prefix + field['name']
+                    output[full_name] = row.get(field['name'], None)
+            return output
+
+        def process_row(row):
+            for (key, value) in row.iteritems():
+                mode = result_table.columns[key].mode
+                token = run_cast_function(key, mode, value)
+                if not tq_modes.check_mode(token, mode):
+                    raise ValueError(
+                        "Bad token for mode %s, got %s" % (
+                            mode, token))
+                result_table.columns[key].values.append(
+                    token)
+
         for line in table_lines:
             row = json.loads(line)
-
-            def process_row(row, name_prefix=''):
-                for (key, value) in row.iteritems():
-                    prefixed_key = name_prefix + key
-                    if isinstance(value, dict):
-                        process_row(value, name_prefix=(prefixed_key + '.'))
-                    else:
-                        mode = result_table.columns[prefixed_key].mode
-                        token = run_cast_function(prefixed_key, mode, value)
-                        if not tq_modes.check_mode(token, mode):
-                            raise ValueError(
-                                "Bad token for mode %s, got %s" % (
-                                    mode, token))
-                        result_table.columns[prefixed_key].values.append(
-                            token)
-
-            process_row(row)
+            flattened_row = flatten_row({}, row, fake_raw_schema)
+            process_row(flattened_row)
 
         self.load_table_or_view(result_table)
 
