@@ -7,14 +7,14 @@ have to construct the data by hand.  Yay!
 We assume that you've created application default gcloud credentials, and that
 you have the project set to the one you want to use.
 
-Usage: tools/make_test_data.py <dataset> <table>
+For usage instructions, run `make_test_data.py --help`
 
 This will print out a JSON formatted schema, a blank line, and then
 newline-delimited JSON containing some data from the table.
 """
+import argparse
 import json
 import subprocess
-import sys
 
 
 def json_bq_command(*args):
@@ -27,19 +27,27 @@ def fetch_table_schema(dataset, table):
         'show', '%s.%s' % (dataset, table))['schema']['fields']
 
 
-def sample_table_data(dataset, table):
+def sample_table_data(dataset, table, num_rows):
     return json_bq_command(
-        'head', '-n', '5', '%s.%s' % (dataset, table))
+        'head', '-n', str(num_rows), '%s.%s' % (dataset, table))
 
 
-def write_sample_table_code(dataset, table):
+def write_sample_table_code(dataset, table, num_rows):
     schema = fetch_table_schema(dataset, table)
-    rows = sample_table_data(dataset, table)
+    rows = sample_table_data(dataset, table, num_rows)
     return (json.dumps(schema), map(json.dumps, rows))
 
 
 if __name__ == '__main__':
-    schema, rows = write_sample_table_code(sys.argv[1], sys.argv[2])
+    parser = argparse.ArgumentParser(
+        description='fetch data from bigquery for use with tinyquery')
+    parser.add_argument('dataset', type=str, help='the bigquery dataset')
+    parser.add_argument('table', type=str, help='the bigquery table')
+    parser.add_argument('-n', '--num-rows', help='number of rows to fetch',
+                        default=5)
+    args = parser.parse_args()
+    schema, rows = write_sample_table_code(
+        args.dataset, args.table, args.num_rows)
     print schema
     print ''
     for row in rows:
