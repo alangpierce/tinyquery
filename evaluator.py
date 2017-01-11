@@ -19,11 +19,30 @@ class Evaluator(object):
         select_context = context.mask_context(table_context, mask_column)
 
         if select_ast.group_set is not None:
-            result = self.evaluate_groups(
-                select_ast.select_fields, select_ast.group_set, select_context)
+            num_scoped_agg = sum(
+                select_field.within_clause is not None
+                for select_field in select_ast.select_fields)
+            if num_scoped_agg == 1:
+                for select_field in select_ast.select_fields:
+                    if select_field.within_clause is not None:
+                        # TODO: Extend the functionality of scoped aggregation
+                        # for multiple fields
+                        result = self.evaluate_within(
+                            select_ast.select_fields, select_ast.group_set,
+                            select_context, select_field.within_clause,
+                            select_field)
+                        break
+            if num_scoped_agg > 1:
+                raise NotImplementedError('Multiple fields having "WITHIN" '
+                                          'clause is not supported as yet.')
+            else:
+                result = self.evaluate_groups(
+                        select_ast.select_fields, select_ast.group_set,
+                        select_context)
         else:
             result = self.evaluate_select_fields(
                 select_ast.select_fields, select_context)
+
         having_mask = self.evaluate_expr(select_ast.having_expr, result)
         result = context.mask_context(result, having_mask)
 
@@ -48,6 +67,7 @@ class Evaluator(object):
         Returns:
             A context with the results.
         """
+        # TODO: Implement GROUP BY for repeated fields.
         field_groups = group_set.field_groups
         alias_groups = group_set.alias_groups
         alias_group_list = sorted(alias_groups)
@@ -62,7 +82,8 @@ class Evaluator(object):
 
         # Dictionary mapping (singleton) group key context to the context of
         # values for that key.
-        group_contexts = {}
+        from collections import OrderedDict
+        group_contexts = OrderedDict()
 
         # As a special case, we check if we are grouping by nothing (in other
         # words, if the query had an aggregate without any explicit GROUP BY).
@@ -234,6 +255,33 @@ class Evaluator(object):
                 for select_field in select_fields
             ),
             None)
+
+    def evaluate_within(self, select_fields, group_set, ctx,
+                        within_clause, within_field):
+        if within_clause == "RECORD":
+            if len(select_fields) > 1:
+            # TODO: Implement WITHIN RECORD when one or more of the
+            # selected fields (except the one in the WITHIN RECORD
+            # clause) has mode = REPEATED.
+                for select_field in select_fields:
+                    if select_field.within_clause is None:
+                        if select_field.expr.mode != tq_modes.REPEATED:
+                            group_set.alias_groups.add(select_field.alias)
+                        else:
+                            raise NotImplementedError(
+                                'Cannot select fields having mode=REPEATED '
+                                'for queries involving WITHIN RECORD')
+            else:
+                for ((table_name, column_name),
+                     column) in ctx.columns.iteritems():
+                    if column.mode != tq_modes.REPEATED and len(
+                            set(column.values)) == len(column.values):
+                        group_set.field_groups.append(typed_ast.ColumnRef(
+                            table_name, column_name, column.type))
+                        break
+        # TODO: Implement for WITHIN clause
+        typed_ast.TRIVIAL_GROUP_SET = typed_ast.GroupSet(set(), [])
+        return self.evaluate_groups(select_fields, group_set, ctx)
 
     def evaluate_select_fields(self, select_fields, ctx):
         """Evaluate a table result given the data the fields have access to.

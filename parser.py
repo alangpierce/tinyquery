@@ -255,12 +255,22 @@ def p_select_field(p):
     """select_field : expression
                     | expression ID
                     | expression AS ID
+                    | expression WITHIN RECORD AS ID
+                    | expression WITHIN expression AS ID
     """
+    within_record_type = None
     if len(p) > 2:
         alias = p[len(p) - 1]
+        if len(p) > 3:
+            if 'within' in p:
+                within_record_type = p[len(p) - 3]
+                if within_record_type == 'record':
+                    within_record_type = within_record_type.upper()
+                else:
+                    within_record_type = within_record_type.name
     else:
         alias = None
-    p[0] = tq_ast.SelectField(p[1], alias)
+    p[0] = tq_ast.SelectField(p[1], alias, within_record_type)
 
 
 def p_select_star(p):

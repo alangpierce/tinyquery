@@ -226,6 +226,55 @@ class EvaluatorTest(unittest.TestCase):
                     mode=tq_modes.NULLABLE,
                     values=[1, 1, 1, 1]))])))
 
+        self.tq.load_table_or_view(tinyquery.Table(
+            'record_table_2',
+            3,
+            collections.OrderedDict([
+                ('kind', context.Column(
+                    type=tq_types.STRING, mode=tq_modes.NULLABLE, values=[
+                        u'person', u'person', u'person'])),
+                ('fullName', context.Column(
+                    type=tq_types.STRING, mode=tq_modes.NULLABLE, values=[
+                        u'John Doe', u'Mike Jones', u'Anna Karenina'])),
+                ('age', context.Column(
+                    type=tq_types.INT, mode=tq_modes.NULLABLE, values=[
+                        u'22', u'35', u'45'])),
+                ('gender', context.Column(
+                    type=tq_types.STRING, mode=tq_modes.NULLABLE, values=[
+                        u'Male', u'Male', u'Female'])),
+                ('phoneNumber.areaCode', context.Column(
+                    type=tq_types.INT, mode=tq_modes.NULLABLE, values=[
+                        u'206', u'622', u'425'])),
+                ('phoneNumber.number', context.Column(
+                    type=tq_types.INT, mode=tq_modes.NULLABLE, values=[
+                        u'1234567', u'1567845', u'1984783'])),
+                ('children.name', context.Column(
+                    type=tq_types.STRING, mode=tq_modes.REPEATED, values=[
+                        [u'Jane', u'John'], [u'Earl', u'Sam', u'Kit'], []])),
+                ('children.gender', context.Column(
+                    type=tq_types.STRING, mode=tq_modes.REPEATED, values=[
+                        [u'Female', u'Male'], [u'Male', u'Male', u'Male'],
+                        []])),
+                ('children.age', context.Column(
+                    type=tq_types.INT, mode=tq_modes.REPEATED, values=[
+                        [u'6', u'15'], [u'10', u'6', u'8'], []])),
+                ('citiesLived.place', context.Column(
+                    type=tq_types.STRING, mode=tq_modes.REPEATED, values=[
+                        [u'Seattle', u'Stockholm'],
+                        [u'Los Angeles', u'Washington DC', u'Portland',
+                         u'Austin'],
+                        [u'Stockholm', u'Russia', u'Austin']])),
+                ('citiesLived.yearsLived', context.Column(
+                    type=tq_types.INT, mode=tq_modes.REPEATED, values=[
+                        [[u'1995'], [u'2005']], [
+                        [u'1989', u'1993', u'1998', u'2002'],
+                        [u'1990', u'1993', u'1998', u'2008'],
+                        [u'1993', u'1998', u'2003', u'2005'],
+                        [u'1973', u'1998', u'2001', u'2005']], [
+                        [u'1992', u'1998', u'2000', u'2010'],
+                        [u'1998', u'2001', u'2005'],
+                        [u'1995', u'1999']]]))])))
+
     def assert_query_result(self, query, expected_result):
         result = self.tq.evaluate_query(query)
         self.assertEqual(expected_result, result)
@@ -862,6 +911,14 @@ class EvaluatorTest(unittest.TestCase):
             ])
         )
 
+    def test_repeated_count(self):
+        self.assert_query_result(
+            'SELECT COUNT(children.name) AS numberOfChildren FROM '
+            'record_table_2',
+            self.make_context([
+                ('numberOfChildren', tq_types.INT, [5])])
+        )
+
     def test_select_star_from_table(self):
         self.assert_query_result(
             'SELECT * FROM test_table_3',
@@ -1259,3 +1316,34 @@ class EvaluatorTest(unittest.TestCase):
             '                           "$.a[1].b")',
             self.make_context([
                 ('f0_', tq_types.STRING, ['q'])]))
+
+    def test_within_record_multiple_fields(self):
+        self.assert_query_result(
+            'SELECT fullName, gender, COUNT(children.name) WITHIN RECORD '
+            'AS numberOfChildren FROM record_table_2',
+            self.make_context([
+                ('fullName', tq_types.STRING, [
+                    u'John Doe', u'Mike Jones', u'Anna Karenina']),
+                ('gender', tq_types.STRING, [
+                    u'Male', u'Male', u'Female']),
+                ('numberOfChildren', tq_types.INT, [2, 3, 0])])
+        )
+
+    def test_within_record(self):
+        self.assert_query_result(
+            'SELECT COUNT(children.name) WITHIN RECORD '
+            'AS numberOfChildren FROM record_table_2',
+            self.make_context([
+                ('numberOfChildren', tq_types.INT, [2, 3, 0])])
+        )
+
+    def test_within_clause_error(self):
+        with self.assertRaises(NotImplementedError) as context:
+            self.tq.evaluate_query(
+                'SELECT COUNT(citiesLived.yearsLived) WITHIN '
+                'citiesLived AS count_years, COUNT(citiesLived.place) '
+                'WITHIN citiesLived AS count_places FROM record_table_2'
+            )
+        self.assertTrue('Multiple fields having "WITHIN" '
+                        'clause is not supported as yet'
+                        in str(context.exception))

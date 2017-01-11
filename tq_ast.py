@@ -48,10 +48,15 @@ class Select(collections.namedtuple(
         return result
 
 
-class SelectField(collections.namedtuple('SelectField', ['expr', 'alias'])):
+class SelectField(collections.namedtuple('SelectField', ['expr', 'alias',
+                                                         'within_record'])):
     def __str__(self):
         if self.alias is not None:
-            return '{} AS {}'.format(self.expr, self.alias)
+            if self.within_record is not None:
+                return '{} WITHIN {} AS {}'.format(
+                    self.expr, self.within_record, self.alias)
+            else:
+                return '{} AS {}'.format(self.expr, self.alias)
         else:
             return str(self.expr)
 

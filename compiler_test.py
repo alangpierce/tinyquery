@@ -139,7 +139,7 @@ class CompilerTest(unittest.TestCase):
             typed_ast.Select(
                 [typed_ast.SelectField(
                     typed_ast.ColumnRef('table1', 'value', tq_types.INT),
-                    'value')],
+                    'value', None)],
                 typed_ast.Table('table1', self.table1_type_ctx),
                 typed_ast.Literal(True, tq_types.BOOL),
                 None,
@@ -161,7 +161,7 @@ class CompilerTest(unittest.TestCase):
                         runtime.get_unary_op('-'),
                         [typed_ast.Literal(5, tq_types.INT)],
                         tq_types.INT),
-                    'f0_'
+                    'f0_', None
                 )],
                 typed_ast.NoTable(),
                 typed_ast.Literal(True, tq_types.BOOL),
@@ -209,7 +209,7 @@ class CompilerTest(unittest.TestCase):
                             tq_types.INT
                         )],
                         tq_types.INT),
-                    'f0_'),
+                    'f0_', None),
                 typed_ast.SelectField(
                     typed_ast.FunctionCall(
                         runtime.get_func('pow'), [
@@ -217,13 +217,13 @@ class CompilerTest(unittest.TestCase):
                             typed_ast.Literal(3, tq_types.INT)],
                         tq_types.INT
                     ),
-                    'f1_'
+                    'f1_', None
                 ),
                 typed_ast.SelectField(
                     typed_ast.FunctionCall(
                         runtime.get_func('now'), [], tq_types.INT
                     ),
-                    'f2_'
+                    'f2_', None
                 )],
                 typed_ast.NoTable(),
                 typed_ast.Literal(True, tq_types.BOOL),
@@ -265,7 +265,7 @@ class CompilerTest(unittest.TestCase):
                                 tq_types.INT)
                         ],
                         tq_types.INT),
-                    'f0_')
+                    'f0_', None)
                 ],
                 table=typed_ast.NoTable(),
                 where_expr=typed_ast.Literal(True, tq_types.BOOL),
@@ -283,7 +283,7 @@ class CompilerTest(unittest.TestCase):
             typed_ast.Select(
                 [typed_ast.SelectField(
                     typed_ast.ColumnRef('table1', 'value', tq_types.INT),
-                    'value')],
+                    'value', None)],
                 typed_ast.Table('table1', self.table1_type_ctx),
                 typed_ast.FunctionCall(
                     runtime.get_binary_op('>'),
@@ -307,7 +307,7 @@ class CompilerTest(unittest.TestCase):
             typed_ast.Select(
                 [typed_ast.SelectField(
                     typed_ast.ColumnRef('table1', 'value', tq_types.INT),
-                    'value')],
+                    'value', None)],
                 typed_ast.Table('table1', self.table1_type_ctx),
                 typed_ast.Literal(True, tq_types.BOOL),
                 None,
@@ -336,27 +336,27 @@ class CompilerTest(unittest.TestCase):
                         [typed_ast.ColumnRef('table1', 'value', tq_types.INT),
                          typed_ast.Literal(3, tq_types.INT)],
                         tq_types.INT),
-                    'foo'),
+                    'foo', None),
                  typed_ast.SelectField(
                      typed_ast.ColumnRef('table1', 'value', tq_types.INT),
-                     'value'),
+                     'value', None),
                  typed_ast.SelectField(
                      typed_ast.FunctionCall(
                          runtime.get_binary_op('+'),
                          [typed_ast.ColumnRef('table1', 'value', tq_types.INT),
                           typed_ast.Literal(1, tq_types.INT)],
                          tq_types.INT),
-                     'f0_'),
+                     'f0_', None),
                  typed_ast.SelectField(
                      typed_ast.ColumnRef('table1', 'value', tq_types.INT),
-                     'bar'),
+                     'bar', None),
                  typed_ast.SelectField(
                      typed_ast.FunctionCall(
                          runtime.get_binary_op('-'),
                          [typed_ast.ColumnRef('table1', 'value', tq_types.INT),
                           typed_ast.Literal(1, tq_types.INT)],
                          tq_types.INT),
-                     'f1_')],
+                     'f1_', None)],
                 typed_ast.Table('table1', self.table1_type_ctx),
                 typed_ast.Literal(True, tq_types.BOOL),
                 None,
@@ -388,14 +388,14 @@ class CompilerTest(unittest.TestCase):
                         [typed_ast.ColumnRef('table1', 'value', tq_types.INT)],
                         tq_types.INT
                     ),
-                    'f0_'),
+                    'f0_', None),
                 typed_ast.SelectField(
                     typed_ast.AggregateFunctionCall(
                         runtime.get_func('min'),
                         [typed_ast.ColumnRef('table1', 'value', tq_types.INT)],
                         tq_types.INT
                     ),
-                    'f1_')],
+                    'f1_', None)],
                 typed_ast.Table('table1', self.table1_type_ctx),
                 typed_ast.Literal(True, tq_types.BOOL),
                 typed_ast.GroupSet(set(), []),
@@ -420,7 +420,7 @@ class CompilerTest(unittest.TestCase):
             'SELECT 0 AS foo FROM table1 GROUP BY foo',
             typed_ast.Select(
                 [typed_ast.SelectField(
-                    typed_ast.Literal(0, tq_types.INT), 'foo')],
+                    typed_ast.Literal(0, tq_types.INT), 'foo', None)],
                 typed_ast.Table('table1', self.table1_type_ctx),
                 typed_ast.Literal(True, tq_types.BOOL),
                 typed_ast.GroupSet(
@@ -446,7 +446,7 @@ class CompilerTest(unittest.TestCase):
                         [typed_ast.ColumnRef('table1', 'value', tq_types.INT)],
                         tq_types.INT
                     ),
-                    'f0_')],
+                    'f0_', None)],
                 typed_ast.Table('table1', self.table1_type_ctx),
                 typed_ast.Literal(True, tq_types.BOOL),
                 typed_ast.GroupSet(
@@ -468,7 +468,7 @@ class CompilerTest(unittest.TestCase):
             typed_ast.Select(
                 select_fields=[typed_ast.SelectField(
                     typed_ast.ColumnRef('table1', 'value', tq_types.INT),
-                    'value')],
+                    'value', None)],
                 table=typed_ast.Table('table1', self.table1_type_ctx),
                 where_expr=typed_ast.Literal(True, tq_types.BOOL),
                 group_set=None,
@@ -487,7 +487,7 @@ class CompilerTest(unittest.TestCase):
             typed_ast.Select(
                 select_fields=[typed_ast.SelectField(
                     typed_ast.ColumnRef('table1', 'value', tq_types.INT),
-                    'value')],
+                    'value', None)],
                 table=typed_ast.Table('table1', self.table1_type_ctx),
                 where_expr=typed_ast.Literal(True, tq_types.BOOL),
                 group_set=None,
@@ -507,14 +507,14 @@ class CompilerTest(unittest.TestCase):
             typed_ast.Select([
                 typed_ast.SelectField(
                     typed_ast.ColumnRef('table1', 'value', tq_types.INT),
-                    'value'),
+                    'value', None),
                 typed_ast.SelectField(
                     typed_ast.FunctionCall(
                         runtime.get_func('sum'),
                         [typed_ast.ColumnRef('table1', 'value2',
                                              tq_types.INT)],
                         tq_types.INT),
-                    'f0_')],
+                    'f0_', None)],
                 typed_ast.Table('table1', self.table1_type_ctx),
                 typed_ast.Literal(True, tq_types.BOOL),
                 typed_ast.GroupSet(
@@ -547,13 +547,13 @@ class CompilerTest(unittest.TestCase):
             typed_ast.Select([
                 typed_ast.SelectField(
                     typed_ast.ColumnRef(None, 'value', tq_types.INT),
-                    'value'),
+                    'value', None),
                 typed_ast.SelectField(
                     typed_ast.ColumnRef(None, 'value2', tq_types.INT),
-                    'value2'),
+                    'value2', None),
                 typed_ast.SelectField(
                     typed_ast.ColumnRef(None, 'value3', tq_types.INT),
-                    'value3')],
+                    'value3', None)],
                 typed_ast.TableUnion([
                     typed_ast.Table('table1', self.table1_type_ctx),
                     typed_ast.Table('table2', self.table2_type_ctx)],
@@ -580,14 +580,15 @@ class CompilerTest(unittest.TestCase):
             'SELECT foo, foo + 1 FROM (SELECT value + 1 AS foo FROM table1)',
             typed_ast.Select([
                 typed_ast.SelectField(
-                    typed_ast.ColumnRef(None, 'foo', tq_types.INT), 'foo'),
+                    typed_ast.ColumnRef(None, 'foo', tq_types.INT), 'foo',
+                    None),
                 typed_ast.SelectField(
                     typed_ast.FunctionCall(
                         runtime.get_binary_op('+'), [
                             typed_ast.ColumnRef(None, 'foo', tq_types.INT),
                             typed_ast.Literal(1, tq_types.INT)],
                         tq_types.INT),
-                    'f0_'
+                    'f0_', None
                 )],
                 typed_ast.Select(
                     [typed_ast.SelectField(
@@ -597,7 +598,7 @@ class CompilerTest(unittest.TestCase):
                                                     tq_types.INT),
                                 typed_ast.Literal(1, tq_types.INT)],
                             tq_types.INT),
-                        'foo'
+                        'foo', None
                     )],
                     typed_ast.Table('table1', self.table1_type_ctx),
                     typed_ast.Literal(True, tq_types.BOOL),
@@ -628,7 +629,7 @@ class CompilerTest(unittest.TestCase):
             typed_ast.Select([
                 typed_ast.SelectField(
                     typed_ast.ColumnRef('t', 'value', tq_types.INT),
-                    't.value')],
+                    't.value', None)],
                 typed_ast.Table('table1', self.make_type_context(
                     [('t', 'value', tq_types.INT),
                      ('t', 'value2', tq_types.INT)])),
@@ -651,7 +652,7 @@ class CompilerTest(unittest.TestCase):
             typed_ast.Select([
                 typed_ast.SelectField(
                     typed_ast.ColumnRef('table1', 'value', tq_types.INT),
-                    'table1.value')],
+                    'table1.value', None)],
                 typed_ast.Select([
                     typed_ast.SelectField(
                         typed_ast.FunctionCall(
@@ -662,7 +663,7 @@ class CompilerTest(unittest.TestCase):
                             ],
                             tq_types.INT
                         ),
-                        'foo')],
+                        'foo', None)],
                     typed_ast.Table('table1', self.table1_type_ctx),
                     typed_ast.Literal(True, tq_types.BOOL),
                     None,
@@ -691,11 +692,11 @@ class CompilerTest(unittest.TestCase):
             typed_ast.Select([
                 typed_ast.SelectField(
                     typed_ast.ColumnRef('t', 'value', tq_types.INT),
-                    't.value')],
+                    't.value', None)],
                 typed_ast.Select([
                     typed_ast.SelectField(
                         typed_ast.ColumnRef('table1', 'value', tq_types.INT),
-                        'value')],
+                        'value', None)],
                     typed_ast.Table('table1', self.table1_type_ctx),
                     typed_ast.Literal(True, tq_types.BOOL),
                     None,
@@ -726,7 +727,7 @@ class CompilerTest(unittest.TestCase):
             typed_ast.Select([
                 typed_ast.SelectField(
                     typed_ast.ColumnRef('t1', 'value2', tq_types.INT),
-                    'value2'
+                    'value2', None
                 )],
                 typed_ast.Join(
                     typed_ast.Table('table1',
@@ -771,7 +772,7 @@ class CompilerTest(unittest.TestCase):
             typed_ast.Select(
                 select_fields=[
                     typed_ast.SelectField(
-                        typed_ast.Literal(0, tq_types.INT), 'f0_')],
+                        typed_ast.Literal(0, tq_types.INT), 'f0_', None)],
                 table=typed_ast.Join(
                     base=typed_ast.Table('table1',
                                          self.make_type_context([
@@ -820,7 +821,7 @@ class CompilerTest(unittest.TestCase):
             typed_ast.Select(
                 select_fields=[
                     typed_ast.SelectField(
-                        typed_ast.Literal(0, tq_types.INT), 'f0_')],
+                        typed_ast.Literal(0, tq_types.INT), 'f0_', None)],
                 table=typed_ast.Join(
                     base=typed_ast.Table('table1',
                                          self.make_type_context([
@@ -875,10 +876,10 @@ class CompilerTest(unittest.TestCase):
             typed_ast.Select([
                 typed_ast.SelectField(
                     typed_ast.ColumnRef('table1', 'value', tq_types.INT),
-                    'value'),
+                    'value', None),
                 typed_ast.SelectField(
                     typed_ast.ColumnRef('table1', 'value2', tq_types.INT),
-                    'value2')],
+                    'value2', None)],
                 typed_ast.Table('table1', self.table1_type_ctx),
                 typed_ast.Literal(True, tq_types.BOOL),
                 None,
@@ -900,7 +901,7 @@ class CompilerTest(unittest.TestCase):
                     typed_ast.SelectField(
                         typed_ast.ColumnRef('record_table', 'r1.s',
                                             tq_types.STRING),
-                        'r1.s')],
+                        'r1.s', None)],
                 table=typed_ast.Table('record_table',
                                       self.record_table_type_ctx),
                 where_expr=typed_ast.Literal(True, tq_types.BOOL),
@@ -921,11 +922,11 @@ class CompilerTest(unittest.TestCase):
                     typed_ast.SelectField(
                         typed_ast.ColumnRef('record_table', 'r1.i',
                                             tq_types.INT),
-                        'r1.i'),
+                        'r1.i', None),
                     typed_ast.SelectField(
                         typed_ast.ColumnRef('record_table', 'r1.s',
                                             tq_types.STRING),
-                        'r1.s'),
+                        'r1.s', None),
                 ],
                 table=typed_ast.Table('record_table',
                                       self.record_table_type_ctx),
@@ -940,3 +941,68 @@ class CompilerTest(unittest.TestCase):
                     self.make_type_context([
                         ('record_table', 'r1.i', tq_types.INT),
                         ('record_table', 'r1.s', tq_types.STRING)]))))
+
+    def test_within_record(self):
+        self.assert_compiled_select(
+            'SELECT r1.s, COUNT(r1.s) WITHIN RECORD AS num_s_in_r1 '
+            'FROM record_table',
+            typed_ast.Select(
+                select_fields=[
+                    typed_ast.SelectField(
+                        typed_ast.ColumnRef('record_table', 'r1.s',
+                                            tq_types.STRING),
+                        'r1.s', None),
+                    typed_ast.SelectField(typed_ast.FunctionCall(
+                        runtime.get_func('count'),
+                        [typed_ast.ColumnRef('record_table', 'r1.s',
+                                             tq_types.STRING)],
+                        tq_types.INT
+                    ), 'num_s_in_r1', 'RECORD')],
+                table=typed_ast.Table('record_table',
+                                      self.record_table_type_ctx),
+                where_expr=typed_ast.Literal(True, tq_types.BOOL),
+                group_set=typed_ast.GroupSet(set(), []),
+                having_expr=typed_ast.Literal(True, tq_types.BOOL),
+                orderings=None,
+                limit=None,
+                type_ctx=self.make_type_context(
+                    [(None, 'r1.s', tq_types.STRING),
+                     (None, 'num_s_in_r1', tq_types.INT)],
+                    self.make_type_context([]))))
+
+    def test_within_clause(self):
+        self.assert_compiled_select(
+            'SELECT r1.s, COUNT(r1.s) WITHIN r1 AS num_s_in_r1 '
+            'FROM record_table',
+            typed_ast.Select(
+                select_fields=[
+                    typed_ast.SelectField(
+                        typed_ast.ColumnRef('record_table', 'r1.s',
+                                            tq_types.STRING),
+                        'r1.s', None),
+                    typed_ast.SelectField(typed_ast.FunctionCall(
+                        runtime.get_func('count'),
+                        [typed_ast.ColumnRef('record_table', 'r1.s',
+                                             tq_types.STRING)],
+                        tq_types.INT
+                    ), 'num_s_in_r1', 'r1')],
+                table=typed_ast.Table('record_table',
+                                      self.record_table_type_ctx),
+                where_expr=typed_ast.Literal(True, tq_types.BOOL),
+                group_set=typed_ast.GroupSet(set(), []),
+                having_expr=typed_ast.Literal(True, tq_types.BOOL),
+                orderings=None,
+                limit=None,
+                type_ctx=self.make_type_context(
+                    [(None, 'r1.s', tq_types.STRING),
+                     (None, 'num_s_in_r1', tq_types.INT)],
+                    self.make_type_context([]))))
+
+    def test_within_clause_error(self):
+        with self.assertRaises(compiler.CompileError) as context:
+            compiler.compile_text(
+                'SELECT r1.s, COUNT(r1.s) WITHIN r2 AS '
+                'num_s_in_r1 FROM record_table',
+                self.tables_by_name)
+            self.assertTrue('WITHIN clause syntax error' in
+                            str(context.exception))

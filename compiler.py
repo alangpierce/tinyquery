@@ -36,20 +36,38 @@ class Compiler(object):
         select_fields = self.expand_select_fields(select.select_fields,
                                                   table_expr)
         aliases = self.get_aliases(select_fields)
+        within_clauses = self.get_within_clauses(select_fields)
         group_set = self.compile_groups(select.groups, select_fields, aliases,
                                         table_ctx)
 
         compiled_field_dict, aggregate_context = self.compile_group_fields(
-            select_fields, aliases, group_set, table_ctx)
+            select_fields, aliases, within_clauses, group_set, table_ctx)
+
+        is_scoped_aggregation = any(
+            clause is not None for clause in within_clauses)
 
         # Implicit columns can only show up in non-aggregate select fields.
         implicit_column_context = self.find_used_column_context(
             compiled_field_dict.values())
 
-        for alias, select_field in zip(aliases, select_fields):
+        for alias, within_clause, select_field in zip(aliases, within_clauses,
+                                                      select_fields):
             if group_set is not None and alias not in group_set.alias_groups:
-                compiled_field_dict[alias] = self.compile_select_field(
-                    select_field.expr, alias, aggregate_context)
+                if is_scoped_aggregation is False:
+                    compiled_field_dict[alias] = self.compile_select_field(
+                        select_field.expr, alias, within_clause,
+                        aggregate_context)
+                else:
+                    aggregate_context_not_within = (
+                        aggregate_context.aggregate_context)
+                    if select_field.within_record is not None:
+                        compiled_field_dict[alias] = self.compile_select_field(
+                            select_field.expr, alias, within_clause,
+                            aggregate_context)
+                    else:
+                        compiled_field_dict[alias] = self.compile_select_field(
+                            select_field.expr, alias, within_clause,
+                            aggregate_context_not_within)
 
         # Put the compiled select fields in the proper order.
         select_fields = [compiled_field_dict[alias] for alias in aliases]
@@ -86,7 +104,7 @@ class Compiler(object):
             else:
                 alias = col_name
             star_select_fields.append(
-                tq_ast.SelectField(tq_ast.ColumnId(col_ref), alias))
+                tq_ast.SelectField(tq_ast.ColumnId(col_ref), alias, None))
         result_fields = []
         for field in select_fields:
             if isinstance(field, tq_ast.Star):
@@ -102,13 +120,15 @@ class Compiler(object):
                 result_fields.append(field)
         return result_fields
 
-    def compile_group_fields(self, select_fields, aliases, group_set,
-                             table_ctx):
+    def compile_group_fields(self, select_fields, aliases, within_clauses,
+                             group_set, table_ctx):
         """Compile grouped select fields and compute a type context to use.
 
         Arguments:
             select_fields: A list of uncompiled select fields.
             aliases: A list of aliases that matches with select_fields.
+            within_clauses: A list of within clause expression corresponding
+                to the select_fields.
             group_set: A GroupSet for the groups to use.
             table_ctx: A type context for the table being selected.
 
@@ -127,11 +147,11 @@ class Compiler(object):
             for field_group in group_set.field_groups:
                 group_columns[
                     (field_group.table, field_group.column)] = field_group.type
-
-        for alias, select_field in zip(aliases, select_fields):
+        for alias, within_clause, select_field in zip(aliases, within_clauses,
+                                                      select_fields):
             if group_set is None or alias in group_set.alias_groups:
                 compiled_field_dict[alias] = self.compile_select_field(
-                    select_field.expr, alias, table_ctx)
+                    select_field.expr, alias, within_clause, table_ctx)
                 group_columns[
                     (None, alias)] = compiled_field_dict[alias].expr.type
 
@@ -411,9 +431,13 @@ class Compiler(object):
                         table_ctx.column_ref_for_name(group.name))
             return typed_ast.GroupSet(alias_groups, field_groups)
 
-    def compile_select_field(self, expr, alias, type_ctx):
-        compiled_expr = self.compile_expr(expr, type_ctx)
-        return typed_ast.SelectField(compiled_expr, alias)
+    def compile_select_field(self, expr, alias, within_clause, type_ctx):
+        if within_clause is not None and within_clause != 'RECORD' and (
+                    expr.args[0].name.split('.')[0] != within_clause):
+            raise CompileError('WITHIN clause syntax error')
+        else:
+            compiled_expr = self.compile_expr(expr, type_ctx)
+            return typed_ast.SelectField(compiled_expr, alias, within_clause)
 
     def compile_filter_expr(self, filter_expr, table_ctx):
         """If there is a WHERE or HAVING expression, compile it.
@@ -548,6 +572,11 @@ class Compiler(object):
                 result.append('f%s_' % generic_field_num)
                 generic_field_num += 1
         return result
+
+    @classmethod
+    def get_within_clauses(cls, select_field_list):
+        return [select_field.within_record
+                for select_field in select_field_list]
 
     @staticmethod
     def field_alias(select_field):

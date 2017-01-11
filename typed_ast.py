@@ -41,7 +41,8 @@ class Select(collections.namedtuple(
                       self.limit, type_ctx)
 
 
-class SelectField(collections.namedtuple('SelectField', ['expr', 'alias'])):
+class SelectField(collections.namedtuple('SelectField', ['expr', 'alias',
+                                                         'within_clause'])):
     pass
 
 

@@ -707,7 +707,10 @@ class CountFunction(AggregateFunction):
         return tq_types.INT
 
     def _evaluate(self, num_rows, column):
-        values = [len([0 for arg in column.values if arg is not None])]
+        if column.mode == tq_modes.REPEATED:
+            values = [len([v for val_list in column.values for v in val_list])]
+        else:
+            values = [len([0 for arg in column.values if arg is not None])]
         return context.Column(type=tq_types.INT, mode=tq_modes.NULLABLE,
                               values=values)
 

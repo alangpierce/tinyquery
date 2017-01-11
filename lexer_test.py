@@ -47,6 +47,9 @@ then = ('THEN', 'then')
 else_ = ('ELSE', 'else')
 end = ('END', 'end')
 contains = ('CONTAINS', 'contains')
+within = ('WITHIN', 'within')
+record = ('RECORD', 'record')
+count = ('COUNT', 'count')
 
 
 def int_(n):
@@ -280,6 +283,22 @@ class LexerTest(unittest.TestCase):
         self.assert_tokens(
             'SELECT a CONTAINS b',
             [select, ident('a'), contains, ident('b')]
+        )
+
+    def test_within_record(self):
+        self.assert_tokens(
+            'SELECT COUNT(*) WITHIN RECORD AS something FROM bar',
+            [select, count, lparen, star, rparen, within, record,
+             as_tok, ident('something'), from_tok, ident('bar')]
+        )
+
+    def test_within_clause(self):
+        self.assert_tokens(
+            'SELECT COUNT(citiesLived.yearsLived) WITHIN citiesLived AS '
+            'numberOfTimesInEachCity FROM table',
+            [select, count, lparen, ident('citiesLived'), dot,
+             ident('yearsLived'), rparen, within, ident('citiesLived'), as_tok,
+             ident('numberOfTimesInEachCity'), from_tok, ident('table')]
         )
 
     def test_case(self):

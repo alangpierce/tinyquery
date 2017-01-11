@@ -24,7 +24,7 @@ class ParserTest(unittest.TestCase):
                         '+',
                         tq_ast.BinaryOperator('*', literal(1), literal(2)),
                         tq_ast.BinaryOperator('/', literal(3), literal(4))),
-                    None)],
+                    None, None)],
                 None,
                 None,
                 None,
@@ -37,7 +37,7 @@ class ParserTest(unittest.TestCase):
         self.assert_parsed_select(
             'SELECT foo FROM bar',
             tq_ast.Select(
-                [tq_ast.SelectField(tq_ast.ColumnId('foo'), None)],
+                [tq_ast.SelectField(tq_ast.ColumnId('foo'), None, None)],
                 tq_ast.TableId('bar', None),
                 None,
                 None,
@@ -56,7 +56,7 @@ class ParserTest(unittest.TestCase):
                         '=',
                         tq_ast.ColumnId('foo'),
                         tq_ast.ColumnId('bar')),
-                    None)],
+                    None, None)],
                 tq_ast.TableId('baz', None),
                 None,
                 None,
@@ -80,6 +80,7 @@ class ParserTest(unittest.TestCase):
                             tq_ast.BinaryOperator(
                                 '*', literal(3), literal(4))),
                         literal(5)),
+                    None,
                     None
                 )],
                 None,
@@ -103,6 +104,7 @@ class ParserTest(unittest.TestCase):
                             'contains',
                             literal('xyz'),
                             literal('y'))),
+                    None,
                     None)],
                 None,
                 None,
@@ -122,6 +124,7 @@ class ParserTest(unittest.TestCase):
                         literal(2),
                         tq_ast.BinaryOperator('*', literal(3), literal(4))
                     ),
+                    None,
                     None
                 )],
                 None,
@@ -139,7 +142,7 @@ class ParserTest(unittest.TestCase):
             'SELECT -5',
             tq_ast.Select(
                 [tq_ast.SelectField(
-                    tq_ast.UnaryOperator('-', literal(5)), None
+                    tq_ast.UnaryOperator('-', literal(5)), None, None
                 )],
                 None,
                 None,
@@ -155,7 +158,7 @@ class ParserTest(unittest.TestCase):
         self.assert_parsed_select(
             'SELECT 5.3',
             tq_ast.Select(
-                [tq_ast.SelectField(literal(5.3), None)],
+                [tq_ast.SelectField(literal(5.3), None, None)],
                 None,
                 None,
                 None,
@@ -174,14 +177,17 @@ class ParserTest(unittest.TestCase):
                     tq_ast.FunctionCall('abs', [
                         tq_ast.UnaryOperator('-', literal(3))
                     ]),
+                    None,
                     None
                 ),
                 tq_ast.SelectField(
                     tq_ast.FunctionCall('pow', [literal(2), literal(3)]),
+                    None,
                     None
                 ),
                 tq_ast.SelectField(
                     tq_ast.FunctionCall('now', []),
+                    None,
                     None
                 )],
                 None,
@@ -202,7 +208,7 @@ class ParserTest(unittest.TestCase):
                     '+',
                     tq_ast.ColumnId('foo'),
                     tq_ast.Literal(2)),
-                    None)],
+                    None, None)],
                 tq_ast.TableId('bar', None),
                 tq_ast.BinaryOperator(
                     '>',
@@ -222,7 +228,7 @@ class ParserTest(unittest.TestCase):
                     '+',
                     tq_ast.ColumnId('foo'),
                     tq_ast.Literal(2)),
-                    None)],
+                    None, None)],
                 tq_ast.TableId('bar', None),
                 None,
                 None,
@@ -238,14 +244,15 @@ class ParserTest(unittest.TestCase):
         self.assert_parsed_select(
             'SELECT a AS foo, b bar, a + 1 baz FROM test_table',
             tq_ast.Select(
-                [tq_ast.SelectField(tq_ast.ColumnId('a'), 'foo'),
-                 tq_ast.SelectField(tq_ast.ColumnId('b'), 'bar'),
+                [tq_ast.SelectField(tq_ast.ColumnId('a'), 'foo', None),
+                 tq_ast.SelectField(tq_ast.ColumnId('b'), 'bar', None),
                  tq_ast.SelectField(
                      tq_ast.BinaryOperator(
                          '+',
                          tq_ast.ColumnId('a'),
                          tq_ast.Literal(1)),
-                     'baz'
+                     'baz',
+                     None
                  )],
                 tq_ast.TableId('test_table', None),
                 None,
@@ -263,6 +270,7 @@ class ParserTest(unittest.TestCase):
             tq_ast.Select(
                 [tq_ast.SelectField(
                     tq_ast.FunctionCall('max', [tq_ast.ColumnId('foo')]),
+                    None,
                     None
                 )],
                 tq_ast.TableId('bar', None),
@@ -279,7 +287,7 @@ class ParserTest(unittest.TestCase):
         self.assert_parsed_select(
             'SELECT foo FROM bar GROUP BY baz',
             tq_ast.Select(
-                [tq_ast.SelectField(tq_ast.ColumnId('foo'), None)],
+                [tq_ast.SelectField(tq_ast.ColumnId('foo'), None, None)],
                 tq_ast.TableId('bar', None),
                 None,
                 [tq_ast.ColumnId('baz')],
@@ -294,7 +302,7 @@ class ParserTest(unittest.TestCase):
         self.assert_parsed_select(
             'SELECT foo FROM table1, table2',
             tq_ast.Select(
-                [tq_ast.SelectField(tq_ast.ColumnId('foo'), None)],
+                [tq_ast.SelectField(tq_ast.ColumnId('foo'), None, None)],
                 tq_ast.TableUnion([
                     tq_ast.TableId('table1', None),
                     tq_ast.TableId('table2', None),
@@ -312,9 +320,9 @@ class ParserTest(unittest.TestCase):
         self.assert_parsed_select(
             'SELECT foo FROM (SELECT val AS foo FROM table)',
             tq_ast.Select(
-                [tq_ast.SelectField(tq_ast.ColumnId('foo'), None)],
+                [tq_ast.SelectField(tq_ast.ColumnId('foo'), None, None)],
                 tq_ast.Select(
-                    [tq_ast.SelectField(tq_ast.ColumnId('val'), 'foo')],
+                    [tq_ast.SelectField(tq_ast.ColumnId('val'), 'foo', None)],
                     tq_ast.TableId('table', None),
                     None,
                     None,
@@ -340,7 +348,7 @@ class ParserTest(unittest.TestCase):
         self.assert_parsed_select(
             'SELECT table.foo FROM table',
             tq_ast.Select(
-                [tq_ast.SelectField(tq_ast.ColumnId('table.foo'), None)],
+                [tq_ast.SelectField(tq_ast.ColumnId('table.foo'), None, None)],
                 tq_ast.TableId('table', None),
                 None,
                 None,
@@ -355,7 +363,8 @@ class ParserTest(unittest.TestCase):
         self.assert_parsed_select(
             'SELECT foo.bar.baz FROM table',
             tq_ast.Select(
-                [tq_ast.SelectField(tq_ast.ColumnId('foo.bar.baz'), None)],
+                [tq_ast.SelectField(tq_ast.ColumnId('foo.bar.baz'), None,
+                                    None)],
                 tq_ast.TableId('table', None),
                 None,
                 None,
@@ -370,7 +379,7 @@ class ParserTest(unittest.TestCase):
         self.assert_parsed_select(
             'SELECT foo.* FROM table',
             tq_ast.Select(
-                [tq_ast.SelectField(tq_ast.ColumnId('foo.*'), None)],
+                [tq_ast.SelectField(tq_ast.ColumnId('foo.*'), None, None)],
                 tq_ast.TableId('table', None),
                 None,
                 None,
@@ -386,8 +395,8 @@ class ParserTest(unittest.TestCase):
             'SELECT t1.foo, t2.bar '
             'FROM table1 t1 JOIN table2 t2 ON t1.id = t2.id',
             tq_ast.Select([
-                tq_ast.SelectField(tq_ast.ColumnId('t1.foo'), None),
-                tq_ast.SelectField(tq_ast.ColumnId('t2.bar'), None)],
+                tq_ast.SelectField(tq_ast.ColumnId('t1.foo'), None, None),
+                tq_ast.SelectField(tq_ast.ColumnId('t2.bar'), None, None)],
                 tq_ast.Join(
                     tq_ast.TableId('table1', 't1'),
                     [
@@ -416,8 +425,8 @@ class ParserTest(unittest.TestCase):
             'SELECT t1.foo, t2.bar '
             'FROM table1 t1 LEFT OUTER JOIN EACH table2 t2 ON t1.id = t2.id',
             tq_ast.Select([
-                tq_ast.SelectField(tq_ast.ColumnId('t1.foo'), None),
-                tq_ast.SelectField(tq_ast.ColumnId('t2.bar'), None)],
+                tq_ast.SelectField(tq_ast.ColumnId('t1.foo'), None, None),
+                tq_ast.SelectField(tq_ast.ColumnId('t2.bar'), None, None)],
                 tq_ast.Join(
                     tq_ast.TableId('table1', 't1'),
                     [
@@ -444,8 +453,8 @@ class ParserTest(unittest.TestCase):
             'SELECT t1.foo, t2.bar '
             'FROM table1 t1 LEFT JOIN table2 t2 ON t1.id = t2.id',
             tq_ast.Select([
-                tq_ast.SelectField(tq_ast.ColumnId('t1.foo'), None),
-                tq_ast.SelectField(tq_ast.ColumnId('t2.bar'), None)],
+                tq_ast.SelectField(tq_ast.ColumnId('t1.foo'), None, None),
+                tq_ast.SelectField(tq_ast.ColumnId('t2.bar'), None, None)],
                 tq_ast.Join(
                     tq_ast.TableId('table1', 't1'),
                     [
@@ -475,9 +484,9 @@ class ParserTest(unittest.TestCase):
             'FROM table1 t1 LEFT OUTER JOIN EACH table2 t2 ON t1.id = t2.id '
             'JOIN table3 t3 ON t3.id = t1.id',
             tq_ast.Select([
-                tq_ast.SelectField(tq_ast.ColumnId('t1.foo'), None),
-                tq_ast.SelectField(tq_ast.ColumnId('t2.bar'), None),
-                tq_ast.SelectField(tq_ast.ColumnId('t3.baz'), None)],
+                tq_ast.SelectField(tq_ast.ColumnId('t1.foo'), None, None),
+                tq_ast.SelectField(tq_ast.ColumnId('t2.bar'), None, None),
+                tq_ast.SelectField(tq_ast.ColumnId('t3.baz'), None, None)],
                 tq_ast.Join(
                     tq_ast.TableId('table1', 't1'),
                     [
@@ -514,7 +523,7 @@ class ParserTest(unittest.TestCase):
         self.assert_parsed_select(
             'SELECT foo FROM dataset.table',
             tq_ast.Select([
-                tq_ast.SelectField(tq_ast.ColumnId('foo'), None)],
+                tq_ast.SelectField(tq_ast.ColumnId('foo'), None, None)],
                 tq_ast.TableId('dataset.table', None),
                 None,
                 None,
@@ -529,11 +538,13 @@ class ParserTest(unittest.TestCase):
             tq_ast.Select([
                 tq_ast.SelectField(
                     tq_ast.UnaryOperator('is_null', tq_ast.ColumnId('foo')),
+                    None,
                     None
                 ),
                 tq_ast.SelectField(
                     tq_ast.UnaryOperator('is_not_null',
                                          tq_ast.ColumnId('bar')),
+                    None,
                     None
                 )],
                 tq_ast.TableId('table', None),
@@ -548,7 +559,7 @@ class ParserTest(unittest.TestCase):
         self.assert_parsed_select(
             'SELECT 0 FROM table GROUP EACH BY foo',
             tq_ast.Select([
-                tq_ast.SelectField(tq_ast.Literal(0), None)],
+                tq_ast.SelectField(tq_ast.Literal(0), None, None)],
                 tq_ast.TableId('table', None),
                 None,
                 [tq_ast.ColumnId('foo')],
@@ -561,7 +572,7 @@ class ParserTest(unittest.TestCase):
         self.assert_parsed_select(
             'SELECT 0 FROM table1 t1 JOIN EACH table2 t2 ON t1.foo = t2.bar',
             tq_ast.Select([
-                tq_ast.SelectField(tq_ast.Literal(0), None)],
+                tq_ast.SelectField(tq_ast.Literal(0), None, None)],
                 tq_ast.Join(
                     tq_ast.TableId('table1', 't1'),
                     [
@@ -587,7 +598,7 @@ class ParserTest(unittest.TestCase):
         self.assert_parsed_select(
             'SELECT "Hello" AS foo',
             tq_ast.Select([
-                tq_ast.SelectField(tq_ast.Literal('Hello'), 'foo')],
+                tq_ast.SelectField(tq_ast.Literal('Hello'), 'foo', None)],
                 None,
                 None,
                 None,
@@ -600,9 +611,9 @@ class ParserTest(unittest.TestCase):
         self.assert_parsed_select(
             'SELECT true, false, null',
             tq_ast.Select([
-                tq_ast.SelectField(tq_ast.Literal(True), None),
-                tq_ast.SelectField(tq_ast.Literal(False), None),
-                tq_ast.SelectField(tq_ast.Literal(None), None)],
+                tq_ast.SelectField(tq_ast.Literal(True), None, None),
+                tq_ast.SelectField(tq_ast.Literal(False), None, None),
+                tq_ast.SelectField(tq_ast.Literal(None), None, None)],
                 None,
                 None,
                 None,
@@ -617,9 +628,11 @@ class ParserTest(unittest.TestCase):
             'SELECT COUNT(*), COUNT(((*))) FROM table',
             tq_ast.Select([
                 tq_ast.SelectField(
-                    tq_ast.FunctionCall('count', [tq_ast.Literal(1)]), None),
+                    tq_ast.FunctionCall('count', [tq_ast.Literal(1)]),
+                    None, None),
                 tq_ast.SelectField(
-                    tq_ast.FunctionCall('count', [tq_ast.Literal(1)]), None)],
+                    tq_ast.FunctionCall('count', [tq_ast.Literal(1)]),
+                    None, None)],
                 tq_ast.TableId('table', None),
                 None,
                 None,
@@ -629,11 +642,50 @@ class ParserTest(unittest.TestCase):
                 None)
         )
 
+    def test_within_record(self):
+        self.assert_parsed_select(
+            'SELECT fullname, COUNT(children.name) WITHIN RECORD AS '
+            'numberOfChildren FROM table',
+            tq_ast.Select([
+                tq_ast.SelectField(tq_ast.ColumnId('fullname'), None, None),
+                tq_ast.SelectField(
+                    tq_ast.FunctionCall('count', [tq_ast.ColumnId(
+                        'children.name')]), 'numberOfChildren', 'RECORD')],
+                tq_ast.TableId('table', None),
+                None,
+                None,
+                None,
+                None,
+                None,
+                None
+            )
+        )
+
+    def test_within_clause(self):
+        self.assert_parsed_select(
+            'SELECT fullname, COUNT(citiesLived.yearsLived) WITHIN '
+            'citiesLived AS numberOfTimesInEachCity FROM table',
+            tq_ast.Select([
+                tq_ast.SelectField(tq_ast.ColumnId('fullname'), None, None),
+                tq_ast.SelectField(
+                    tq_ast.FunctionCall('count', [tq_ast.ColumnId(
+                        'citiesLived.yearsLived')]),
+                    'numberOfTimesInEachCity', 'citiesLived')],
+                tq_ast.TableId('table', None),
+                None,
+                None,
+                None,
+                None,
+                None,
+                None
+            )
+        )
+
     def test_cross_join(self):
         self.assert_parsed_select(
             'SELECT 0 FROM table1 t1 CROSS JOIN table2 t2',
             tq_ast.Select(
-                [tq_ast.SelectField(tq_ast.Literal(0), None)],
+                [tq_ast.SelectField(tq_ast.Literal(0), None, None)],
                 tq_ast.Join(
                     tq_ast.TableId('table1', 't1'),
                     [
@@ -663,8 +715,8 @@ class ParserTest(unittest.TestCase):
                     tq_ast.FunctionCall('in', [
                         tq_ast.ColumnId('foo'),
                         tq_ast.Literal(1), tq_ast.Literal(2), tq_ast.Literal(3)
-                    ]), None),
-                tq_ast.SelectField(tq_ast.ColumnId('bar'), None)],
+                    ]), None, None),
+                tq_ast.SelectField(tq_ast.ColumnId('bar'), None, None)],
                 tq_ast.TableUnion([
                     tq_ast.TableId('table1', None),
                     tq_ast.TableId('table2', None)]),
@@ -687,7 +739,7 @@ class ParserTest(unittest.TestCase):
             tq_ast.Select([
                 tq_ast.SelectField(
                     tq_ast.FunctionCall('sum', [tq_ast.ColumnId('foo')]),
-                    None)],
+                    None, None)],
                 tq_ast.TableId('bar', None),
                 None,
                 [tq_ast.ColumnId('baz')],
@@ -702,9 +754,9 @@ class ParserTest(unittest.TestCase):
         self.assert_parsed_select(
             'SELECT foo, bar, baz FROM table ORDER BY foo DESC, bar, baz ASC,',
             tq_ast.Select([
-                tq_ast.SelectField(tq_ast.ColumnId('foo'), None),
-                tq_ast.SelectField(tq_ast.ColumnId('bar'), None),
-                tq_ast.SelectField(tq_ast.ColumnId('baz'), None)],
+                tq_ast.SelectField(tq_ast.ColumnId('foo'), None, None),
+                tq_ast.SelectField(tq_ast.ColumnId('bar'), None, None),
+                tq_ast.SelectField(tq_ast.ColumnId('baz'), None, None)],
                 tq_ast.TableId('table', None),
                 None,
                 None,
@@ -731,6 +783,7 @@ class ParserTest(unittest.TestCase):
                                 tq_ast.Literal(16)
                             ),
                         ]),
+                        None,
                         None
                     )
                 ],
@@ -758,6 +811,7 @@ class ParserTest(unittest.TestCase):
                                 tq_ast.Literal(25)
                             ),
                         ]),
+                        None,
                         None
                     )
                 ],
@@ -783,6 +837,7 @@ class ParserTest(unittest.TestCase):
                                 tq_ast.Literal(0)
                             ),
                         ]),
+                        None,
                         None
                     )
                 ],
