@@ -276,6 +276,28 @@ class FloorFunction(Function):
                               values=values)
 
 
+class IntegerCastFunction(Function):
+    def check_types(self, arg):
+        # Can accept any type.
+        return tq_types.INT
+
+    def evaluate(self, num_rows, column):
+        if column.type in (tq_types.INT, tq_types.FLOAT, tq_types.BOOL):
+            converter = pass_through_none(int)
+        elif column.type == tq_types.STRING:
+            def string_converter(arg):
+                try:
+                    return int(arg)
+                except ValueError:
+                    return None
+            converter = string_converter
+        elif column.type == tq_types.TIMESTAMP:
+            return timestamp_to_usec.evaluate(num_rows, column)
+        values = map(converter, column.values)
+        return context.Column(type=tq_types.INT, mode=tq_modes.NULLABLE,
+                              values=values)
+
+
 class RandFunction(Function):
     def check_types(self):
         return tq_types.FLOAT
@@ -873,6 +895,7 @@ _BINARY_OPERATORS = {
 _FUNCTIONS = {
     'abs': UnaryIntOperator(abs),
     'floor': FloorFunction(),
+    'integer': IntegerCastFunction(),
     'ln': LogFunction(),
     'log': LogFunction(),
     'log10': LogFunction(10),

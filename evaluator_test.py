@@ -340,6 +340,19 @@ class EvaluatorTest(unittest.TestCase):
                 ])
             )
 
+    def test_integer_cast(self):
+        self.assert_query_result(
+            'SELECT INTEGER(3.7) AS i1, INTEGER(2.2) AS i2, '
+            '       INTEGER(TIMESTAMP("2016-01-01")) AS i3, '
+            '       INTEGER("abcd") AS i4, INTEGER("7") AS i5',
+            self.make_context([
+                ('i1', tq_types.INT, [3]),
+                ('i2', tq_types.INT, [2]),
+                ('i3', tq_types.INT, [1451606400000000]),
+                ('i4', tq_types.INT, [None]),
+                ('i5', tq_types.INT, [7]),
+            ]))
+
     def test_boolean_not(self):
         self.assert_query_result(
             'SELECT NOT TRUE AS f, NOT FALSE AS t, NOT NULL AS n',
