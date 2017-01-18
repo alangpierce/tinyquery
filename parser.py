@@ -118,7 +118,7 @@ def p_strict_column_id_list(p):
 
 def p_optional_limit(p):
     """optional_limit :
-                      | LIMIT NUMBER
+                      | LIMIT INTEGER
     """
     if len(p) == 1:
         p[0] = None
@@ -381,7 +381,7 @@ def p_expression_constant(p):
 
 
 def p_int_literal(p):
-    """constant : NUMBER"""
+    """constant : INTEGER"""
     p[0] = tq_ast.Literal(p[1])
 
 

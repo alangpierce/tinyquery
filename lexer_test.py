@@ -49,8 +49,8 @@ end = ('END', 'end')
 contains = ('CONTAINS', 'contains')
 
 
-def num(n):
-    return 'NUMBER', n
+def int_(n):
+    return 'INTEGER', n
 
 
 def flt(f):
@@ -72,16 +72,16 @@ class LexerTest(unittest.TestCase):
                          [(tok.type, tok.value) for tok in tokens])
 
     def test_lex_simple_select(self):
-        self.assert_tokens('SELECT 0', [select, num(0)])
+        self.assert_tokens('SELECT 0', [select, int_(0)])
 
     def test_lex_addition(self):
-        self.assert_tokens('SELECT 1 + 2', [select, num(1), plus, num(2)])
+        self.assert_tokens('SELECT 1 + 2', [select, int_(1), plus, int_(2)])
 
     def test_arithmetic_operators(self):
         self.assert_tokens(
             'SELECT 0 + 1 - 2 * 3 / 4 % 5',
-            [select, num(0), plus, num(1), minus, num(2), star, num(3),
-             divided_by, num(4), mod, num(5)])
+            [select, int_(0), plus, int_(1), minus, int_(2), star, int_(3),
+             divided_by, int_(4), mod, int_(5)])
 
     def test_select_from_table(self):
         self.assert_tokens(
@@ -91,21 +91,21 @@ class LexerTest(unittest.TestCase):
     def test_comparisons(self):
         self.assert_tokens(
             'SELECT 1 > 2 <= 3 = 4 != 5 < 6 >= 7',
-            [select, num(1), greater_than, num(2), less_than_or_equal, num(3),
-             equals, num(4), not_equal, num(5), less_than, num(6),
-             greater_than_or_equal, num(7)]
+            [select, int_(1), greater_than, int_(2), less_than_or_equal,
+             int_(3), equals, int_(4), not_equal, int_(5), less_than, int_(6),
+             greater_than_or_equal, int_(7)]
         )
 
     def test_parens(self):
         self.assert_tokens(
             'SELECT 2 * (3 + 4)',
-            [select, num(2), star, lparen, num(3), plus, num(4), rparen]
+            [select, int_(2), star, lparen, int_(3), plus, int_(4), rparen]
         )
 
     def test_negative_numbers(self):
         self.assert_tokens(
             'SELECT -5',
-            [select, minus, num(5)]
+            [select, minus, int_(5)]
         )
 
     def test_floating_numbers(self):
@@ -113,12 +113,20 @@ class LexerTest(unittest.TestCase):
             'SELECT 5.3',
             [select, flt(5.3)]
         )
+        self.assert_tokens(
+            'SELECT 5.3E4',
+            [select, flt(53000.0)]
+        )
+        self.assert_tokens(
+            'SELECT 5.3e2',
+            [select, flt(530.0)]
+        )
 
     def test_function_call(self):
         self.assert_tokens(
             'SELECT ABS(-5), POW(x, 3), NOW() FROM test_table',
-            [select, ident('ABS'), lparen, minus, num(5), rparen, comma,
-             ident('POW'), lparen, ident('x'), comma, num(3), rparen, comma,
+            [select, ident('ABS'), lparen, minus, int_(5), rparen, comma,
+             ident('POW'), lparen, ident('x'), comma, int_(3), rparen, comma,
              ident('NOW'), lparen, rparen, from_tok, ident('test_table')]
         )
 
@@ -126,14 +134,14 @@ class LexerTest(unittest.TestCase):
         self.assert_tokens(
             'SELECT foo FROM bar WHERE foo > 3',
             [select, ident('foo'), from_tok, ident('bar'), where, ident('foo'),
-             greater_than, num(3)]
+             greater_than, int_(3)]
         )
 
     def test_multiple_select(self):
         self.assert_tokens(
             'SELECT a AS foo, b bar, a + 1 baz FROM test_table',
             [select, ident('a'), as_tok, ident('foo'), comma, ident('b'),
-             ident('bar'), comma, ident('a'), plus, num(1), ident('baz'),
+             ident('bar'), comma, ident('a'), plus, int_(1), ident('baz'),
              from_tok, ident('test_table')])
 
     def test_aggregates(self):
@@ -159,8 +167,8 @@ class LexerTest(unittest.TestCase):
         self.assert_tokens(
             'SELECT foo FROM (SELECT val + 1 AS foo FROM test_table)',
             [select, ident('foo'), from_tok, lparen, select, ident('val'),
-             plus, num(1), as_tok, ident('foo'), from_tok, ident('test_table'),
-             rparen]
+             plus, int_(1), as_tok, ident('foo'), from_tok,
+             ident('test_table'), rparen]
         )
 
     def test_join(self):
@@ -181,7 +189,7 @@ class LexerTest(unittest.TestCase):
     def test_group_each_by(self):
         self.assert_tokens(
             'SELECT 0 FROM table GROUP EACH BY foo',
-            [select, num(0), from_tok, ident('table'), group, each, by,
+            [select, int_(0), from_tok, ident('table'), group, each, by,
              ident('foo')]
         )
 
@@ -207,7 +215,7 @@ class LexerTest(unittest.TestCase):
     def test_in(self):
         self.assert_tokens(
             'SELECT 1 IN (1, 2)',
-            [select, num(1), in_tok, lparen, num(1), comma, num(2), rparen])
+            [select, int_(1), in_tok, lparen, int_(1), comma, int_(2), rparen])
 
     def test_comment(self):
         self.assert_tokens(
@@ -242,13 +250,13 @@ class LexerTest(unittest.TestCase):
     def test_cross_join(self):
         self.assert_tokens(
             'SELECT 0 FROM t1 CROSS JOIN t2',
-            [select, num(0), from_tok, ident('t1'), cross, join, ident('t2')]
+            [select, int_(0), from_tok, ident('t1'), cross, join, ident('t2')]
         )
 
     def test_limit(self):
         self.assert_tokens(
             'SELECT * FROM my_table LIMIT 10',
-            [select, star, from_tok, ident('my_table'), limit, num(10)]
+            [select, star, from_tok, ident('my_table'), limit, int_(10)]
         )
 
     def test_order_by(self):
@@ -277,7 +285,7 @@ class LexerTest(unittest.TestCase):
     def test_case(self):
         self.assert_tokens(
             'SELECT CASE WHEN x = 1 THEN 1 WHEN x = 2 THEN 4 ELSE 9 END',
-            [select, case, when, ident('x'), equals, num(1), then, num(1),
-             when, ident('x'), equals, num(2), then, num(4), else_, num(9),
+            [select, case, when, ident('x'), equals, int_(1), then, int_(1),
+             when, ident('x'), equals, int_(2), then, int_(4), else_, int_(9),
              end]
         )

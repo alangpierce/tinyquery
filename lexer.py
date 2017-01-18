@@ -57,7 +57,7 @@ tokens = [
     'RPAREN',
     'COMMA',
     'DOT',
-    'NUMBER',
+    'INTEGER',
     'FLOAT',
     'ID',
     'STRING'
@@ -95,14 +95,13 @@ def t_STRING(t):
 
 
 def t_FLOAT(token):
-    r"""\d+\.\d+"""
+    r"""\d+\.\d+((e|E)\d+)?"""
     token.value = float(token.value)
     return token
 
 
-# TODO(colin): consider renaming to t_INTEGER
-def t_NUMBER(token):
-    r"""\d+"""
+def t_INTEGER(token):
+    r"""\d+((e|E)\d+)?"""
     try:
         token.value = int(token.value)
     except ValueError:
