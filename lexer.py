@@ -82,13 +82,15 @@ t_DOT = r'\.'
 
 
 def string_regex(delim):
-    return '{0}[^{0}]*{0}'.format(delim)
+    # TODO(colin): do strings with the 'r' prefix get treated any differently
+    # by bigquery?
+    return 'r?{0}[^{0}]*{0}'.format(delim)
 
 
 @lex.TOKEN(string_regex("'") + '|' + string_regex('"'))
 def t_STRING(t):
     # TODO: Escaped quotation marks and other escapes.
-    t.value = t.value[1:-1]
+    t.value = t.value.strip('r')[1:-1]
     return t
 
 

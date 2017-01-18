@@ -190,6 +190,12 @@ class LexerTest(unittest.TestCase):
             [select, ident('foo'), equals, string('hello'), comma,
              ident('bar'), equals, string('world'), from_tok, ident('table')]
         )
+        self.assert_tokens(
+            'SELECT foo = r"hello", bar == r\'world\' FROM table',
+            [select, ident('foo'), equals, string('hello'), comma,
+             ident('bar'), doubleequals, string('world'), from_tok,
+             ident('table')]
+        )
 
     def test_other_literals(self):
         self.assert_tokens(
