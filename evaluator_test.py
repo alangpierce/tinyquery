@@ -264,6 +264,14 @@ class EvaluatorTest(unittest.TestCase):
             self.make_context([('f0_', tq_types.INT, [-3])])
         )
 
+    def test_equality(self):
+        self.assert_query_result(
+            'SELECT 3 == 3',
+            self.make_context([('f0_', tq_types.BOOL, [True])]))
+        self.assert_query_result(
+            'SELECT 3 = 3',
+            self.make_context([('f0_', tq_types.BOOL, [True])]))
+
     def test_contains_when_true_both_literals(self):
         self.assert_query_result(
             'SELECT "xyz" CONTAINS "y"',
@@ -505,7 +513,7 @@ class EvaluatorTest(unittest.TestCase):
         result = self.tq.evaluate_query(
             'SELECT foo, bar'
             '    FROM test_table t1 JOIN test_table_3 t2'
-            '    ON t1.val1 = t2.foo AND t2.bar = t1.val2')
+            '    ON t1.val1 == t2.foo AND t2.bar = t1.val2')
         result_rows = zip(result.columns[(None, 'foo')].values,
                           result.columns[(None, 'bar')].values)
         self.assertEqual([(1, 1), (1, 2)], sorted(result_rows))

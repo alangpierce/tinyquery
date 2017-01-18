@@ -851,6 +851,7 @@ _BINARY_OPERATORS = {
     '/': ArithmeticOperator(lambda a, b: a / b),
     '%': ArithmeticOperator(lambda a, b: a % b),
     '=': ComparisonOperator(lambda a, b: a == b),
+    '==': ComparisonOperator(lambda a, b: a == b),
     '!=': ComparisonOperator(lambda a, b: a != b),
     '>': ComparisonOperator(lambda a, b: a > b),
     '<': ComparisonOperator(lambda a, b: a < b),

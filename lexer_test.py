@@ -9,6 +9,7 @@ star = ('STAR', '*')
 divided_by = ('DIVIDED_BY', '/')
 mod = ('MOD', '%')
 equals = ('EQUALS', '=')
+doubleequals = ('EQUALS', '==')
 not_equal = ('NOT_EQUAL', '!=')
 greater_than = ('GREATER_THAN', '>')
 less_than = ('LESS_THAN', '<')
@@ -186,9 +187,10 @@ class LexerTest(unittest.TestCase):
 
     def test_string_literal(self):
         self.assert_tokens(
-            'SELECT foo = "hello", bar = \'world\' FROM table',
+            'SELECT foo = "hello", bar == \'world\' FROM table',
             [select, ident('foo'), equals, string('hello'), comma,
-             ident('bar'), equals, string('world'), from_tok, ident('table')]
+             ident('bar'), doubleequals, string('world'), from_tok,
+             ident('table')]
         )
         self.assert_tokens(
             'SELECT foo = r"hello", bar == r\'world\' FROM table',

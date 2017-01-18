@@ -767,7 +767,7 @@ class CompilerTest(unittest.TestCase):
         self.assert_compiled_select(
             'SELECT 0 '
             'FROM table1 t1 JOIN table2 t2 '
-            'ON t1.value = t2.value AND t2.value3 = t1.value2',
+            'ON t1.value == t2.value AND t2.value3 = t1.value2',
             typed_ast.Select(
                 select_fields=[
                     typed_ast.SelectField(

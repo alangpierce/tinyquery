@@ -312,7 +312,7 @@ class Compiler(object):
                     return list(itertools.chain(
                         compile_join_field(expr.left, join_type),
                         compile_join_field(expr.right, join_type)))
-                elif (expr.operator == '=' and
+                elif (expr.operator in ('=', '==') and
                         isinstance(expr.left, tq_ast.ColumnId) and
                         isinstance(expr.right, tq_ast.ColumnId)):
                     # For evaluation, we want the ordering of the columns in
