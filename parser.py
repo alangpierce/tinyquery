@@ -10,10 +10,11 @@ import lexer
 tokens = lexer.tokens
 
 precedence = (
+    ('left', 'AND', 'OR'),  # TODO(colin): is this correct?
     ('left', 'EQUALS', 'NOT_EQUAL', 'GREATER_THAN', 'LESS_THAN',
-     'GREATER_THAN_OR_EQUAL', 'LESS_THAN_OR_EQUAL'),
+     'GREATER_THAN_OR_EQUAL', 'LESS_THAN_OR_EQUAL', 'IS'),
     ('left', 'PLUS', 'MINUS'),
-    ('left', 'STAR', 'DIVIDED_BY', 'MOD'),
+    ('left', 'STAR', 'DIVIDED_BY', 'MOD', 'CONTAINS', 'IN'),
 )
 
 

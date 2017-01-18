@@ -92,6 +92,26 @@ class ParserTest(unittest.TestCase):
             )
         )
 
+        self.assert_parsed_select(
+            'SELECT FALSE OR "xyz" CONTAINS "y"',
+            tq_ast.Select(
+                [tq_ast.SelectField(
+                    tq_ast.BinaryOperator(
+                        'or',
+                        literal(False),
+                        tq_ast.BinaryOperator(
+                            'contains',
+                            literal('xyz'),
+                            literal('y'))),
+                    None)],
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None))
+
     def test_parens(self):
         self.assert_parsed_select(
             'SELECT 2 + (3 * 4)',
