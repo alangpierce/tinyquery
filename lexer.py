@@ -135,7 +135,7 @@ def t_brackets_id(t):
 
 
 def t_COMMENT(t):
-    r"""--.*"""
+    r"""--.*|\#.*|//.*"""
 
 
 t_ignore = ' \t\n'

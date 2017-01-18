@@ -209,6 +209,20 @@ class LexerTest(unittest.TestCase):
                 FROM bar
             """,
             [select, ident('foo'), from_tok, ident('bar')])
+        self.assert_tokens(
+            """
+            SELECT # This selects things
+                foo # The first field
+                FROM bar
+            """,
+            [select, ident('foo'), from_tok, ident('bar')])
+        self.assert_tokens(
+            """
+            SELECT // This selects things
+                foo // The first field
+                FROM bar
+            """,
+            [select, ident('foo'), from_tok, ident('bar')])
 
     def test_left_outer_join(self):
         self.assert_tokens(
