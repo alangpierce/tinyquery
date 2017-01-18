@@ -843,6 +843,9 @@ timestamp_to_usec = TimestampExtractFunction(
 
 _UNARY_OPERATORS = {
     '-': UnaryIntOperator(lambda a: -a),
+    # Note that for NOT takes_none is intentionally False, which means that
+    # `NOT NULL` is in fact `NULL`, which matches the behavior of bigquery.
+    'not': UnaryBoolOperator(lambda a: not a, takes_none=False),
     'is_null': UnaryBoolOperator(lambda a: a is None, takes_none=True),
     'is_not_null': UnaryBoolOperator(lambda a: a is not None, takes_none=True),
 }

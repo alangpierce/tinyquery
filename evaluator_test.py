@@ -340,6 +340,19 @@ class EvaluatorTest(unittest.TestCase):
                 ])
             )
 
+    def test_boolean_not(self):
+        self.assert_query_result(
+            'SELECT NOT TRUE AS f, NOT FALSE AS t, NOT NULL AS n',
+            self.make_context([('f', tq_types.BOOL, [False]),
+                               ('t', tq_types.BOOL, [True]),
+                               ('n', tq_types.BOOL, [None])]))
+
+    def test_null_checks(self):
+        self.assert_query_result(
+            'SELECT NULL IS NULL AS t, NULL IS NOT NULL AS f',
+            self.make_context([('t', tq_types.BOOL, [True]),
+                               ('f', tq_types.BOOL, [False])]))
+
     def test_case_expressions(self):
         self.assert_query_result(
             'SELECT CASE WHEN TRUE THEN 1 ELSE 0 END',

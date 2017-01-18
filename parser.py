@@ -273,11 +273,6 @@ def p_expression_parens(p):
     p[0] = p[2]
 
 
-def p_expression_unary(p):
-    """expression : MINUS expression"""
-    p[0] = tq_ast.UnaryOperator(p[1], p[2])
-
-
 def p_expression_is_null(p):
     """expression : expression IS NULL"""
     p[0] = tq_ast.UnaryOperator('is_null', p[1])
@@ -286,6 +281,13 @@ def p_expression_is_null(p):
 def p_expression_is_not_null(p):
     """expression : expression IS NOT NULL"""
     p[0] = tq_ast.UnaryOperator('is_not_null', p[1])
+
+
+def p_expression_unary(p):
+    """expression : MINUS expression
+                  | NOT expression
+    """
+    p[0] = tq_ast.UnaryOperator(p[1], p[2])
 
 
 def p_expression_binary(p):
