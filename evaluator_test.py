@@ -648,6 +648,17 @@ class EvaluatorTest(unittest.TestCase):
             'SELECT IFNULL(val1, val2) FROM some_nulls_table',
             self.make_context([('f0_', tq_types.INT, [1, 2, 3])]))
 
+    def test_coalesce(self):
+        self.assert_query_result(
+            'SELECT COALESCE(NULL, 3, 7)',
+            self.make_context([('f0_', tq_types.INT, [3])]))
+        self.assert_query_result(
+            'SELECT COALESCE(0, NULL, 7)',
+            self.make_context([('f0_', tq_types.INT, [0])]))
+        self.assert_query_result(
+            'SELECT COALESCE(NULL, NULL, 7)',
+            self.make_context([('f0_', tq_types.INT, [7])]))
+
     def test_hash(self):
         self.assert_query_result(
             'SELECT HASH(floats) FROM rainbow_table',

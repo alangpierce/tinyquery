@@ -252,6 +252,31 @@ class IfNullFunction(Function):
         return context.Column(type=t, mode=tq_modes.NULLABLE, values=values)
 
 
+class CoalesceFunction(Function):
+    def check_types(self, *args):
+        # Types can be either all the same, or include some NONETYPE.
+        types = set(args) - set([tq_types.NONETYPE])
+        if len(types) > 1:
+            raise TypeError(
+                'All arguments to coalesce must have the same type.')
+        elif len(types) == 0:
+            return tq_types.NONETYPE
+        return list(types)[0]
+
+    def evaluate(self, num_rows, *cols):
+        result_type = self.check_types(*[col.type for col in cols])
+        rows = zip(*[col.values for col in cols])
+
+        def first_nonnull(row):
+            result = filter(lambda x: x is not None, row)
+            if result:
+                return result[0]
+            return None
+        values = map(first_nonnull, rows)
+        return context.Column(type=result_type, mode=tq_modes.NULLABLE,
+                              values=values)
+
+
 class HashFunction(Function):
     def check_types(self, arg):
         return tq_types.INT
@@ -909,6 +934,7 @@ _FUNCTIONS = {
     'in': InFunction(),
     'if': IfFunction(),
     'ifnull': IfNullFunction(),
+    'coalesce': CoalesceFunction(),
     'hash': HashFunction(),
     'left': LeftFunction(),
     'regexp_match': RegexpMatchFunction(),
