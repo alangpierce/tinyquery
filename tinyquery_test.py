@@ -14,6 +14,23 @@ class TinyQueryTest(unittest.TestCase):
                     'mode': 'NULLABLE',
                 },
                 {
+                    'name': 'rr',
+                    'type': 'RECORD',
+                    'mode': 'REPEATED',
+                    'fields': [
+                        {
+                            'name': 'inner_non_repeated',
+                            'type': 'STRING',
+                            'mode': 'NULLABLE',
+                        },
+                        {
+                            'name': 'inner_repeated',
+                            'type': 'STRING',
+                            'mode': 'REPEATED',
+                        },
+                    ],
+                },
+                {
                     'name': 'r',
                     'type': 'RECORD',
                     'mode': 'NULLABLE',
@@ -22,6 +39,11 @@ class TinyQueryTest(unittest.TestCase):
                             'name': 's',
                             'type': 'STRING',
                             'mode': 'NULLABLE',
+                        },
+                        {
+                            'name': 'inner_repeated',
+                            'type': 'STRING',
+                            'mode': 'REPEATED',
                         },
                         {
                             'name': 'r2',
@@ -82,3 +104,34 @@ class TinyQueryTest(unittest.TestCase):
         table = tq.tables_by_name['test_table']
         self.assertIn('r.r2.d2', table.columns)
         self.assertIn(None, table.columns['r.r2.d2'].values)
+
+    def test_load_json_with_repeated_records(self):
+        record_json = json.dumps({
+            'rr': [
+                {
+                    'inner_non_repeated': 'x',
+                    'inner_repeated': ['a', 'b', 'c'],
+                },
+                {
+                    'inner_non_repeated': 'y',
+                    'inner_repeated': ['d', 'e'],
+                },
+            ],
+            'r': {
+                'inner_repeated': ['l', 'm', 'n'],
+            },
+        })
+
+        tq = tinyquery.TinyQuery()
+        tq.load_table_from_newline_delimited_json(
+            'test_table',
+            json.dumps(self.record_schema['fields']),
+            [record_json])
+        self.assertIn('test_table', tq.tables_by_name)
+        table = tq.tables_by_name['test_table']
+        self.assertEqual(table.columns['rr.inner_non_repeated'].values[0],
+                         ['x', 'y'])
+        self.assertEqual(table.columns['rr.inner_repeated'].values[0],
+                         ['a', 'b', 'c', 'd', 'e'])
+        self.assertEqual(table.columns['r.inner_repeated'].values[0],
+                         ['l', 'm', 'n'])

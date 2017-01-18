@@ -93,19 +93,50 @@ class TinyQuery(object):
             else:
                 return cast_function(value)
 
-        def flatten_row(output, row, schema, prefix=''):
+        def flatten_row(output, row, schema, prefix='', ever_repeated=False):
             # Tinyquery treats record fields as a set of toplevel leaf
             # fields with a .-separated prefix.  In the input data, they're
             # nested.  It's a lot easier if we flatten them all first.
             for field in schema['fields']:
                 if field['type'] == 'RECORD':
-                    flatten_row(output,
-                                row.get(field['name']) or {},
-                                field,
-                                prefix='%s%s.' % (prefix, field['name']))
+                    # We want to be able to treat nested fields uniformly
+                    # (via the recursive call below) regardless of whether
+                    # their parent was repeated (except for correctly setting
+                    # the `ever_repeated` flag.
+                    # To do this we need to ensure that:
+                    # - we always pass something non-null to the recursive call
+                    # - we have at least one recursive call no matter what.
+                    if field['mode'] == 'REPEATED':
+                        # Since we're repeated already, the value will either
+                        # already be a list, or it will be None, in which case
+                        # we need to provide an empty value wrapped in a list
+                        # for the recursive call.
+                        next_values = row.get(field['name']) or [{}]
+                    else:
+                        # In the non-repeated case, we need to wrap in a list
+                        # so that we can iterate over it in the next step.
+                        next_values = [row.get(field['name']) or {}]
+
+                    for value in next_values:
+                        flatten_row(
+                            output,
+                            value,
+                            field,
+                            prefix='%s%s.' % (prefix, field['name']),
+                            ever_repeated=(
+                                ever_repeated or field['mode'] == 'REPEATED'))
                 else:
                     full_name = prefix + field['name']
-                    output[full_name] = row.get(field['name'], None)
+                    if ever_repeated or field['mode'] == 'REPEATED':
+                        output.setdefault(full_name, [])
+                        if field['mode'] == 'REPEATED':
+                            output[full_name].extend(
+                                row.get(field['name'], []))
+                        elif (field['name'] in row and
+                              row[field['name']] is not None):
+                            output[full_name].append(row[field['name']])
+                    else:
+                        output[full_name] = row.get(field['name'], None)
             return output
 
         def process_row(row):
@@ -130,22 +161,23 @@ class TinyQuery(object):
     def make_empty_table(table_name, raw_schema):
         columns = collections.OrderedDict()
 
-        def make_columns(schema, name_prefix=''):
-            # TODO(colin): handle repeated mode correctly when there are
-            # multiple possible places the field could be repeated.
+        def make_columns(schema, name_prefix='', ever_repeated=False):
             for field in schema['fields']:
                 prefixed_name = name_prefix + field['name']
                 value_type = field['type'].upper()
                 mode = field['mode'].upper()
                 if value_type == 'RECORD':
-                    make_columns(field, name_prefix=(prefixed_name + '.'))
+                    make_columns(
+                        field, name_prefix=(prefixed_name + '.'),
+                        ever_repeated=(ever_repeated or mode == 'REPEATED'))
                 # Type and Mode validation
                 elif (value_type not in tq_types.TYPE_SET
-                        or mode not in tq_modes.MODE_SET):
+                      or mode not in tq_modes.MODE_SET):
                     raise ValueError("Type or Mode given was invalid.")
                 else:
+                    final_mode = 'REPEATED' if ever_repeated else mode
                     columns[prefixed_name] = context.Column(
-                        type=value_type, mode=mode, values=[])
+                        type=value_type, mode=final_mode, values=[])
         make_columns(raw_schema)
         return Table(table_name, 0, columns)
 
