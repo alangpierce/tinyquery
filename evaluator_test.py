@@ -1147,3 +1147,40 @@ class EvaluatorTest(unittest.TestCase):
             'SELECT LOG2(32)',
             self.make_context([
                 ('f0_', tq_types.FLOAT, [5.0])]))
+
+    def test_json_functions(self):
+        self.assert_query_result(
+            'SELECT JSON_EXTRACT_SCALAR(\'{"a": ["x", {"b": 3}]}\', '
+            '                           "$.a[1].b")',
+            self.make_context([
+                ('f0_', tq_types.STRING, ['3'])]))
+
+        self.assert_query_result(
+            'SELECT JSON_EXTRACT(\'{"a": ["x", {"b": 3}]}\', '
+            '                    "$.a[1]")',
+            self.make_context([
+                ('f0_', tq_types.STRING, ['{"b": 3}'])]))
+
+        self.assert_query_result(
+            'SELECT JSON_EXTRACT_SCALAR(\'{"a": ["x", {"b": 3}]}\', '
+            '                           "$.a[1]")',
+            self.make_context([
+                ('f0_', tq_types.STRING, [None])]))
+
+        self.assert_query_result(
+            'SELECT JSON_EXTRACT(\'{"a": ["x", {"b": 3}]}\', '
+            '                    "$.a.q.z")',
+            self.make_context([
+                ('f0_', tq_types.STRING, [None])]))
+
+        self.assert_query_result(
+            'SELECT JSON_EXTRACT(\'{"a": ["x", {"b": "q"}]}\', '
+            '                    "$.a[1].b")',
+            self.make_context([
+                ('f0_', tq_types.STRING, ['"q"'])]))
+
+        self.assert_query_result(
+            'SELECT JSON_EXTRACT_SCALAR(\'{"a": ["x", {"b": "q"}]}\', '
+            '                           "$.a[1].b")',
+            self.make_context([
+                ('f0_', tq_types.STRING, ['q'])]))

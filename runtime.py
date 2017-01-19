@@ -2,10 +2,11 @@
 import abc
 import datetime
 import functools
-import random
-import time
+import json
 import math
+import random
 import re
+import time
 
 import arrow
 
@@ -883,6 +884,133 @@ class NumericArgReduceFunction(Function):
             values=values)
 
 
+class JSONExtractFunction(Function):
+    """Extract from a JSON string based on a JSONPath expression.
+
+    This impelments both the bigquery JSON_EXTRACT and JSON_EXTRACT_SCALAR
+    functions, which are very similar except for:
+    - JSON_EXTRACT_SCALAR returns bigquery NULL if the resulting value would
+      not be a scalar (i.e. would be an object or list)
+    - JSON_EXTRACT_SCALAR returns bigquery NULL if the resulting scalar value
+      would be the JSON 'null' (the non-scalar version is the string 'null' in
+      this case)
+    - JSON_EXTRACT_SCALAR returns string values without quotation marks
+
+    TODO(colin): are there other differences?
+    """
+    # JSON null becomes None, so we use this special value to distinguish
+    # between a JSON null, and bigquery null, which we represent with this
+    # constant.
+    NO_RESULT = object()
+
+    def __init__(self, scalar=False):
+        self.scalar = scalar
+
+    def check_types(self, type1, type2):
+        if not (type1 == type2 == tq_types.STRING):
+            raise TypeError('Expected string arguments, got %s.' % (
+                [type1, type2]))
+        return tq_types.STRING
+
+    def _parse_property_name(self, json_path):
+        if json_path[0] != '.':
+            raise ValueError(
+                'Invalid json path expression. Was expecting a "." '
+                'before %s' % json_path)
+        if len(json_path) == 1:
+            raise ValueError(
+                'Invalid json path expression. Cannot end in ".".')
+        prop_name_plus = json_path[1:]
+        next_separator_positions = filter(
+            lambda pos: pos != -1,
+            [prop_name_plus.find('.'), prop_name_plus.find('[')])
+
+        if next_separator_positions:
+            end_idx = min(next_separator_positions)
+            return prop_name_plus[:end_idx], prop_name_plus[end_idx:]
+        else:
+            return prop_name_plus, ''
+
+    def _parse_array_index(self, json_path):
+        if json_path[0] != '[':
+            raise ValueError(
+                'Invalid json path expression. Was expecting a "[" '
+                'before %s' % json_path)
+        index_plus = json_path[1:]
+        str_idx, sep, rest = index_plus.partition(']')
+        if len(sep) == 0:
+            raise ValueError(
+                'Invalid json path expression. Unclosed "[". '
+                'Expected a "]" in %s' % index_plus)
+
+        idx = int(str_idx)
+        if idx < 0:
+            raise ValueError(
+                'Invalid json path expression. Negative indices not allowed.')
+
+        return idx, rest
+
+    def _extract_by_json_path(self, parsed_json_expr, json_path):
+        if len(json_path) == 0:
+            return parsed_json_expr
+
+        if json_path.startswith('$'):
+            return self._extract_by_json_path(parsed_json_expr, json_path[1:])
+
+        if json_path.startswith('.'):
+            prop_name, rest = self._parse_property_name(json_path)
+            if not isinstance(parsed_json_expr, dict):
+                return self.NO_RESULT
+            value = parsed_json_expr.get(prop_name, self.NO_RESULT)
+            if value is self.NO_RESULT:
+                return self.NO_RESULT
+            if value is None:
+                return None
+            return self._extract_by_json_path(value, rest)
+
+        if json_path.startswith('['):
+            idx, rest = self._parse_array_index(json_path)
+            if (not isinstance(parsed_json_expr, list) or
+                    idx >= len(parsed_json_expr)):
+                return self.NO_RESULT
+            value = parsed_json_expr[idx]
+            if value is None:
+                return None
+            return self._extract_by_json_path(value, rest)
+
+        raise ValueError(
+            'Invalid json_path_expression. Expected property access or array '
+            'indexing at %s' % json_path)
+
+    def evaluate(self, num_rows, json_expressions, json_paths):
+        json_path = _ensure_literal(json_paths.values)
+        parsed_json = map(json.loads, json_expressions.values)
+        if not json_path.startswith('$'):
+            raise ValueError(
+                'Invalid json path expression.  Must start with $.')
+        values = [self._extract_by_json_path(json_val, json_path)
+                  for json_val in parsed_json]
+        if self.scalar:
+            # One pecularity of the scalar version is that JSON nulls become
+            # real bigquery nulls, rather than being converted back to JSON
+            # strings.
+            values = [None
+                      if isinstance(val, (dict, list, type(None)))
+                      or val is self.NO_RESULT
+                      else str(val)
+                      for val in values]
+        else:
+            # This ensures that values are dumped back to JSON strings, with
+            # our special NO_RESULT object converted into a bigquery null,
+            # rather than the JSON string 'null', which is what a None val
+            # becomes.
+            values = [json.dumps(val) if val is not self.NO_RESULT else None
+                      for val in values]
+        return context.Column(
+            type=tq_types.STRING, mode=tq_modes.NULLABLE,
+            values=values)
+
+
 timestamp_to_usec = TimestampExtractFunction(
     lambda dt: int(1E6 * arrow.get(dt).float_timestamp),
     return_type=tq_types.INT)
@@ -1061,6 +1189,8 @@ _FUNCTIONS = {
             lambda dt: dt.year,
             return_type=tq_types.INT),
         TimestampFunction()),
+    'json_extract': JSONExtractFunction(),
+    'json_extract_scalar': JSONExtractFunction(scalar=True),
 }
 
 
