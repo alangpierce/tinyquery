@@ -205,6 +205,15 @@ class EvaluatorTest(unittest.TestCase):
                     mode=tq_modes.NULLABLE,
                     values=[6, 7]))])))
 
+        self.tq.load_table_or_view(tinyquery.Table(
+            'repeated_table',
+            4,
+            collections.OrderedDict([
+                ('i', context.Column(
+                    type=tq_types.INT,
+                    mode=tq_modes.REPEATED,
+                    values=[[1, 2, 1], [1, 4, 5], [], [6]]))])))
+
     def assert_query_result(self, query, expected_result):
         result = self.tq.evaluate_query(query)
         self.assertEqual(expected_result, result)
@@ -720,6 +729,11 @@ class EvaluatorTest(unittest.TestCase):
             'SELECT COUNT(DISTINCT val1) FROM test_table',
             self.make_context([
                 ('f0_', tq_types.INT, [4])
+            ]))
+        self.assert_query_result(
+            'SELECT COUNT(DISTINCT i) FROM repeated_table',
+            self.make_context([
+                ('f0_', tq_types.INT, [5])
             ]))
 
     def test_null_count_distinct(self):
