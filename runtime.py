@@ -50,8 +50,136 @@ class Function(object):
                 1 and each arg can be any length.
         """
 
+    @abc.abstractmethod
+    def _evaluate(self, num_wors, *args):
+        """Internal evaluate method, called by a function superclass.
 
-class ArithmeticOperator(Function):
+        Functions should inherit from a subclass that provides the
+        non-underscored version, and then implement the underscored version
+        themselves.
+        """
+
+
+class AggregateFunction(Function):
+    """Represents a function doing some sort of aggregation.
+
+    The function receives no special handling of repeated fields.
+    """
+    def evaluate(self, num_rows, *args):
+        return self._evaluate(num_rows, *args)
+
+
+class ScalarFunction(Function):
+    """Represents a function that operates on scalar values.
+
+    In tinyquery, this means we want it to act the same on the values in
+    non-repeated fields and the individual values within repeated fields.
+
+    In bigquery, the behavior appears to be a little complex.  While in most
+    contexts calling a scalar function on a repeated column and a normal one
+    looks like the data gets flattened, you can, for instance, still do scoped
+    aggregation over the result and have it work with the original row
+    identity.  Thus, this is not the appropriate place for tinyquery to flatten
+    the output, and we need to unflatten the results.
+    """
+    @staticmethod
+    def _rebuild_column_values(repetitions, values, result):
+        """Rebuild a repeated column from flattened results.
+
+        Args:
+            repetitions: a list of how many repeated values go in a row for
+                each of the rows to process.
+            values: a list of all the values that need to be packed into lists
+            result: a (partial) result list to which the rows will be appended.
+        Returns:
+            a list of lists of values representing len(repetitions) rows, each
+                of which with a number of values corresponding to that row's
+                entry in repetitions
+        """
+        if len(repetitions) == 0:
+            return result
+        curr_repetition = repetitions[0]
+        # For rows with no values, we supplied a None, so we need to pop
+        # off one value no matter what.  If that value is None, we go back
+        # to an empty list, otherwise we put the value in a list.
+        curr_values = values[:max(curr_repetition, 1)]
+        if len(curr_values) == 1 and curr_values[0] is None:
+            curr_values = []
+
+        return ScalarFunction._rebuild_column_values(
+            repetitions[1:],
+            values[max(curr_repetition, 1):],
+            result + [curr_values])
+
+    @staticmethod
+    def _flatten_column_values(repeated_column_index, column_values):
+        """Take a list of columns and flatten them.
+
+        We need to acomplish three things during the flattening:
+        1. Flatten out any repeated fields.
+        2. Keep track of how many repeated values were in each row so that we
+           can go back
+        3. If there are other columns, duplicate their values so that we have
+           the same number of entries in all columns after flattening.
+
+        Args:
+            repeated_column_index: the index of the column that is repeated
+            column_values: a list containing a list for each column's values.
+        Returns:
+            (repetition_counts, flattened_columns): a tuple
+            repetition_counts: a list containing one number per row,
+                representing the number of repeated values in that row
+            flattened_columns: a list containing one list for each column's
+                values.  The list for each column will not contain nested
+                lists.
+        """
+        rows = zip(*column_values)
+        repetition_counts = [
+            len(row[repeated_column_index])
+            for row in rows]
+        rows_with_repetition_normalized = [
+            [
+                col or [None]
+                if idx == repeated_column_index
+                else [col] * max(len(row[repeated_column_index]), 1)
+                for idx, col in enumerate(row)
+            ]
+            for row in rows
+        ]
+        normalized_columns = zip(*rows_with_repetition_normalized)
+        flattened_columns = [
+            [val for arr in col for val in arr]
+            for col in normalized_columns]
+        return (repetition_counts, flattened_columns)
+
+    def evaluate(self, num_rows, *args):
+        num_repeated_fields = len([col for col in args
+                                   if col.mode == tq_modes.REPEATED])
+        if num_repeated_fields > 1:
+            raise TypeError('Cannot operate on more than one repeated field.')
+        elif num_repeated_fields == 0:
+            return self._evaluate(num_rows, *args)
+
+        repeated_column_index = [col.mode == tq_modes.REPEATED
+                                 for col in args].index(True)
+        column_values = [col.values for col in args]
+        repetition_counts, flattened_columns = self._flatten_column_values(
+            repeated_column_index, column_values)
+        new_row_count = len(flattened_columns[0])
+        flattened_tq_columns = [
+            context.Column(type=args[idx].type, mode=tq_modes.NULLABLE,
+                           values=flattened_column)
+            for idx, flattened_column in enumerate(flattened_columns)]
+        result = self._evaluate(new_row_count, *flattened_tq_columns)
+
+        unflattened_values = self._rebuild_column_values(
+            repetition_counts, result.values, [])
+
+        return context.Column(type=result.type, mode=tq_modes.REPEATED,
+                              values=unflattened_values)
+
+
+class ArithmeticOperator(ScalarFunction):
     """Basic operators like +."""
     def __init__(self, func):
         self.func = func
@@ -64,7 +192,7 @@ class ArithmeticOperator(Function):
         else:
             return tq_types.INT
 
-    def evaluate(self, num_rows, column1, column2):
+    def _evaluate(self, num_rows, column1, column2):
         values = map(lambda (x, y):
                      None if None in (x, y) else self.func(x, y),
                      zip(column1.values, column2.values))
@@ -73,7 +201,7 @@ class ArithmeticOperator(Function):
         return context.Column(type=t, mode=tq_modes.NULLABLE, values=values)
 
 
-class ComparisonOperator(Function):
+class ComparisonOperator(ScalarFunction):
     def __init__(self, func):
         self.func = func
 
@@ -98,7 +226,7 @@ class ComparisonOperator(Function):
         else:
             raise TypeError('Unexpected types.')
 
-    def evaluate(self, num_rows, column1, column2):
+    def _evaluate(self, num_rows, column1, column2):
         """Implements BigQuery type adherent comparisons on columns, converting
         to other types when necessary to properly emulate BigQuery.
         """
@@ -151,7 +279,7 @@ class ComparisonOperator(Function):
                               values=values)
 
 
-class BooleanOperator(Function):
+class BooleanOperator(ScalarFunction):
     def __init__(self, func):
         self.func = func
 
@@ -160,7 +288,7 @@ class BooleanOperator(Function):
             raise TypeError('Expected bool type.')
         return tq_types.BOOL
 
-    def evaluate(self, num_rows, column1, column2):
+    def _evaluate(self, num_rows, column1, column2):
         values = map(lambda (x, y):
                      None if None in (x, y) else self.func(x, y),
                      zip(column1.values, column2.values))
@@ -168,7 +296,7 @@ class BooleanOperator(Function):
                               values=values)
 
 
-class UnaryIntOperator(Function):
+class UnaryIntOperator(ScalarFunction):
     def __init__(self, func):
         self.func = pass_through_none(func)
 
@@ -177,26 +305,26 @@ class UnaryIntOperator(Function):
             raise TypeError('Expected int type.')
         return tq_types.INT
 
-    def evaluate(self, num_rows, column):
+    def _evaluate(self, num_rows, column):
         values = map(self.func, column.values)
         return context.Column(type=tq_types.INT, mode=tq_modes.NULLABLE,
                               values=values)
 
 
-class UnaryBoolOperator(Function):
+class UnaryBoolOperator(ScalarFunction):
     def __init__(self, func, takes_none=False):
         self.func = func if takes_none else pass_through_none(func)
 
     def check_types(self, arg):
         return tq_types.BOOL
 
-    def evaluate(self, num_rows, column):
+    def _evaluate(self, num_rows, column):
         values = map(self.func, column.values)
         return context.Column(type=tq_types.BOOL, mode=tq_modes.NULLABLE,
                               values=values)
 
 
-class LogFunction(Function):
+class LogFunction(ScalarFunction):
     def __init__(self, base=None):
         if base:
             self.func = pass_through_none(lambda arg: math.log(arg, base))
@@ -208,13 +336,13 @@ class LogFunction(Function):
             raise TypeError('Expected numeric argument.')
         return tq_types.FLOAT
 
-    def evaluate(self, num_rows, column):
+    def _evaluate(self, num_rows, column):
         values = map(self.func, column.values)
         return context.Column(type=tq_types.FLOAT, mode=tq_modes.NULLABLE,
                               values=values)
 
 
-class IfFunction(Function):
+class IfFunction(ScalarFunction):
     def check_types(self, cond, arg1, arg2):
         if cond != tq_types.BOOL:
             raise TypeError('Expected bool type.')
@@ -226,7 +354,7 @@ class IfFunction(Function):
             raise TypeError('Expected types to be the same.')
         return arg1
 
-    def evaluate(self, num_rows, condition_column, then_column, else_column):
+    def _evaluate(self, num_rows, condition_column, then_column, else_column):
         values = [arg1 if cond else arg2
                   for cond, arg1, arg2 in zip(condition_column.values,
                                               then_column.values,
@@ -236,7 +364,7 @@ class IfFunction(Function):
         return context.Column(type=t, mode=tq_modes.NULLABLE, values=values)
 
 
-class IfNullFunction(Function):
+class IfNullFunction(ScalarFunction):
     def check_types(self, arg1, arg2):
         if arg1 == tq_types.NONETYPE:
             return arg2
@@ -246,14 +374,14 @@ class IfNullFunction(Function):
             raise TypeError('Expected types to be the same.')
         return arg1
 
-    def evaluate(self, num_rows, column1, column2):
+    def _evaluate(self, num_rows, column1, column2):
         t = self.check_types(column1.type, column2.type)
         values = map(lambda (x, y): x if x is not None else y,
                      zip(column1.values, column2.values))
         return context.Column(type=t, mode=tq_modes.NULLABLE, values=values)
 
 
-class CoalesceFunction(Function):
+class CoalesceFunction(ScalarFunction):
     def check_types(self, *args):
         # Types can be either all the same, or include some NONETYPE.
         types = set(args) - set([tq_types.NONETYPE])
@@ -264,7 +392,7 @@ class CoalesceFunction(Function):
             return tq_types.NONETYPE
         return list(types)[0]
 
-    def evaluate(self, num_rows, *cols):
+    def _evaluate(self, num_rows, *cols):
         result_type = self.check_types(*[col.type for col in cols])
         rows = zip(*[col.values for col in cols])
 
@@ -278,36 +406,36 @@ class CoalesceFunction(Function):
                               values=values)
 
 
-class HashFunction(Function):
+class HashFunction(ScalarFunction):
     def check_types(self, arg):
         return tq_types.INT
 
-    def evaluate(self, num_rows, column):
+    def _evaluate(self, num_rows, column):
         # TODO: Use CityHash.
         values = map(pass_through_none(hash), column.values)
         return context.Column(type=tq_types.INT, mode=tq_modes.NULLABLE,
                               values=values)
 
 
-class FloorFunction(Function):
+class FloorFunction(ScalarFunction):
     def check_types(self, arg):
         if arg not in tq_types.NUMERIC_TYPE_SET:
             raise TypeError('Expected type int or float.')
         return tq_types.FLOAT
 
-    def evaluate(self, num_rows, column):
+    def _evaluate(self, num_rows, column):
         values = map(pass_through_none(math.floor),
                      column.values)
         return context.Column(type=tq_types.FLOAT, mode=tq_modes.NULLABLE,
                               values=values)
 
 
-class IntegerCastFunction(Function):
+class IntegerCastFunction(ScalarFunction):
     def check_types(self, arg):
         # Can accept any type.
         return tq_types.INT
 
-    def evaluate(self, num_rows, column):
+    def _evaluate(self, num_rows, column):
         if column.type in (tq_types.INT, tq_types.FLOAT, tq_types.BOOL):
             converter = pass_through_none(int)
         elif column.type == tq_types.STRING:
@@ -324,18 +452,18 @@ class IntegerCastFunction(Function):
                               values=values)
 
 
-class RandFunction(Function):
+class RandFunction(ScalarFunction):
     def check_types(self):
         return tq_types.FLOAT
 
-    def evaluate(self, num_rows):
+    def _evaluate(self, num_rows):
         values = [random.random() for _ in xrange(num_rows)]
         # TODO(Samantha): Should this be required?
         return context.Column(type=tq_types.FLOAT, mode=tq_modes.NULLABLE,
                               values=values)
 
 
-class LeftFunction(Function):
+class LeftFunction(ScalarFunction):
     def check_types(self, type1, type2):
         if type1 != tq_types.STRING:
             raise TypeError('First argument to LEFT must be a string.')
@@ -343,7 +471,7 @@ class LeftFunction(Function):
             raise TypeError('Second argument to LEFT must be an int.')
         return tq_types.STRING
 
-    def evaluate(self, num_rows, string_col, int_col):
+    def _evaluate(self, num_rows, string_col, int_col):
         values = [s[:i] if s is not None else None
                   for s, i in zip(string_col.values, int_col.values)]
         return context.Column(type=tq_types.STRING, mode=tq_modes.NULLABLE,
@@ -372,12 +500,12 @@ def _ensure_literal(elements):
 # bigquery uses the re2 library, which only has a subset of the functionality.
 # Investigate pulling in re2 here.
 
-class RegexpMatchFunction(Function):
+class RegexpMatchFunction(ScalarFunction):
     def check_types(self, type1, type2):
         _check_regexp_types(type1, type2)
         return tq_types.BOOL
 
-    def evaluate(self, num_rows, strings, regexps):
+    def _evaluate(self, num_rows, strings, regexps):
         regexp = _ensure_literal(regexps.values)
         values = (
             [None if None in (regexp, s) else
@@ -386,12 +514,12 @@ class RegexpMatchFunction(Function):
                               values=values)
 
 
-class RegexpExtractFunction(Function):
+class RegexpExtractFunction(ScalarFunction):
     def check_types(self, type1, type2):
         _check_regexp_types(type1, type2)
         return tq_types.STRING
 
-    def evaluate(self, num_rows, strings, regexps):
+    def _evaluate(self, num_rows, strings, regexps):
         regexp = _ensure_literal(regexps.values)
         values = []
         for s in strings.values:
@@ -406,12 +534,12 @@ class RegexpExtractFunction(Function):
                               values=values)
 
 
-class RegexpReplaceFunction(Function):
+class RegexpReplaceFunction(ScalarFunction):
     def check_types(self, re_type, str_type, repl_type):
         _check_regexp_types(re_type, str_type, repl_type)
         return tq_types.STRING
 
-    def evaluate(self, num_rows, strings, regexps, replacements):
+    def _evaluate(self, num_rows, strings, regexps, replacements):
         regexp = _ensure_literal(regexps.values)
         replacement = _ensure_literal(replacements.values)
         values = [re.sub(regexp, replacement, s) for s in strings.values]
@@ -420,7 +548,7 @@ class RegexpReplaceFunction(Function):
 
 
 # TODO(Samantha): I'm not sure how this actually works, leaving for now.
-class NthFunction(Function):
+class NthFunction(AggregateFunction):
     # TODO(alan): Enforce that NTH takes a constant as its first arg.
     def check_types(self, index_type, rep_list_type):
         # TODO(Samantha): This should probably be tq_types.INT_TYPE_SET.
@@ -428,7 +556,7 @@ class NthFunction(Function):
             raise TypeError('Expected an int index.')
         return rep_list_type
 
-    def evaluate(self, num_rows, index_list, column):
+    def _evaluate(self, num_rows, index_list, column):
         index = _ensure_literal(index_list.values)
         values = [self.safe_index(rep_elem, index)
                   for rep_elem in column.values]
@@ -444,11 +572,11 @@ class NthFunction(Function):
         return rep_elem[index - 1]
 
 
-class FirstFunction(Function):
+class FirstFunction(AggregateFunction):
     def check_types(self, rep_list_type):
         return rep_list_type
 
-    def evaluate(self, num_rows, column):
+    def _evaluate(self, num_rows, column):
         values = []
         if len(column.values) == 0:
             values = [None]
@@ -462,7 +590,7 @@ class FirstFunction(Function):
                               values=values)
 
 
-class NoArgFunction(Function):
+class NoArgFunction(ScalarFunction):
     def __init__(self, func, return_type=tq_types.INT):
         self.func = func
         self.type = return_type
@@ -470,16 +598,16 @@ class NoArgFunction(Function):
     def check_types(self):
         return self.type
 
-    def evaluate(self, num_rows):
+    def _evaluate(self, num_rows):
         return context.Column(type=self.type, mode=tq_modes.NULLABLE,
                               values=[self.func() for _ in xrange(num_rows)])
 
 
-class InFunction(Function):
+class InFunction(ScalarFunction):
     def check_types(self, arg1, *arg_types):
         return tq_types.BOOL
 
-    def evaluate(self, num_rows, arg1, *other_args):
+    def _evaluate(self, num_rows, arg1, *other_args):
         values = [val1 in val_list
                   for val1, val_list in zip(arg1.values,
                                             zip(*(map(lambda x: x.values,
@@ -488,44 +616,44 @@ class InFunction(Function):
                               values=values)
 
 
-class ConcatFunction(Function):
+class ConcatFunction(AggregateFunction):
     def check_types(self, *arg_types):
         if any(arg_type != tq_types.STRING for arg_type in arg_types):
             raise TypeError('CONCAT only takes string arguments.')
         return tq_types.STRING
 
-    def evaluate(self, num_rows, *columns):
+    def _evaluate(self, num_rows, *columns):
         values = map(lambda strs: None if None in strs else ''.join(strs),
                      zip(*map(lambda x: x.values, columns)))
         return context.Column(tq_types.STRING, tq_modes.NULLABLE,
                               values=values)
 
 
-class StringFunction(Function):
+class StringFunction(ScalarFunction):
     def check_types(self, arg_type):
         return tq_types.STRING
 
-    def evaluate(self, num_rows, column):
+    def _evaluate(self, num_rows, column):
         values = map(pass_through_none(str), column.values)
         return context.Column(type=tq_types.STRING, mode=tq_modes.NULLABLE,
                               values=values)
 
 
-class MinMaxFunction(Function):
+class MinMaxFunction(AggregateFunction):
     def __init__(self, func):
         self.func = func
 
     def check_types(self, arg):
         return arg
 
-    def evaluate(self, num_rows, column):
+    def _evaluate(self, num_rows, column):
         return context.Column(type=self.check_types(column.type),
                               mode=tq_modes.NULLABLE,
                               values=[self.func(filter(lambda x: x is not None,
                                                        column.values))])
 
 
-class SumFunction(Function):
+class SumFunction(AggregateFunction):
     def check_types(self, arg):
         if arg in tq_types.INT_TYPE_SET:
             return tq_types.INT
@@ -534,30 +662,30 @@ class SumFunction(Function):
         else:
             raise TypeError('Unexpected type.')
 
-    def evaluate(self, num_rows, column):
+    def _evaluate(self, num_rows, column):
         values = [sum([0 if arg is None else arg for arg in column.values])]
         return context.Column(type=self.check_types(column.type),
                               mode=tq_modes.NULLABLE,
                               values=values)
 
 
-class CountFunction(Function):
+class CountFunction(AggregateFunction):
     def check_types(self, arg):
         return tq_types.INT
 
-    def evaluate(self, num_rows, column):
+    def _evaluate(self, num_rows, column):
         values = [len([0 for arg in column.values if arg is not None])]
         return context.Column(type=tq_types.INT, mode=tq_modes.NULLABLE,
                               values=values)
 
 
-class AvgFunction(Function):
+class AvgFunction(AggregateFunction):
     def check_types(self, arg):
         if arg not in tq_types.NUMERIC_TYPE_SET:
             raise TypeError('Unexpected type.')
         return tq_types.FLOAT
 
-    def evaluate(self, num_rows, column):
+    def _evaluate(self, num_rows, column):
         filtered_args = [arg for arg in column.values if arg is not None]
         values = ([None] if not filtered_args else
                   [float(sum(filtered_args)) / len(filtered_args)])
@@ -565,11 +693,11 @@ class AvgFunction(Function):
                               values=values)
 
 
-class CountDistinctFunction(Function):
+class CountDistinctFunction(AggregateFunction):
     def check_types(self, arg):
         return tq_types.INT
 
-    def evaluate(self, num_rows, column):
+    def _evaluate(self, num_rows, column):
         if column.mode == tq_modes.REPEATED:
             values = [v for val_list in column.values for v in val_list]
         else:
@@ -578,17 +706,17 @@ class CountDistinctFunction(Function):
                               values=[len(set(values) - set([None]))])
 
 
-class StddevSampFunction(Function):
+class StddevSampFunction(AggregateFunction):
     def check_types(self, arg):
         return tq_types.FLOAT
 
-    def evaluate(self, num_rows, column):
+    def _evaluate(self, num_rows, column):
         # TODO(alan): Implement instead of returning 0.
         return context.Column(type=tq_types.FLOAT, mode=tq_modes.NULLABLE,
                               values=[0.0])
 
 
-class QuantilesFunction(Function):
+class QuantilesFunction(AggregateFunction):
     # TODO(alan): Enforce that QUANTILES takes a constant as its second arg.
     def check_types(self, arg_list_type, num_quantiles_type):
         if num_quantiles_type != tq_types.INT:
@@ -597,7 +725,7 @@ class QuantilesFunction(Function):
         # list type.
         return tq_types.INT
 
-    def evaluate(self, num_rows, column, num_quantiles_list):
+    def _evaluate(self, num_rows, column, num_quantiles_list):
         sorted_args = sorted(arg for arg in column.values if arg is not None)
         values = []
         if not sorted_args:
@@ -618,13 +746,13 @@ class QuantilesFunction(Function):
                               values=values)
 
 
-class ContainsFunction(Function):
+class ContainsFunction(ScalarFunction):
     def check_types(self, type1, type2):
         if type1 != tq_types.STRING or type2 != tq_types.STRING:
             raise TypeError("CONTAINS must operate on strings.")
         return tq_types.BOOL
 
-    def evaluate(self, num_rows, column1, column2):
+    def _evaluate(self, num_rows, column1, column2):
         if len(column1.values) == len(column2.values):
             values = map(lambda (v1, v2): None if None in (v1, v2) else
                          v2 in v1,
@@ -633,7 +761,7 @@ class ContainsFunction(Function):
                                   values=values)
 
 
-class TimestampFunction(Function):
+class TimestampFunction(ScalarFunction):
     def check_types(self, type1):
         if type1 not in tq_types.DATETIME_TYPE_SET:
             raise TypeError(
@@ -641,7 +769,7 @@ class TimestampFunction(Function):
                 'microseconds (or something that is already a timestamp).')
         return tq_types.TIMESTAMP
 
-    def evaluate(self, num_rows, column):
+    def _evaluate(self, num_rows, column):
         if column.type == tq_types.TIMESTAMP:
             return column
 
@@ -666,7 +794,7 @@ class TimestampFunction(Function):
                               values=values)
 
 
-class TimestampExtractFunction(Function):
+class TimestampExtractFunction(ScalarFunction):
     def __init__(self, extractor, return_type):
         self.extractor = pass_through_none(extractor)
         self.type = return_type
@@ -676,13 +804,13 @@ class TimestampExtractFunction(Function):
             raise TypeError('Expected a timestamp, got %s.' % type1)
         return self.type
 
-    def evaluate(self, num_rows, column1):
+    def _evaluate(self, num_rows, column1):
         values = map(self.extractor, column1.values)
         return context.Column(type=self.type, mode=tq_modes.NULLABLE,
                               values=values)
 
 
-class DateAddFunction(Function):
+class DateAddFunction(ScalarFunction):
     VALID_INTERVALS = ('YEAR', 'MONTH', 'DAY', 'HOUR', 'MINUTE', 'SECOND')
 
     def check_types(self, type1, type2, type3):
@@ -695,7 +823,7 @@ class DateAddFunction(Function):
 
         return tq_types.TIMESTAMP
 
-    def evaluate(self, num_rows, timestamps, nums_intervals, interval_types):
+    def _evaluate(self, num_rows, timestamps, nums_intervals, interval_types):
         num_intervals = _ensure_literal(nums_intervals.values)
         interval_type = _ensure_literal(interval_types.values)
         if interval_type not in self.VALID_INTERVALS:
@@ -728,14 +856,14 @@ class DateAddFunction(Function):
                               values=values)
 
 
-class DateDiffFunction(Function):
+class DateDiffFunction(ScalarFunction):
     def check_types(self, type1, type2):
         if not (type1 == tq_types.TIMESTAMP and type2 == tq_types.TIMESTAMP):
             raise TypeError('DATEDIFF requires two timestamps.')
 
         return tq_types.INT
 
-    def evaluate(self, num_rows, lhs_ts, rhs_ts):
+    def _evaluate(self, num_rows, lhs_ts, rhs_ts):
         values = map(lambda (lhs, rhs): None if None in (lhs, rhs) else
                      int(round((lhs - rhs).total_seconds() / 24 / 3600)),
                      zip(lhs_ts.values, rhs_ts.values))
@@ -743,7 +871,7 @@ class DateDiffFunction(Function):
                               values=values)
 
 
-class Compose(Function):
+class Compose(AggregateFunction):
     """Function implementing function composition.
 
     Note that this is not actually a bigquery function, but a tool for
@@ -761,14 +889,14 @@ class Compose(Function):
 
         return result
 
-    def evaluate(self, num_rows, *args):
+    def _evaluate(self, num_rows, *args):
         result = self.functions[0].evaluate(num_rows, *args)
         for f in self.functions[1:]:
             result = f.evaluate(num_rows, result)
         return result
 
 
-class TimestampShiftFunction(Function):
+class TimestampShiftFunction(ScalarFunction):
     """Shift a timestamp to the beginning of the specified interval."""
     def __init__(self, interval):
         self.interval = interval
@@ -791,7 +919,7 @@ class TimestampShiftFunction(Function):
     def _year_truncate(self, ts):
         return self._month_truncate(ts).replace(month=1)
 
-    def evaluate(self, num_rows, timestamps):
+    def _evaluate(self, num_rows, timestamps):
         truncate_fn = pass_through_none(
             getattr(self, '_%s_truncate' % self.interval))
         values = map(truncate_fn, timestamps.values)
@@ -799,7 +927,7 @@ class TimestampShiftFunction(Function):
                               values=values)
 
 
-class UnixTimestampToWeekdayFunction(Function):
+class UnixTimestampToWeekdayFunction(ScalarFunction):
     """Shift a timestamp to the beginning of the specified day in the week.
 
     Note that in contrast to other day of week functions, days run from
@@ -816,7 +944,7 @@ class UnixTimestampToWeekdayFunction(Function):
         # isoweekday goes from 1 == Monday to 7 == Sunday
         return ts.isoweekday() % 7
 
-    def evaluate(self, num_rows, unix_timestamps, weekdays):
+    def _evaluate(self, num_rows, unix_timestamps, weekdays):
         weekday = _ensure_literal(weekdays.values)
         timestamps = TimestampFunction().evaluate(num_rows, unix_timestamps)
         truncated = TimestampShiftFunction('day').evaluate(
@@ -831,7 +959,7 @@ class UnixTimestampToWeekdayFunction(Function):
         return timestamp_to_usec.evaluate(num_rows, ts_result)
 
 
-class StrftimeFunction(Function):
+class StrftimeFunction(ScalarFunction):
     """Format a unix timestamp in microseconds by the supplied format.
 
     TODO(colin): it appears that bigquery and python strftime behave
@@ -844,7 +972,7 @@ class StrftimeFunction(Function):
                 [type1, type2]))
         return tq_types.STRING
 
-    def evaluate(self, num_rows, unix_timestamps, formats):
+    def _evaluate(self, num_rows, unix_timestamps, formats):
         format_str = _ensure_literal(formats.values)
         timestamps = TimestampFunction().evaluate(num_rows, unix_timestamps)
         values = map(
@@ -854,7 +982,7 @@ class StrftimeFunction(Function):
                               values=values)
 
 
-class NumericArgReduceFunction(Function):
+class NumericArgReduceFunction(AggregateFunction):
     def __init__(self, reducer):
         self.reducer = reducer
 
@@ -869,7 +997,7 @@ class NumericArgReduceFunction(Function):
 
         return tq_types.INT
 
-    def evaluate(self, num_rows, *columns):
+    def _evaluate(self, num_rows, *columns):
         def apply(*args):
             # Rather than assigning NULL a numeric value, bigquery's behavior
             # is usually to return NULL if any arguments are NULL.
@@ -884,7 +1012,7 @@ class NumericArgReduceFunction(Function):
             values=values)
 
 
-class JSONExtractFunction(Function):
+class JSONExtractFunction(ScalarFunction):
     """Extract from a JSON string based on a JSONPath expression.
 
     This impelments both the bigquery JSON_EXTRACT and JSON_EXTRACT_SCALAR
@@ -982,7 +1110,7 @@ class JSONExtractFunction(Function):
             'Invalid json_path_expression. Expected property access or array '
             'indexing at %s' % json_path)
 
-    def evaluate(self, num_rows, json_expressions, json_paths):
+    def _evaluate(self, num_rows, json_expressions, json_paths):
         json_path = _ensure_literal(json_paths.values)
         parsed_json = map(json.loads, json_expressions.values)
         if not json_path.startswith('$'):

@@ -212,7 +212,11 @@ class EvaluatorTest(unittest.TestCase):
                 ('i', context.Column(
                     type=tq_types.INT,
                     mode=tq_modes.REPEATED,
-                    values=[[1, 2, 1], [1, 4, 5], [], [6]]))])))
+                    values=[[1, 2, 1], [1, 4, 5], [], [6]])),
+                ('j', context.Column(
+                    type=tq_types.INT,
+                    mode=tq_modes.NULLABLE,
+                    values=[1, 1, 1, 1]))])))
 
     def assert_query_result(self, query, expected_result):
         result = self.tq.evaluate_query(query)
@@ -229,6 +233,21 @@ class EvaluatorTest(unittest.TestCase):
                                               mode=tq_modes.NULLABLE,
                                               values=values))
                 for name, col_type, values in name_type_values_triples),
+            None)
+
+    def make_context_with_mode(self, name_type_mode_value_tuples):
+        # TODO(colin): consolidate with make_context
+        num_rows = len(name_type_mode_value_tuples[0][3])
+        # The constructor does all relevant invariant checks, so we don't have
+        # to do that here.
+        return context.Context(
+            num_rows,
+            collections.OrderedDict(
+                ((None, name), context.Column(type=col_type,
+                                              mode=mode,
+                                              values=values))
+                for name, col_type, mode, values
+                in name_type_mode_value_tuples),
             None)
 
     def test_select_literal(self):
@@ -280,6 +299,16 @@ class EvaluatorTest(unittest.TestCase):
         self.assert_query_result(
             'SELECT 3 = 3',
             self.make_context([('f0_', tq_types.BOOL, [True])]))
+
+    def test_simple_arithmetic_repeated(self):
+        self.assert_query_result(
+            'SELECT i + j FROM repeated_table',
+            self.make_context_with_mode([
+                ('f0_', tq_types.INT, tq_modes.REPEATED, [
+                    [2, 3, 2],
+                    [2, 5, 6],
+                    [],
+                    [7]])]))
 
     def test_contains_when_true_both_literals(self):
         self.assert_query_result(
