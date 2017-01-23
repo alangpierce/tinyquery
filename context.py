@@ -185,8 +185,7 @@ def row_context_from_context(src_context, index):
     """Pull a specific row out of a context as its own context."""
     assert src_context.aggregate_context is None
     columns = collections.OrderedDict(
-        # TODO(Samantha): Fix this. Mode is not always nullable
-        (col_name, Column(type=col.type, mode=tq_modes.NULLABLE,
+        (col_name, Column(type=col.type, mode=col.mode,
          values=[col.values[index]]))
         for col_name, col in src_context.columns.iteritems()
     )
@@ -197,11 +196,9 @@ def cross_join_contexts(context1, context2):
     assert context1.aggregate_context is None
     assert context2.aggregate_context is None
     result_columns = collections.OrderedDict(
-        # TODO(Samantha): Fix this. Mode is not always nullable
-        [(col_name, Column(type=col.type, mode=tq_modes.NULLABLE, values=[]))
+        [(col_name, Column(type=col.type, mode=col.mode, values=[]))
          for col_name, col in context1.columns.iteritems()] +
-        # TODO(Samantha): Fix this. Mode is not always nullable
-        [(col_name, Column(type=col.type, mode=tq_modes.NULLABLE, values=[]))
+        [(col_name, Column(type=col.type, mode=col.mode, values=[]))
          for col_name, col in context2.columns.iteritems()])
 
     for index1 in xrange(context1.num_rows):

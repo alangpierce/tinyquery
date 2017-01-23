@@ -256,6 +256,15 @@ class EvaluatorTest(unittest.TestCase):
             self.make_context([('f0_', tq_types.INT, [0])])
         )
 
+    def test_select_repeated(self):
+        expected_column = self.tq.tables_by_name['repeated_table'].columns['i']
+        self.assert_query_result(
+            'SELECT i FROM repeated_table',
+            context.Context(
+                len(expected_column.values),
+                collections.OrderedDict([((None, 'i'), expected_column)]),
+                None))
+
     def test_simple_arithmetic(self):
         self.assert_query_result(
             'SELECT 1 + 2',
@@ -663,6 +672,17 @@ class EvaluatorTest(unittest.TestCase):
                 (4, 3, 2),
             ],
             sorted(result_rows))
+
+    def test_repeated_select_from_join(self):
+        expected_column = self.tq.tables_by_name['repeated_table'].columns['i']
+        self.assert_query_result(
+            'SELECT i FROM repeated_table '
+            'LEFT JOIN (SELECT 1 AS x) AS join_table '
+            'ON repeated_table.j = join_table.x',
+            context.Context(
+                len(expected_column.values),
+                collections.OrderedDict([((None, 'i'), expected_column)]),
+                None))
 
     def test_null_test(self):
         self.assert_query_result(
