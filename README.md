@@ -77,9 +77,7 @@ JOIN (including LEFT OUTER JOIN and CROSS JOIN), LIMIT, subqueries.
 managing query and copy jobs and getting query results.
 
 ## What's missing?
-* ORDER BY.
-* Repeated columns and record columns, and all of the features that go along
-with them:
+* Many features that behave uniquely with repeated and record fields:
     * FLATTEN
     * WITHIN and scoped aggregation
     * POSITION and NEST
@@ -88,9 +86,12 @@ with them:
 * Lots of API operations are unsupported. The ones that are supported are
 missing various return fields from the API.
 * There are some edge cases in the core language where BigQuery and tinyquery
-differ, most of which involve fully-qualified column names (e.g.
-`table_alias.column` being allowed in tinyquery but not BigQuery or vice
-versa).
+differ:
+    * differences involving fully-qualified column names (e.g.
+    `table_alias.column` being allowed in tinyquery but not BigQuery or vice
+    versa).
+    * tinyquery allows SELECTing from multiple repeated fields more often than
+      bigquery does.
 
 ## Contributing
 

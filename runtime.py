@@ -112,7 +112,7 @@ class ScalarFunction(Function):
             result + [curr_values])
 
     @staticmethod
-    def _flatten_column_values(repeated_column_index, column_values):
+    def _flatten_column_values(repeated_column_indices, column_values):
         """Take a list of columns and flatten them.
 
         We need to acomplish three things during the flattening:
@@ -123,7 +123,10 @@ class ScalarFunction(Function):
            the same number of entries in all columns after flattening.
 
         Args:
-            repeated_column_index: the index of the column that is repeated
+            repeated_column_indices: the indices of the columns that
+                are repeated; if there's more than one repeated column, this
+                function assumes that we've already checked that the lengths of
+                these columns will match up.
             column_values: a list containing a list for each column's values.
         Returns:
             (repetition_counts, flattened_columns): a tuple
@@ -135,13 +138,17 @@ class ScalarFunction(Function):
         """
         rows = zip(*column_values)
         repetition_counts = [
-            len(row[repeated_column_index])
-            for row in rows]
+            # Note that we only need to use one of the columns because this
+            # function assumes that these are the same lengths for all repeated
+            # columns (this will have been checked elsewhere).
+            len(row[repeated_column_indices[0]])
+            for row in rows
+        ]
         rows_with_repetition_normalized = [
             [
                 col or [None]
-                if idx == repeated_column_index
-                else [col] * max(len(row[repeated_column_index]), 1)
+                if idx in repeated_column_indices
+                else [col] * max(len(row[repeated_column_indices[0]]), 1)
                 for idx, col in enumerate(row)
             ]
             for row in rows
@@ -153,18 +160,44 @@ class ScalarFunction(Function):
         return (repetition_counts, flattened_columns)
 
     def evaluate(self, num_rows, *args):
-        num_repeated_fields = len([col for col in args
-                                   if col.mode == tq_modes.REPEATED])
+        repeated_columns = [
+            col for col in args if col.mode == tq_modes.REPEATED]
+        num_repeated_fields = len(repeated_columns)
         if num_repeated_fields > 1:
-            raise TypeError('Cannot operate on more than one repeated field.')
+            # As an exception, bigquery allows you to use multiple repeated
+            # fields as arguments to a function when each of the fields are
+            # internal to the same record field or when both of the fields are
+            # derived (via function application) from the same source data.
+            # When this happens, it just treats it as if the columns were
+            # flattened together.
+            # We, however, don't have the information to follow the data
+            # provenance, so as a proxy, we check to make sure that all the
+            # repeated fields have the same number of items in each row.  This
+            # is more permissive than bigquery's behavior.
+            # TODO(colin): insert a (probably compile-time?) check to make sure
+            # tinyquery's behavior on multiple repeated fields matches that of
+            # bigquery.
+            repetition_counts = zip(*[
+                [len(row_values)
+                 for row_values in col.values]
+                for col in repeated_columns
+            ])
+            all_have_matching_counts = all(
+                len(set(row_counts)) == 1
+                for row_counts in repetition_counts)
+            if not all_have_matching_counts:
+                raise TypeError(
+                    'Cannot query the cross product of repeated fields.')
         elif num_repeated_fields == 0:
             return self._evaluate(num_rows, *args)
 
-        repeated_column_index = [col.mode == tq_modes.REPEATED
-                                 for col in args].index(True)
+        repeated_column_indices = [
+            idx
+            for idx, col in enumerate(args)
+            if col.mode == tq_modes.REPEATED]
         column_values = [col.values for col in args]
         repetition_counts, flattened_columns = self._flatten_column_values(
-            repeated_column_index, column_values)
+            repeated_column_indices, column_values)
         new_row_count = len(flattened_columns[0])
         flattened_tq_columns = [
             context.Column(type=args[idx].type, mode=tq_modes.NULLABLE,
