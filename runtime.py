@@ -1145,7 +1145,9 @@ class JSONExtractFunction(ScalarFunction):
 
     def _evaluate(self, num_rows, json_expressions, json_paths):
         json_path = _ensure_literal(json_paths.values)
-        parsed_json = map(json.loads, json_expressions.values)
+        parsed_json = map(
+            pass_through_none(json.loads),
+            json_expressions.values)
         if not json_path.startswith('$'):
             raise ValueError(
                 'Invalid json path expression.  Must start with $.')
