@@ -221,6 +221,10 @@ class EvaluatorTest(unittest.TestCase):
                     type=tq_types.INT,
                     mode=tq_modes.REPEATED,
                     values=[[1], [4, 5], [1], [6, 7]])),
+                ('repeated_but_only_single_values', context.Column(
+                    type=tq_types.INT,
+                    mode=tq_modes.REPEATED,
+                    values=[[1], [], [8], [9]])),
                 ('j', context.Column(
                     type=tq_types.INT,
                     mode=tq_modes.NULLABLE,
@@ -332,6 +336,7 @@ class EvaluatorTest(unittest.TestCase):
                 len(expected_column.values),
                 collections.OrderedDict([((None, 'i'), expected_column)]),
                 None))
+
         # Error to use two repeated fields if the count in each row is
         # different.
         self.assertRaises(
@@ -339,6 +344,18 @@ class EvaluatorTest(unittest.TestCase):
             lambda: self.tq.evaluate_query(
                 'SELECT IF(i == 2, i, different_repetition) AS i '
                 'FROM repeated_table'))
+
+        # Ok to use a second repeated field if it only contains scalar data.
+        self.assert_query_result(
+            'SELECT IF(i == 2, i, repeated_but_only_single_values) AS i '
+            'FROM repeated_table',
+            context.Context(
+                len(expected_column.values),
+                collections.OrderedDict([((None, 'i'), context.Column(
+                    type=tq_types.INT,
+                    mode=tq_modes.REPEATED,
+                    values=[[1, 2, 1], [None, None, None], [8], [9]]))]),
+                None))
 
     def test_simple_arithmetic(self):
         self.assert_query_result(

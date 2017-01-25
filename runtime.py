@@ -112,6 +112,26 @@ class ScalarFunction(Function):
             result + [curr_values])
 
     @staticmethod
+    def _normalize_column_to_length(col, desired_count):
+        """Given the value(s) for a column, normalize to a desired length.
+
+        If `col` is a scalar, it's duplicated in a list the desired number of
+        times.  If `col` is a list, it must have 0, 1, or the desired number of
+        elements, in which cases `None` or the single element is duplicated, or
+        the original list is returned.
+        """
+        desired_count = max(desired_count, 1)
+        if isinstance(col, list) and len(col) == desired_count:
+            return col
+        elif isinstance(col, list):
+            assert len(col) in (0, 1), (
+                'Unexpectedly got a row with the incorrect number of '
+                'repeated values.')
+            return (col or [None]) * desired_count
+        else:
+            return [col] * desired_count
+
+    @staticmethod
     def _flatten_column_values(repeated_column_indices, column_values):
         """Take a list of columns and flatten them.
 
@@ -126,7 +146,7 @@ class ScalarFunction(Function):
             repeated_column_indices: the indices of the columns that
                 are repeated; if there's more than one repeated column, this
                 function assumes that we've already checked that the lengths of
-                these columns will match up.
+                these columns will match up, or that they have 0 or 1 element.
             column_values: a list containing a list for each column's values.
         Returns:
             (repetition_counts, flattened_columns): a tuple
@@ -138,20 +158,16 @@ class ScalarFunction(Function):
         """
         rows = zip(*column_values)
         repetition_counts = [
-            # Note that we only need to use one of the columns because this
-            # function assumes that these are the same lengths for all repeated
-            # columns (this will have been checked elsewhere).
-            len(row[repeated_column_indices[0]])
+            max(max(len(row[idx]) for idx in repeated_column_indices), 1)
             for row in rows
         ]
+
         rows_with_repetition_normalized = [
             [
-                col or [None]
-                if idx in repeated_column_indices
-                else [col] * max(len(row[repeated_column_indices[0]]), 1)
-                for idx, col in enumerate(row)
+                ScalarFunction._normalize_column_to_length(col, count)
+                for col in row
             ]
-            for row in rows
+            for row, count in zip(rows, repetition_counts)
         ]
         normalized_columns = zip(*rows_with_repetition_normalized)
         flattened_columns = [
@@ -183,7 +199,14 @@ class ScalarFunction(Function):
                 for col in repeated_columns
             ])
             all_have_matching_counts = all(
-                len(set(row_counts)) == 1
+                # Note that 0 and 1 items are always allowed, since it's always
+                # permissible to mix in a scalar or a NULL.  Bigquery only
+                # allows this when the data is actually derived from a scalar
+                # field, but we don't have the ability to check this, so as a
+                # proxy, we check if the field looks like a scalar.
+                # TODO(colin): insert a compile-time check that matches
+                # bigquery's behavior.
+                len(set(row_counts) - set([0, 1])) <= 1
                 for row_counts in repetition_counts)
             if not all_have_matching_counts:
                 raise TypeError(
