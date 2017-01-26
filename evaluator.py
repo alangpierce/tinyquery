@@ -4,6 +4,7 @@ import context
 import tq_ast
 import tq_modes
 import typed_ast
+import tq_types
 
 
 class Evaluator(object):
@@ -29,10 +30,9 @@ class Evaluator(object):
                         # for multiple fields
                         result = self.evaluate_within(
                             select_ast.select_fields, select_ast.group_set,
-                            select_context, select_field.within_clause,
-                            select_field)
+                            select_context, select_field.within_clause)
                         break
-            if num_scoped_agg > 1:
+            elif num_scoped_agg > 1:
                 raise NotImplementedError('Multiple fields having "WITHIN" '
                                           'clause is not supported as yet.')
             else:
@@ -257,8 +257,34 @@ class Evaluator(object):
             None)
 
     def evaluate_within(self, select_fields, group_set, ctx,
-                        within_clause, within_field):
+                        within_clause):
+        """Evaluate a list of select fields, one of which has a WITHIN or
+        WITHIN RECORD clause and/or grouping by some of the values.
+
+        Arguments:
+            select_fields: A list of SelectField instances to evaluate.
+            group_set: The groups (either fields in select_context or aliases
+                referring to an element of select_fields) to group by.
+            ctx: The "source" context that the expressions can access when
+                being evaluated.
+
+        Returns:
+            A context with the results.
+        """
         if within_clause == "RECORD":
+            # Add an extra column of row number over which the grouping
+            # will be done.
+            ctx_with_primary_key = context.empty_context_from_template(ctx)
+            context.append_context_to_context(ctx, ctx_with_primary_key)
+
+            (table_name, _), _ = ctx_with_primary_key.columns.items()[0]
+            row_nums = range(1, ctx_with_primary_key.num_rows + 1)
+            row_nums_col = context.Column(
+                type=tq_types.INT, mode=tq_modes.NULLABLE, values=row_nums)
+            ctx_with_primary_key.columns[(table_name,
+                         'row_numbers_column_primary_key')] = row_nums_col
+            group_set.field_groups.append(typed_ast.ColumnRef(
+                table_name, 'row_numbers_column_primary_key', tq_types.INT))
             if len(select_fields) > 1:
             # TODO: Implement WITHIN RECORD when one or more of the
             # selected fields (except the one in the WITHIN RECORD
@@ -271,17 +297,10 @@ class Evaluator(object):
                             raise NotImplementedError(
                                 'Cannot select fields having mode=REPEATED '
                                 'for queries involving WITHIN RECORD')
-            else:
-                for ((table_name, column_name),
-                     column) in ctx.columns.iteritems():
-                    if column.mode != tq_modes.REPEATED and len(
-                            set(column.values)) == len(column.values):
-                        group_set.field_groups.append(typed_ast.ColumnRef(
-                            table_name, column_name, column.type))
-                        break
         # TODO: Implement for WITHIN clause
         typed_ast.TRIVIAL_GROUP_SET = typed_ast.GroupSet(set(), [])
-        return self.evaluate_groups(select_fields, group_set, ctx)
+        return self.evaluate_groups(select_fields, group_set,
+                                    ctx_with_primary_key)
 
     def evaluate_select_fields(self, select_fields, ctx):
         """Evaluate a table result given the data the fields have access to.
