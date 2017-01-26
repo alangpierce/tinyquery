@@ -95,6 +95,14 @@ class EvaluatorTest(unittest.TestCase):
                                        values=['hello', 'world'])),
             ])))
         self.tq.load_table_or_view(tinyquery.Table(
+            'string_table_with_null',
+            3,
+            collections.OrderedDict([
+                ('str', context.Column(type=tq_types.STRING,
+                                       mode=tq_modes.NULLABLE,
+                                       values=['hello', 'world', None])),
+            ])))
+        self.tq.load_table_or_view(tinyquery.Table(
             'string_table_2',
             2,
             collections.OrderedDict([
@@ -1261,9 +1269,10 @@ class EvaluatorTest(unittest.TestCase):
 
     def test_regexp_extract(self):
         self.assert_query_result(
-            'SELECT REGEXP_EXTRACT(str, "e(l|q)lo") FROM string_table',
+            'SELECT REGEXP_EXTRACT(str, "e(l|q)lo") '
+            'FROM string_table_with_null',
             self.make_context([
-                ('f0_', tq_types.STRING, ['l', None])
+                ('f0_', tq_types.STRING, ['l', None, None])
             ]))
 
     def test_regexp_replace(self):

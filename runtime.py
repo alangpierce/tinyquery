@@ -579,6 +579,9 @@ class RegexpExtractFunction(ScalarFunction):
         regexp = _ensure_literal(regexps.values)
         values = []
         for s in strings.values:
+            if s is None:
+                values.append(None)
+                continue
             match_result = re.search(regexp, s)
             if match_result is None:
                 values.append(None)
