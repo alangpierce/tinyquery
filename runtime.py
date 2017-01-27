@@ -12,6 +12,7 @@ import arrow
 
 import compiler
 import context
+import repeated_util
 import tq_types
 import tq_modes
 
@@ -82,99 +83,6 @@ class ScalarFunction(Function):
     identity.  Thus, this is not the appropriate place for tinyquery to flatten
     the output, and we need to unflatten the results.
     """
-    @staticmethod
-    def _rebuild_column_values(repetitions, values, result):
-        """Rebuild a repeated column from flattened results.
-
-        Args:
-            repetitions: a list of how many repeated values go in a row for
-                each of the rows to process.
-            values: a list of all the values that need to be packed into lists
-            result: a (partial) result list to which the rows will be appended.
-        Returns:
-            a list of lists of values representing len(repetitions) rows, each
-                of which with a number of values corresponding to that row's
-                entry in repetitions
-        """
-        if len(repetitions) == 0:
-            return result
-        curr_repetition = repetitions[0]
-        # For rows with no values, we supplied a None, so we need to pop
-        # off one value no matter what.  If that value is None, we go back
-        # to an empty list, otherwise we put the value in a list.
-        curr_values = values[:max(curr_repetition, 1)]
-        if len(curr_values) == 1 and curr_values[0] is None:
-            curr_values = []
-
-        return ScalarFunction._rebuild_column_values(
-            repetitions[1:],
-            values[max(curr_repetition, 1):],
-            result + [curr_values])
-
-    @staticmethod
-    def _normalize_column_to_length(col, desired_count):
-        """Given the value(s) for a column, normalize to a desired length.
-
-        If `col` is a scalar, it's duplicated in a list the desired number of
-        times.  If `col` is a list, it must have 0, 1, or the desired number of
-        elements, in which cases `None` or the single element is duplicated, or
-        the original list is returned.
-        """
-        desired_count = max(desired_count, 1)
-        if isinstance(col, list) and len(col) == desired_count:
-            return col
-        elif isinstance(col, list):
-            assert len(col) in (0, 1), (
-                'Unexpectedly got a row with the incorrect number of '
-                'repeated values.')
-            return (col or [None]) * desired_count
-        else:
-            return [col] * desired_count
-
-    @staticmethod
-    def _flatten_column_values(repeated_column_indices, column_values):
-        """Take a list of columns and flatten them.
-
-        We need to acomplish three things during the flattening:
-        1. Flatten out any repeated fields.
-        2. Keep track of how many repeated values were in each row so that we
-           can go back
-        3. If there are other columns, duplicate their values so that we have
-           the same number of entries in all columns after flattening.
-
-        Args:
-            repeated_column_indices: the indices of the columns that
-                are repeated; if there's more than one repeated column, this
-                function assumes that we've already checked that the lengths of
-                these columns will match up, or that they have 0 or 1 element.
-            column_values: a list containing a list for each column's values.
-        Returns:
-            (repetition_counts, flattened_columns): a tuple
-            repetition_counts: a list containing one number per row,
-                representing the number of repeated values in that row
-            flattened_columns: a list containing one list for each column's
-                values.  The list for each column will not contain nested
-                lists.
-        """
-        rows = zip(*column_values)
-        repetition_counts = [
-            max(max(len(row[idx]) for idx in repeated_column_indices), 1)
-            for row in rows
-        ]
-
-        rows_with_repetition_normalized = [
-            [
-                ScalarFunction._normalize_column_to_length(col, count)
-                for col in row
-            ]
-            for row, count in zip(rows, repetition_counts)
-        ]
-        normalized_columns = zip(*rows_with_repetition_normalized)
-        flattened_columns = [
-            [val for arr in col for val in arr]
-            for col in normalized_columns]
-        return (repetition_counts, flattened_columns)
-
     def evaluate(self, num_rows, *args):
         repeated_columns = [
             col for col in args if col.mode == tq_modes.REPEATED]
@@ -219,8 +127,9 @@ class ScalarFunction(Function):
             for idx, col in enumerate(args)
             if col.mode == tq_modes.REPEATED]
         column_values = [col.values for col in args]
-        repetition_counts, flattened_columns = self._flatten_column_values(
-            repeated_column_indices, column_values)
+        repetition_counts, flattened_columns = (
+            repeated_util.flatten_column_values(
+                repeated_column_indices, column_values))
         new_row_count = len(flattened_columns[0])
         flattened_tq_columns = [
             context.Column(type=args[idx].type, mode=tq_modes.NULLABLE,
@@ -228,7 +137,7 @@ class ScalarFunction(Function):
             for idx, flattened_column in enumerate(flattened_columns)]
         result = self._evaluate(new_row_count, *flattened_tq_columns)
 
-        unflattened_values = self._rebuild_column_values(
+        unflattened_values = repeated_util.rebuild_column_values(
             repetition_counts, result.values, [])
 
         return context.Column(type=result.type, mode=tq_modes.REPEATED,

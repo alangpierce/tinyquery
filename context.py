@@ -5,7 +5,9 @@ It is the basic container for intermediate data when evaluating a query.
 
 import collections
 import itertools
+import logging
 
+import repeated_util
 import tq_modes
 
 
@@ -107,14 +109,97 @@ def mask_context(context, mask):
     """
     assert context.aggregate_context is None, (
         'Cannot mask a context with an aggregate context.')
-    new_columns = collections.OrderedDict([
-        (column_name,
-         Column(type=column.type, mode=column.mode,
-                values=list(itertools.compress(column.values, mask.values))))
-        for (column_name, column) in context.columns.iteritems()
-    ])
-    return Context(sum([value or 0 for value in mask.values]),
-                   new_columns, None)
+    # If the mask column is repeated, we need to handle it specially.
+    # There's several possibilities here, which are described inline.
+    # TODO(colin): these have the same subtle differences from bigquery's
+    # behavior as function evaluation on repeated fields.  Fix.
+    if mask.mode == tq_modes.REPEATED:
+        num_rows = len(
+            filter(
+                None,
+                (len(filter(None, row)) for row in mask.values)))
+        new_columns = collections.OrderedDict()
+        for col_name, col in context.columns.iteritems():
+            if col.mode == tq_modes.REPEATED:
+                allowable = True
+                new_values = []
+                for mask_row, col_row in zip(mask.values, col.values):
+                    if not any(mask_row):
+                        # No matter any of the other conditions, if there's no
+                        # truthy values in the mask in a row we want to skip
+                        # the whole row.
+                        continue
+                    if len(mask_row) == 1:
+                        # We already know this single value is truthy, or else
+                        # we'd have matched the previous block.  Just pass on
+                        # the whole row in this case.
+                        new_values.append(
+                            repeated_util.normalize_repeated_null(col_row))
+                    elif len(mask_row) == len(col_row):
+                        # As for function evaluation, when the number of values
+                        # in a row matches across columns, we match them up
+                        # individually.
+                        new_values.append(
+                            repeated_util.normalize_repeated_null(
+                                list(itertools.compress(col_row, mask_row))))
+                    elif len(col_row) in (0, 1):
+                        # If the column has 0 or 1 values, we need to fill out
+                        # to the length of the mask.
+                        norm_row = repeated_util.normalize_column_to_length(
+                            col_row, len(mask_row))
+                        new_values.append(
+                            repeated_util.normalize_repeated_null(
+                                list(itertools.compress(norm_row, mask_row))))
+                    else:
+                        # If none of these conditions apply, we can't match up
+                        # the number of values in the mask and a column.  This
+                        # *may* be ok, since at this point this might be a
+                        # column that we're not going to select in the final
+                        # result anyway.  In this case, since we can't do
+                        # anything sensible, we're going to discard it from the
+                        # output.  Since this is a little unexpected, we log a
+                        # warning too.  This is preferable to leaving it in,
+                        # since a missing column will be a hard error, but one
+                        # with a strange number of values might allow a
+                        # successful query that just does something weird.
+                        allowable = False
+                        break
+                if not allowable:
+                    logging.warn(
+                        'Ignoring unselectable repeated column %s' % (
+                            col_name,))
+                    continue
+            else:
+                # For non-repeated columns, we retain the row if any of the
+                # items in the mask will be retained.
+                new_values = list(itertools.compress(
+                    col.values,
+                    (any(mask_row) for mask_row in mask.values)))
+
+            new_columns[col_name] = Column(
+                type=col.type,
+                mode=col.mode,
+                values=new_values)
+    else:
+        orig_column_values = [
+            col.values for col in context.columns.itervalues()]
+        mask_values = mask.values
+        num_rows = len(filter(None, mask.values))
+        new_values = [
+            Column(
+                type=col.type,
+                mode=col.mode,
+                values=list(itertools.compress(values, mask_values)))
+            for col, values in zip(context.columns.itervalues(),
+                                   orig_column_values)]
+        new_columns = collections.OrderedDict([
+            (name, col) for name, col in zip(context.columns.iterkeys(),
+                                             new_values)])
+
+    return Context(
+        num_rows,
+        new_columns,
+        None)
 
 
 def empty_context_from_template(context):

@@ -291,15 +291,16 @@ class EvaluatorTest(unittest.TestCase):
         result = self.tq.evaluate_query(query)
         self.assertEqual(expected_result, result)
 
-    def make_context(self, name_type_values_triples):
+    def make_context(self, name_type_values_triples, repeated=False):
         num_rows = len(name_type_values_triples[0][2])
         # The constructor does all relevant invariant checks, so we don't have
         # to do that here.
+        mode = tq_modes.REPEATED if repeated else tq_modes.NULLABLE
         return context.Context(
             num_rows,
             collections.OrderedDict(
                 ((None, name), context.Column(type=col_type,
-                                              mode=tq_modes.NULLABLE,
+                                              mode=mode,
                                               values=values))
                 for name, col_type, values in name_type_values_triples),
             None)
@@ -528,6 +529,21 @@ class EvaluatorTest(unittest.TestCase):
             'SELECT val1 + 2 FROM test_table WHERE val2 > 3',
             self.make_context([('f0_', tq_types.INT, [6, 10, 4])])
         )
+
+    def test_where_multiple_repeated(self):
+        self.assert_query_result(
+            'SELECT i_clone '
+            'FROM repeated_table '
+            'WHERE i = 1',
+            self.make_context(
+                [('i_clone', tq_types.INT, [[1, 1], [1]])],
+                repeated=True))
+
+        self.assert_query_result(
+            'SELECT j '
+            'FROM repeated_table '
+            'WHERE i = 1',
+            self.make_context([('j', tq_types.INT, [1, 1])]))
 
     def test_having(self):
         self.assert_query_result(
