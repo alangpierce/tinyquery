@@ -91,7 +91,10 @@ class TinyQuery(object):
             elif mode == tq_modes.REPEATED:
                 return map(cast_function, value)
             else:
-                return cast_function(value)
+                if isinstance(value, str):
+                    return cast_function(value.decode('utf-8'))
+                else:
+                    return cast_function(value)
 
         def flatten_row(output, row, schema, prefix='', ever_repeated=False):
             # Tinyquery treats record fields as a set of toplevel leaf

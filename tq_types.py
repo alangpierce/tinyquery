@@ -20,7 +20,7 @@ CAST_FUNCTION_MAP = {
     INT: int,
     FLOAT: float,
     BOOL: bool,
-    STRING: str,
+    STRING: unicode,
     TIMESTAMP: lambda val: arrow.get(val).to('UTC').naive,
     NONETYPE: lambda _: None,
     'null': lambda _: None
