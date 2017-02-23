@@ -1,3 +1,6 @@
 *.pyc
 .idea
 parser.out
+dist
+build
+Tinyquery.egg-info
