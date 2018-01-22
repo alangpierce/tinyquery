@@ -4,14 +4,14 @@ from setuptools import setup
 
 setup(
     name='Tinyquery',
-    version='1.0',
+    version='1.1',
     description='In-memory test stub for bigquery',
     author='Khan Academy',
     author_email='opensource+pypi@khanacademy.org',
     url='https://github.com/Khan/tinyquery',
     keywords=['bigquery'],
     packages=['tinyquery'],
-    install_requires=['arrow', 'ply'],
+    install_requires=['arrow==0.12.1', 'ply==3.10'],
     classifiers=[
         'License :: OSI Approved :: MIT License',
         'Programming Language :: Python :: 2',
