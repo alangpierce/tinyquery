@@ -7,6 +7,10 @@ style of the surrounding code, and follow the
 
 In order to contribute to tinyquery, you must first sign the CLA, which can be found at http://www.khanacademy.org/r/cla.
 
+## Making a release
+
+To make a release, run `make release`.  You'll need the PyPI credentials from [K284](https://phabricator.khanacademy.org/K284).  Make sure to bump the version number in `setup.py` first!
+
 ## License
 
 tinyquery is licensed under the [MIT License](http://opensource.org/licenses/MIT).
