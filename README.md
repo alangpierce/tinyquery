@@ -100,3 +100,13 @@ See [CONTRIBUTING.md](https://github.com/Khan/tinyquery/blob/master/CONTRIBUTING
 ## License
 
 tinyquery is licensed under the [MIT License](http://opensource.org/licenses/MIT).
+
+## Changelog
+
+### 1.1
+
+Pinned dependencies to versions.
+
+### 1.0
+
+Initial release to PyPI.
