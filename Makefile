@@ -5,3 +5,5 @@ build:
 release: build
 	pip install -U twine   # TODO(benkraft): dev-only requirements file?
 	twine upload dist/*
+
+.PHONY: build release
