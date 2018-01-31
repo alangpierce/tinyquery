@@ -36,7 +36,7 @@ class FakeHttpRequest(object):
         self.args = args
         self.kwargs = kwargs
 
-    def execute(self):
+    def execute(self, **kwargs):
         return self.func(*self.args, **self.kwargs)
 
 
