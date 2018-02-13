@@ -945,6 +945,32 @@ class EvaluatorTest(unittest.TestCase):
             'SELECT COUNT(DISTINCT val1) FROM some_nulls_table',
             self.make_context([('f0_', tq_types.INT, [2])]))
 
+    def test_group_concat(self):
+        self.assert_query_result(
+            'SELECT GROUP_CONCAT(str) FROM string_table',
+            self.make_context([
+                ('f0_', tq_types.STRING, ['hello,world'])
+            ]))
+        self.assert_query_result(
+            'SELECT GROUP_CONCAT(children.name) FROM record_table_2',
+            self.make_context([
+                ('f0_', tq_types.STRING, ['Jane,John,Earl,Sam,Kit'])
+            ]))
+
+    def test_null_group_concat(self):
+        self.assert_query_result(
+            'SELECT GROUP_CONCAT(str) FROM string_table_with_null',
+            self.make_context([
+                ('f0_', tq_types.STRING, ['hello,world'])
+            ]))
+
+    def test_group_concat_separator(self):
+        self.assert_query_result(
+            'SELECT GROUP_CONCAT(str, \' || \') FROM string_table',
+            self.make_context([
+                ('f0_', tq_types.STRING, ['hello || world'])
+            ]))
+
     def test_count_star(self):
         self.assert_query_result(
             'SELECT COUNT(foo), COUNT(*) FROM null_table',

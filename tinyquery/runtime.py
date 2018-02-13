@@ -677,6 +677,24 @@ class CountDistinctFunction(AggregateFunction):
                               values=[len(set(values) - set([None]))])
 
 
+class GroupConcatFunction(AggregateFunction):
+    def check_types(self, *arg_types):
+        return tq_types.STRING
+
+    def _evaluate(self, num_rows, column, separator_list=None):
+        if separator_list:
+            separator = _ensure_literal(separator_list.values)
+        else:
+            separator = ','
+        if column.mode == tq_modes.REPEATED:
+            values = [separator.join([v for val_list in column.values for v in val_list if v])]
+        else:
+            values = [separator.join([v for v in column.values if v is not None])]
+        return context.Column(type=self.check_types(column.type),
+                              mode=tq_modes.NULLABLE,
+                              values=values)
+
+
 class StddevSampFunction(AggregateFunction):
     def check_types(self, arg):
         return tq_types.FLOAT
@@ -1302,6 +1320,7 @@ _AGGREGATE_FUNCTIONS = {
     'count': CountFunction(),
     'avg': AvgFunction(),
     'count_distinct': CountDistinctFunction(),
+    'group_concat': GroupConcatFunction(),
     'stddev_samp': StddevSampFunction(),
     'quantiles': QuantilesFunction(),
     'first': FirstFunction()
