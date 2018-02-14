@@ -152,10 +152,10 @@ class Evaluator(object):
         Returns:
             A context with the results.
         """
-        select_aliases = {
-            select_field.alias: select_field.expr.column
+        select_aliases = collections.OrderedDict(
+            (select_field.alias, (select_field.expr.table, select_field.expr.column))
             for select_field in select_fields
-        }
+        )
 
         assert select_context.aggregate_context is None
         all_values = []
@@ -165,10 +165,15 @@ class Evaluator(object):
             all_values.append(column.values)
 
         for order_by_column in ordering_col:
-            for count, ((_, column_name), column) in enumerate(
+            order_column_name = order_by_column.column_id.name
+
+            for count, (column_identifier, column) in enumerate(
                     overall_context.columns.iteritems()):
-                order_column_name = order_by_column.column_id.name
-                if select_aliases.get(order_column_name, order_column_name) == column_name:
+                if (
+                    '%s.%s' % column_identifier == order_column_name
+                    or select_aliases.get(order_column_name) == column_identifier
+                    or order_column_name not in select_aliases and order_column_name == column_identifier[1]
+                ):
                     sort_by_indexes[count] = order_by_column.is_ascending
                     break
         reversed_sort_by_indexes = collections.OrderedDict(
@@ -190,9 +195,15 @@ class Evaluator(object):
             ordered_values = all_values
 
         for key in select_context.columns:
-            for count, (_, overall_key) in enumerate(overall_context.columns):
+            for count, overall_column_identifier in enumerate(overall_context.columns):
                 overall_context_loop_break = False
-                if overall_key == select_aliases[key[1]]:
+                if (
+                    key == overall_column_identifier
+                    or not key[0] and (
+                        key[1] == '%s.%s' % overall_column_identifier
+                        or select_aliases.get(key[1]) == overall_column_identifier
+                    )
+                ):
                     select_context.columns[key] = context.Column(
                         type=select_context.columns[key].type,
                         mode=select_context.columns[key].mode,

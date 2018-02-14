@@ -834,6 +834,31 @@ class EvaluatorTest(unittest.TestCase):
                 ('t3.bar', tq_types.INT, [1, 2, 1, 2, 7, 3]),
             ]))
 
+    def test_join_ordering_duplicate_column_names(self):
+        self.assert_query_result(
+            'SELECT t1.val1 as v1, t2.val2 as v2 FROM test_table t1'
+            '    JOIN test_table_2 t2 ON t1.val1 = t2.val3'
+            '    ORDER BY v2',
+            self.make_context([
+                ('v1', tq_types.INT, [8]),
+                ('v2', tq_types.INT, [7]),
+            ]))
+
+    def test_order_without_select(self):
+        self.assert_query_result(
+            'SELECT val1 FROM test_table ORDER BY val2',
+            self.make_context([
+                ('val1', tq_types.INT, [1, 1, 8, 2, 4])
+            ]))
+        self.assert_query_result(
+            'SELECT t1.val1, t1.val2, t3.foo FROM test_table t1'
+            '    JOIN test_table_3 t3 ON t1.val1 = t3.foo ORDER BY val2, bar',
+            self.make_context([
+                ('t1.val1', tq_types.INT, [1, 1, 1, 1, 2, 4]),
+                ('t1.val2', tq_types.INT, [1, 1, 2, 2, 6, 8]),
+                ('t3.foo', tq_types.INT, [1, 1, 1, 1, 2, 4]),
+            ]))
+
     def test_null_test(self):
         self.assert_query_result(
             'SELECT foo IS NULL, foo IS NOT NULL FROM null_table',
