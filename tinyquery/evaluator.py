@@ -50,7 +50,8 @@ class Evaluator(object):
 
         if select_ast.orderings is not None:
             result = self.evaluate_orderings(select_context, result,
-                                             select_ast.orderings)
+                                             select_ast.orderings,
+                                             select_ast.select_fields)
 
         if select_ast.limit is not None:
             context.truncate_context(result, select_ast.limit)
@@ -131,7 +132,7 @@ class Evaluator(object):
         return result_context
 
     def evaluate_orderings(self, overall_context, select_context,
-                           ordering_col):
+                           ordering_col, select_fields):
         """
         Evaluate a context and order it by a list of given columns.
 
@@ -145,10 +146,17 @@ class Evaluator(object):
                 is_ascending which is a boolean for the order in which the
                 column has to be arranged (True for ascending and False for
                 descending).
+            select_fields: A list of select fields that can be used to map
+                aliases back to the overall context
 
         Returns:
             A context with the results.
         """
+        select_aliases = {
+            select_field.alias: select_field.expr.column
+            for select_field in select_fields
+        }
+
         assert select_context.aggregate_context is None
         all_values = []
         sort_by_indexes = collections.OrderedDict()
@@ -159,7 +167,8 @@ class Evaluator(object):
         for order_by_column in ordering_col:
             for count, ((_, column_name), column) in enumerate(
                     overall_context.columns.iteritems()):
-                if order_by_column.column_id.name == column_name:
+                order_column_name = order_by_column.column_id.name
+                if select_aliases.get(order_column_name, order_column_name) == column_name:
                     sort_by_indexes[count] = order_by_column.is_ascending
                     break
         reversed_sort_by_indexes = collections.OrderedDict(
@@ -183,7 +192,7 @@ class Evaluator(object):
         for key in select_context.columns:
             for count, (_, overall_key) in enumerate(overall_context.columns):
                 overall_context_loop_break = False
-                if overall_key == key[1]:
+                if overall_key == select_aliases[key[1]]:
                     select_context.columns[key] = context.Column(
                         type=select_context.columns[key].type,
                         mode=select_context.columns[key].mode,
