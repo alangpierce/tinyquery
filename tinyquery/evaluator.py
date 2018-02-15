@@ -152,6 +152,7 @@ class Evaluator(object):
         Returns:
             A context with the results.
         """
+        # A dict of aliases for select fields since an order by field might be an alias
         select_aliases = collections.OrderedDict(
             (select_field.alias, (select_field.expr.table, select_field.expr.column))
             for select_field in select_fields
@@ -167,12 +168,20 @@ class Evaluator(object):
         for order_by_column in ordering_col:
             order_column_name = order_by_column.column_id.name
 
-            for count, (column_identifier, column) in enumerate(
+            for count, (column_identifier_pair, column) in enumerate(
                     overall_context.columns.iteritems()):
                 if (
-                    '%s.%s' % column_identifier == order_column_name
-                    or select_aliases.get(order_column_name) == column_identifier
-                    or order_column_name not in select_aliases and order_column_name == column_identifier[1]
+                    # order by column is of the form `table_name.col`
+                    '%s.%s' % column_identifier_pair == order_column_name
+                    # order by column is an alias
+                    or select_aliases.get(order_column_name) == column_identifier_pair
+                    or (
+                        # order by column is just the field name
+                        # but not if that field name is also an alias
+                        # to avoid mixing up duplicate field names across joins
+                        order_column_name not in select_aliases
+                        and order_column_name == column_identifier_pair[1]
+                    )
                 ):
                     sort_by_indexes[count] = order_by_column.is_ascending
                     break
@@ -195,13 +204,13 @@ class Evaluator(object):
             ordered_values = all_values
 
         for key in select_context.columns:
-            for count, overall_column_identifier in enumerate(overall_context.columns):
+            for count, overall_column_identifier_pair in enumerate(overall_context.columns):
                 overall_context_loop_break = False
                 if (
-                    key == overall_column_identifier
+                    key == overall_column_identifier_pair
                     or not key[0] and (
-                        key[1] == '%s.%s' % overall_column_identifier
-                        or select_aliases.get(key[1]) == overall_column_identifier
+                        key[1] == '%s.%s' % overall_column_identifier_pair
+                        or select_aliases.get(key[1]) == overall_column_identifier_pair
                     )
                 ):
                     select_context.columns[key] = context.Column(
