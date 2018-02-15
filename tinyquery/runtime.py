@@ -686,6 +686,8 @@ class GroupConcatUnquotedFunction(AggregateFunction):
             separator = _ensure_literal(separator_list.values)
         else:
             separator = ','
+        # TODO: this implementation supports repeated fields but we have not
+        # confirmed that bigquery does (if it doesn't, this should be removed)
         if column.mode == tq_modes.REPEATED:
             values = [separator.join([v for val_list in column.values for v in val_list if v])]
         else:
