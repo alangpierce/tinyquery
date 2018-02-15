@@ -36,7 +36,9 @@ class FakeHttpRequest(object):
         self.args = args
         self.kwargs = kwargs
 
-    def execute(self):
+    def execute(self, http=None, num_retries=0):
+        # It probably doesn't make sense to support http or num_retries in
+        # a mock, but we need to accept them as kwargs to avoid errors
         return self.func(*self.args, **self.kwargs)
 
 
