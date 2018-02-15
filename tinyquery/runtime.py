@@ -677,7 +677,7 @@ class CountDistinctFunction(AggregateFunction):
                               values=[len(set(values) - set([None]))])
 
 
-class GroupConcatFunction(AggregateFunction):
+class GroupConcatUnquotedFunction(AggregateFunction):
     def check_types(self, *arg_types):
         return tq_types.STRING
 
@@ -1320,7 +1320,7 @@ _AGGREGATE_FUNCTIONS = {
     'count': CountFunction(),
     'avg': AvgFunction(),
     'count_distinct': CountDistinctFunction(),
-    'group_concat': GroupConcatFunction(),
+    'group_concat_unquoted': GroupConcatUnquotedFunction(),
     'stddev_samp': StddevSampFunction(),
     'quantiles': QuantilesFunction(),
     'first': FirstFunction()
