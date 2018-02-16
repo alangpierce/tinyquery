@@ -4,6 +4,8 @@ from __future__ import absolute_import
 
 import collections
 
+import six
+
 from tinyquery import context
 from tinyquery import tq_ast
 from tinyquery import tq_modes
@@ -108,7 +110,7 @@ class Evaluator(object):
 
         # TODO: Seems pretty ugly and wasteful to use a whole context as a
         # group key.
-        for i in xrange(select_context.num_rows):
+        for i in six.moves.xrange(select_context.num_rows):
             key = self.get_group_key(
                 field_groups, alias_group_list, select_context,
                 alias_group_result_context, i)
@@ -122,7 +124,7 @@ class Evaluator(object):
 
         result_context = self.empty_context_from_select_fields(select_fields)
         result_col_names = [field.alias for field in select_fields]
-        for context_key, group_context in group_contexts.iteritems():
+        for context_key, group_context in group_contexts.items():
             group_eval_context = context.Context(
                 1, context_key.columns, group_context)
             group_aggregate_result_context = self.evaluate_select_fields(
@@ -164,14 +166,14 @@ class Evaluator(object):
         all_values = []
         sort_by_indexes = collections.OrderedDict()
 
-        for ((_, column_name), column) in overall_context.columns.iteritems():
+        for ((_, column_name), column) in overall_context.columns.items():
             all_values.append(column.values)
 
         for order_by_column in ordering_col:
             order_column_name = order_by_column.column_id.name
 
             for count, (column_identifier_pair, column) in enumerate(
-                    overall_context.columns.iteritems()):
+                    overall_context.columns.items()):
                 if (
                     # order by column is of the form `table_name.col`
                     '%s.%s' % column_identifier_pair == order_column_name
@@ -191,7 +193,7 @@ class Evaluator(object):
             reversed(list(sort_by_indexes.items())))
 
         t_all_values = [list(z) for z in zip(*all_values)]
-        for index, is_ascending in reversed_sort_by_indexes.iteritems():
+        for index, is_ascending in reversed_sort_by_indexes.items():
             t_all_values.sort(key=lambda x: (x[index]),
                               reverse=not is_ascending)
         ordered_values = [list(z) for z in zip(*t_all_values)]
@@ -310,8 +312,8 @@ class Evaluator(object):
             ctx_with_primary_key = context.empty_context_from_template(ctx)
             context.append_context_to_context(ctx, ctx_with_primary_key)
 
-            (table_name, _), _ = ctx_with_primary_key.columns.items()[0]
-            row_nums = range(1, ctx_with_primary_key.num_rows + 1)
+            table_name = next(iter(ctx_with_primary_key.columns))
+            row_nums = list(six.moves.xrange(1, ctx_with_primary_key.num_rows + 1))
             row_nums_col = context.Column(
                 type=tq_types.INT, mode=tq_modes.NULLABLE, values=row_nums)
             ctx_with_primary_key.columns[(table_name,
@@ -413,7 +415,7 @@ class Evaluator(object):
             lhs_key_refs = [cond.column1 for cond in conditions]
             rhs_key_refs = [cond.column2 for cond in conditions]
             rhs_key_contexts = {}
-            for i in xrange(rhs_context.num_rows):
+            for i in six.moves.xrange(rhs_context.num_rows):
                 rhs_key = self.get_join_key(rhs_context, rhs_key_refs, i)
                 if rhs_key not in rhs_key_contexts:
                     rhs_key_contexts[rhs_key] = (
@@ -426,7 +428,7 @@ class Evaluator(object):
                 context.empty_context_from_template(lhs_context),
                 context.empty_context_from_template(rhs_context))
 
-            for i in xrange(lhs_context.num_rows):
+            for i in six.moves.xrange(lhs_context.num_rows):
                 lhs_key = self.get_join_key(lhs_context, lhs_key_refs, i)
                 lhs_row_context = context.row_context_from_context(
                     lhs_context, i)
@@ -499,7 +501,7 @@ class Evaluator(object):
         return func_call.func.evaluate(context.num_rows, *arg_results)
 
     def evaluate_Literal(self, literal, context_object):
-        values = [literal.value for _ in xrange(context_object.num_rows)]
+        values = [literal.value for _ in six.moves.xrange(context_object.num_rows)]
         return context.Column(type=literal.type, mode=tq_modes.NULLABLE,
                               values=values)
 

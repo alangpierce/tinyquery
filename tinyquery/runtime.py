@@ -11,6 +11,7 @@ import re
 import time
 
 import arrow
+import six
 
 from tinyquery import exceptions
 from tinyquery import context
@@ -420,7 +421,7 @@ class RandFunction(ScalarFunction):
         return tq_types.FLOAT
 
     def _evaluate(self, num_rows):
-        values = [random.random() for _ in xrange(num_rows)]
+        values = [random.random() for _ in six.moves.xrange(num_rows)]
         # TODO(Samantha): Should this be required?
         return context.Column(type=tq_types.FLOAT, mode=tq_modes.NULLABLE,
                               values=values)
@@ -566,7 +567,7 @@ class NoArgFunction(ScalarFunction):
 
     def _evaluate(self, num_rows):
         return context.Column(type=self.type, mode=tq_modes.NULLABLE,
-                              values=[self.func() for _ in xrange(num_rows)])
+                              values=[self.func() for _ in six.moves.xrange(num_rows)])
 
 
 class InFunction(ScalarFunction):
@@ -726,9 +727,9 @@ class QuantilesFunction(AggregateFunction):
         # quantile, so we need one more set of brackets than you might expect.
         values = [[
             sorted_args[
-                min(len(sorted_args) * i / (num_quantiles - 1),
+                min(len(sorted_args) * i // (num_quantiles - 1),
                     len(sorted_args) - 1)
-            ] for i in xrange(num_quantiles)
+            ] for i in six.moves.xrange(num_quantiles)
         ]]
         return context.Column(type=tq_types.INT, mode=tq_modes.REPEATED,
                               values=values)
@@ -985,7 +986,7 @@ class NumericArgReduceFunction(AggregateFunction):
             # is usually to return NULL if any arguments are NULL.
             if any(arg is None for arg in args):
                 return None
-            return reduce(self.reducer, args)
+            return functools.reduce(self.reducer, args)
 
         values = [apply(*vals)
                   for vals in zip(*[col.values for col in columns])]
