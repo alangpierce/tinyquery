@@ -92,7 +92,7 @@ class Compiler(object):
         """
         table_ctx = table_expr.type_ctx
         star_select_fields = []
-        for table_name, col_name in table_ctx.columns.iterkeys():
+        for table_name, col_name in table_ctx.columns:
             if table_name is not None:
                 col_ref = table_name + '.' + col_name
             else:
@@ -111,9 +111,9 @@ class Compiler(object):
             elif (field.expr and isinstance(field.expr, tq_ast.ColumnId) and
                   field.expr.name.endswith('.*')):
                 prefix = field.expr.name[:-len('.*')]
-                record_star_fields = filter(
-                    lambda f: f.alias.startswith(prefix),
-                    star_select_fields)
+                record_star_fields = [f
+                                      for f in star_select_fields
+                                      if f.alias.startswith(prefix)]
                 result_fields.extend(record_star_fields)
             else:
                 result_fields.append(field)
@@ -264,8 +264,7 @@ class Compiler(object):
             [table_expr.base],
             (join_part.table_expr for join_part in table_expr.join_parts)
         )
-        compiled_result = map(self.compile_joined_table,
-                              table_expressions)
+        compiled_result = [self.compile_joined_table(x) for x in table_expressions]
         compiled_table_exprs, compiled_aliases = zip(*compiled_result)
         type_contexts = [compiled_table.type_ctx
                          for compiled_table in compiled_table_exprs]

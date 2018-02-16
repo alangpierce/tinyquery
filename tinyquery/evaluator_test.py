@@ -890,7 +890,7 @@ class EvaluatorTest(unittest.TestCase):
             'SELECT HASH(floats) FROM rainbow_table',
             self.make_context([
                 ('f0_', tq_types.INT,
-                 map(hash, [1.41, 2.72, float('infinity')]))]))
+                 [hash(x) for x in [1.41, 2.72, float('infinity')]])]))
 
     def test_null_hash(self):
         self.assert_query_result(

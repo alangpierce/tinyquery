@@ -91,7 +91,7 @@ class TinyQuery(object):
             if value is None:
                 return None
             elif mode == tq_modes.REPEATED:
-                return map(cast_function, value)
+                return [cast_function(x) for x in value]
             else:
                 if isinstance(value, tq_types.BINARY_TYPE):
                     return cast_function(value.decode('utf-8'))
@@ -201,7 +201,7 @@ class TinyQuery(object):
     def get_table_names_for_dataset(self, dataset):
         # TODO(alan): Improve this to use a more first-class dataset structure.
         return [full_table[len(dataset + '.'):]
-                for full_table in self.tables_by_name.iterkeys()
+                for full_table in self.tables_by_name
                 if full_table.startswith(dataset + '.')]
 
     def get_all_table_info_in_dataset(self, project_id, dataset):

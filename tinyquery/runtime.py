@@ -160,9 +160,8 @@ class ArithmeticOperator(ScalarFunction):
             return tq_types.INT
 
     def _evaluate(self, num_rows, column1, column2):
-        values = map(lambda (x, y):
-                     None if None in (x, y) else self.func(x, y),
-                     zip(column1.values, column2.values))
+        values = [None if None in (x, y) else self.func(x, y)
+                  for x, y in zip(column1.values, column2.values)]
         # TODO(Samantha): Code smell incoming
         t = self.check_types(column1.type, column2.type)
         return context.Column(type=t, mode=tq_modes.NULLABLE, values=values)
@@ -212,8 +211,8 @@ class ComparisonOperator(ScalarFunction):
             if other_column.type == tq_types.STRING:
                 # Convert that string to datetime if we can.
                 try:
-                    converted = map(lambda x: arrow.get(x).to('UTC').naive,
-                                    other_column.values)
+                    converted = [arrow.get(x).to('UTC').native
+                                 for x in other_column.values]
                 except:
                     raise TypeError('Invalid comparison on timestamp, '
                                     'expected numeric type or ISO8601 '
@@ -221,10 +220,8 @@ class ComparisonOperator(ScalarFunction):
             elif other_column.type in tq_types.NUMERIC_TYPE_SET:
                 # Cast that numeric to a float accounting for microseconds and
                 # then to a datetime.
-                converted = map(
-                    pass_through_none(
-                        lambda x: arrow.get(float(x) / 1E6).to('UTC').naive),
-                    other_column.values)
+                convert = pass_through_none(lambda x: arrow.get(float(x) / 1E6).to('UTC').naive)
+                converted = [convert(x) for x in other_column.values]
 
             else:
                 # No other way to compare a timestamp with anything other than
@@ -239,9 +236,8 @@ class ComparisonOperator(ScalarFunction):
                                      mode=other_column.mode,
                                      values=converted)
 
-        values = map(lambda (x, y):
-                     None if None in (x, y) else self.func(x, y),
-                     zip(column1.values, column2.values))
+        values = [None if None in (x, y) else self.func(x, y)
+                  for x, y in zip(column1.values, column2.values)]
         return context.Column(type=tq_types.BOOL, mode=tq_modes.NULLABLE,
                               values=values)
 
@@ -256,9 +252,8 @@ class BooleanOperator(ScalarFunction):
         return tq_types.BOOL
 
     def _evaluate(self, num_rows, column1, column2):
-        values = map(lambda (x, y):
-                     None if None in (x, y) else self.func(x, y),
-                     zip(column1.values, column2.values))
+        values = [None if None in (x, y) else self.func(x, y)
+                  for x, y in zip(column1.values, column2.values)]
         return context.Column(type=tq_types.BOOL, mode=tq_modes.NULLABLE,
                               values=values)
 
@@ -273,7 +268,7 @@ class UnaryIntOperator(ScalarFunction):
         return tq_types.INT
 
     def _evaluate(self, num_rows, column):
-        values = map(self.func, column.values)
+        values = [self.func(x) for x in column.values]
         return context.Column(type=tq_types.INT, mode=tq_modes.NULLABLE,
                               values=values)
 
@@ -286,7 +281,7 @@ class UnaryBoolOperator(ScalarFunction):
         return tq_types.BOOL
 
     def _evaluate(self, num_rows, column):
-        values = map(self.func, column.values)
+        values = [self.func(x) for x in column.values]
         return context.Column(type=tq_types.BOOL, mode=tq_modes.NULLABLE,
                               values=values)
 
@@ -304,7 +299,7 @@ class LogFunction(ScalarFunction):
         return tq_types.FLOAT
 
     def _evaluate(self, num_rows, column):
-        values = map(self.func, column.values)
+        values = [self.func(x) for x in column.values]
         return context.Column(type=tq_types.FLOAT, mode=tq_modes.NULLABLE,
                               values=values)
 
@@ -343,8 +338,8 @@ class IfNullFunction(ScalarFunction):
 
     def _evaluate(self, num_rows, column1, column2):
         t = self.check_types(column1.type, column2.type)
-        values = map(lambda (x, y): x if x is not None else y,
-                     zip(column1.values, column2.values))
+        values = [x if x is not None else y
+                  for x, y in zip(column1.values, column2.values)]
         return context.Column(type=t, mode=tq_modes.NULLABLE, values=values)
 
 
@@ -364,11 +359,11 @@ class CoalesceFunction(ScalarFunction):
         rows = zip(*[col.values for col in cols])
 
         def first_nonnull(row):
-            result = filter(lambda x: x is not None, row)
-            if result:
-                return result[0]
+            for x in row:
+                if x is not None:
+                    return x
             return None
-        values = map(first_nonnull, rows)
+        values = [first_nonnull(r) for r in rows]
         return context.Column(type=result_type, mode=tq_modes.NULLABLE,
                               values=values)
 
@@ -379,7 +374,8 @@ class HashFunction(ScalarFunction):
 
     def _evaluate(self, num_rows, column):
         # TODO: Use CityHash.
-        values = map(pass_through_none(hash), column.values)
+        hash_fn = pass_through_none(hash)
+        values = [hash_fn(x) for x in column.values]
         return context.Column(type=tq_types.INT, mode=tq_modes.NULLABLE,
                               values=values)
 
@@ -391,8 +387,8 @@ class FloorFunction(ScalarFunction):
         return tq_types.FLOAT
 
     def _evaluate(self, num_rows, column):
-        values = map(pass_through_none(math.floor),
-                     column.values)
+        floor = pass_through_none(math.floor)
+        values = [floor(x) for x in column.values]
         return context.Column(type=tq_types.FLOAT, mode=tq_modes.NULLABLE,
                               values=values)
 
@@ -414,7 +410,7 @@ class IntegerCastFunction(ScalarFunction):
             converter = string_converter
         elif column.type == tq_types.TIMESTAMP:
             return timestamp_to_usec.evaluate(num_rows, column)
-        values = map(converter, column.values)
+        values = [converter(x) for x in  column.values]
         return context.Column(type=tq_types.INT, mode=tq_modes.NULLABLE,
                               values=values)
 
@@ -580,8 +576,7 @@ class InFunction(ScalarFunction):
     def _evaluate(self, num_rows, arg1, *other_args):
         values = [val1 in val_list
                   for val1, val_list in zip(arg1.values,
-                                            zip(*(map(lambda x: x.values,
-                                                      other_args))))]
+                                            zip(*[x.values for x in other_args]))]
         return context.Column(type=tq_types.BOOL, mode=tq_modes.NULLABLE,
                               values=values)
 
@@ -593,8 +588,8 @@ class ConcatFunction(AggregateFunction):
         return tq_types.STRING
 
     def _evaluate(self, num_rows, *columns):
-        values = map(lambda strs: None if None in strs else ''.join(strs),
-                     zip(*map(lambda x: x.values, columns)))
+        values = [None if None in strs else ''.join(strs)
+                  for strs in zip(*[c.values for c in columns])]
         return context.Column(tq_types.STRING, tq_modes.NULLABLE,
                               values=values)
 
@@ -604,7 +599,8 @@ class StringFunction(ScalarFunction):
         return tq_types.STRING
 
     def _evaluate(self, num_rows, column):
-        values = map(pass_through_none(str), column.values)
+        pass_through_none_str = pass_through_none(str)
+        values = [pass_through_none_str(x) for x in column.values]
         return context.Column(type=tq_types.STRING, mode=tq_modes.NULLABLE,
                               values=values)
 
@@ -619,8 +615,7 @@ class MinMaxFunction(AggregateFunction):
     def _evaluate(self, num_rows, column):
         return context.Column(type=self.check_types(column.type),
                               mode=tq_modes.NULLABLE,
-                              values=[self.func(filter(lambda x: x is not None,
-                                                       column.values))])
+                              values=[self.func([x for x in column.values if x is not None])])
 
 
 class SumFunction(AggregateFunction):
@@ -747,9 +742,8 @@ class ContainsFunction(ScalarFunction):
 
     def _evaluate(self, num_rows, column1, column2):
         if len(column1.values) == len(column2.values):
-            values = map(lambda (v1, v2): None if None in (v1, v2) else
-                         v2 in v1,
-                         zip(column1.values, column2.values))
+            values = [None if None in (v1, v2) else v2 in v1
+                      for v1, v2 in zip(column1.values, column2.values)]
             return context.Column(type=tq_types.BOOL, mode=tq_modes.NULLABLE,
                                   values=values)
 
@@ -772,13 +766,12 @@ class TimestampFunction(ScalarFunction):
             # epoch here, whereas arrow wants a unix timestamp, with possible
             # decimal part representing microseconds.
             converter = lambda ts: float(ts) / 1E6
+        convert_fn = pass_through_none(
+                # arrow.get parses ISO8601 strings and int/float unix
+                # timestamps without a format parameter
+                lambda ts: arrow.get(converter(ts)).to('UTC').naive)
         try:
-            values = map(
-                pass_through_none(
-                    # arrow.get parses ISO8601 strings and int/float unix
-                    # timestamps without a format parameter
-                    lambda ts: arrow.get(converter(ts)).to('UTC').naive),
-                column.values)
+            values = [convert_fn(x) for x in column.values]
         except:
             raise TypeError(
                 'TIMESTAMP requires an ISO8601 string or unix timestamp in '
@@ -798,7 +791,7 @@ class TimestampExtractFunction(ScalarFunction):
         return self.type
 
     def _evaluate(self, num_rows, column1):
-        values = map(self.extractor, column1.values)
+        values = [self.extractor(x) for x in column1.values]
         return context.Column(type=self.type, mode=tq_modes.NULLABLE,
                               values=values)
 
@@ -830,20 +823,19 @@ class DateAddFunction(ScalarFunction):
                 year = ts.year + (ts.month - 1 + num_intervals) // 12
                 month = 1 + (ts.month - 1 + num_intervals) % 12
                 return ts.replace(year=year, month=month)
-            values = map(adder, timestamps.values)
+            values = [adder(x) for x in timestamps.values]
         elif interval_type == 'YEAR':
-            values = map(
-                pass_through_none(
-                    lambda ts: ts.replace(year=(ts.year + num_intervals))),
-                timestamps.values)
+            convert_fn = pass_through_none(
+                    lambda ts: ts.replace(year=(ts.year + num_intervals)))
+            values = [convert_fn(x) for x in timestamps.values]
         else:
             # All of the other valid options for bigquery are also valid
             # keyword arguments to datetime.timedelta, when lowercased and
             # pluralized.
             python_interval_name = interval_type.lower() + 's'
             delta = datetime.timedelta(**{python_interval_name: num_intervals})
-            values = map(pass_through_none(lambda ts: ts + delta),
-                         timestamps.values)
+            convert_fn = pass_through_none(lambda ts: ts + delta)
+            values = [convert_fn(x) for x in timestamps.values]
 
         return context.Column(type=tq_types.TIMESTAMP, mode=tq_modes.NULLABLE,
                               values=values)
@@ -857,9 +849,8 @@ class DateDiffFunction(ScalarFunction):
         return tq_types.INT
 
     def _evaluate(self, num_rows, lhs_ts, rhs_ts):
-        values = map(lambda (lhs, rhs): None if None in (lhs, rhs) else
-                     int(round((lhs - rhs).total_seconds() / 24 / 3600)),
-                     zip(lhs_ts.values, rhs_ts.values))
+        values = [None if None in (lhs, rhs) else int(round((lhs - rhs).total_seconds() / 24 / 3600))
+                  for lhs, rhs in zip(lhs_ts.values, rhs_ts.values)]
         return context.Column(type=tq_types.INT, mode=tq_modes.NULLABLE,
                               values=values)
 
@@ -915,7 +906,7 @@ class TimestampShiftFunction(ScalarFunction):
     def _evaluate(self, num_rows, timestamps):
         truncate_fn = pass_through_none(
             getattr(self, '_%s_truncate' % self.interval))
-        values = map(truncate_fn, timestamps.values)
+        values = [truncate_fn(x) for x in timestamps.values]
         return context.Column(type=tq_types.TIMESTAMP, mode=tq_modes.NULLABLE,
                               values=values)
 
@@ -942,11 +933,10 @@ class UnixTimestampToWeekdayFunction(ScalarFunction):
         timestamps = TimestampFunction().evaluate(num_rows, unix_timestamps)
         truncated = TimestampShiftFunction('day').evaluate(
             num_rows, timestamps)
-        values = map(
-            pass_through_none(
+        convert = pass_through_none(
                 lambda ts: ts + datetime.timedelta(
-                    days=(weekday - self._weekday_from_ts(ts)))),
-            truncated.values)
+                    days=(weekday - self._weekday_from_ts(ts))))
+        values = [convert(x) for x in truncated.values]
         ts_result = context.Column(
             type=tq_types.TIMESTAMP, mode=tq_modes.NULLABLE, values=values)
         return timestamp_to_usec.evaluate(num_rows, ts_result)
@@ -968,9 +958,8 @@ class StrftimeFunction(ScalarFunction):
     def _evaluate(self, num_rows, unix_timestamps, formats):
         format_str = _ensure_literal(formats.values)
         timestamps = TimestampFunction().evaluate(num_rows, unix_timestamps)
-        values = map(
-            pass_through_none(lambda ts: ts.strftime(format_str)),
-            timestamps.values)
+        convert = pass_through_none(lambda ts: ts.strftime(format_str))
+        values = [convert(x) for x in timestamps.values]
         return context.Column(type=tq_types.STRING, mode=tq_modes.NULLABLE,
                               values=values)
 
@@ -1042,9 +1031,11 @@ class JSONExtractFunction(ScalarFunction):
             raise ValueError(
                 'Invalid json path expression. Cannot end in ".".')
         prop_name_plus = json_path[1:]
-        next_separator_positions = filter(
-            lambda pos: pos != -1,
-            [prop_name_plus.find('.'), prop_name_plus.find('[')])
+        next_separator_positions = [
+            pos
+            for pos in [prop_name_plus.find('.'), prop_name_plus.find('[')]
+            if pos != -1
+        ]
 
         if next_separator_positions:
             end_idx = min(next_separator_positions)
@@ -1105,9 +1096,9 @@ class JSONExtractFunction(ScalarFunction):
 
     def _evaluate(self, num_rows, json_expressions, json_paths):
         json_path = _ensure_literal(json_paths.values)
-        parsed_json = map(
-            pass_through_none(json.loads),
-            json_expressions.values)
+        json_load = pass_through_none(json.loads)
+        parsed_json = [json_load(x)
+                       for x in json_expressions.values]
         if not json_path.startswith('$'):
             raise ValueError(
                 'Invalid json path expression.  Must start with $.')

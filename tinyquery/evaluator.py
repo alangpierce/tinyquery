@@ -190,11 +190,11 @@ class Evaluator(object):
         reversed_sort_by_indexes = collections.OrderedDict(
             reversed(list(sort_by_indexes.items())))
 
-        t_all_values = map(list, zip(*all_values))
+        t_all_values = [list(z) for z in zip(*all_values)]
         for index, is_ascending in reversed_sort_by_indexes.iteritems():
             t_all_values.sort(key=lambda x: (x[index]),
                               reverse=not is_ascending)
-        ordered_values = map(list, zip(*t_all_values))
+        ordered_values = [list(z) for z in zip(*t_all_values)]
         # If we started evaluating an ordering over 0 rows,
         # all_values was originally [[], [], [], ...], i.e. the empty list for
         # each column, but now ordered_values is just the empty list, since
@@ -395,7 +395,7 @@ class Evaluator(object):
     def eval_table_Join(self, table_expr):
         base_context = self.evaluate_table_expr(table_expr.base)
         rhs_tables, join_types = zip(*table_expr.tables)
-        other_contexts = map(self.evaluate_table_expr, rhs_tables)
+        other_contexts = [self.evaluate_table_expr(x) for x in rhs_tables]
 
         lhs_context = base_context
 

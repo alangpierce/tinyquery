@@ -157,7 +157,7 @@ class JobServiceApiClient(object):
                 create_disposition, write_disposition)
         else:
             assert False, 'Unknown job type: {}'.format(
-                body['configuration'].keys())
+                list(body['configuration'].keys()))
 
     @staticmethod
     def _get_config_table(config, key):
