@@ -1,12 +1,14 @@
 # TODO(colin): fix these lint errors (http://pep8.readthedocs.io/en/release-1.7.x/intro.html#error-codes)
 # pep8-disable:E115,E128
+from __future__ import absolute_import
+
 import collections
 
-import context
-import tq_ast
-import tq_modes
-import typed_ast
-import tq_types
+from tinyquery import context
+from tinyquery import tq_ast
+from tinyquery import tq_modes
+from tinyquery import typed_ast
+from tinyquery import tq_types
 
 
 class Evaluator(object):

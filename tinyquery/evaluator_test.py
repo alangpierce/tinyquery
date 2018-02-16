@@ -1,15 +1,17 @@
 # TODO(colin): fix these lint errors (http://pep8.readthedocs.io/en/release-1.7.x/intro.html#error-codes)
 # pep8-disable:E122,E127,E128
+from __future__ import absolute_import
+
 import collections
 import contextlib
 import datetime
 import mock
 import unittest
 
-import context
-import tinyquery
-import tq_modes
-import tq_types
+from tinyquery import context
+from tinyquery import tinyquery
+from tinyquery import tq_modes
+from tinyquery import tq_types
 
 
 # TODO(Samantha): Not all modes are nullable.

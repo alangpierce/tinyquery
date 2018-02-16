@@ -4,6 +4,8 @@
 
 This can be used in place of the value returned by apiclient.discovery.build().
 """
+from __future__ import absolute_import
+
 import functools
 import json
 

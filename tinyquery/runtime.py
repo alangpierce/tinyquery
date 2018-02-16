@@ -1,4 +1,6 @@
 """Implementation of the standard built-in functions."""
+from __future__ import absolute_import
+
 import abc
 import datetime
 import functools
@@ -10,11 +12,11 @@ import time
 
 import arrow
 
-import compiler
-import context
-import repeated_util
-import tq_types
-import tq_modes
+from tinyquery import exceptions
+from tinyquery import context
+from tinyquery import repeated_util
+from tinyquery import tq_types
+from tinyquery import tq_modes
 
 
 def pass_through_none(fn):
@@ -1347,7 +1349,7 @@ def get_func(name):
     elif name in _AGGREGATE_FUNCTIONS:
         return _AGGREGATE_FUNCTIONS[name]
     else:
-        raise compiler.CompileError('Unknown function: {}'.format(name))
+        raise exceptions.CompileError('Unknown function: {}'.format(name))
 
 
 def is_aggregate_func(name):
