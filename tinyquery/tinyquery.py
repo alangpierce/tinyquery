@@ -93,7 +93,7 @@ class TinyQuery(object):
             elif mode == tq_modes.REPEATED:
                 return map(cast_function, value)
             else:
-                if isinstance(value, str):
+                if isinstance(value, tq_types.BINARY_TYPE):
                     return cast_function(value.decode('utf-8'))
                 else:
                     return cast_function(value)
@@ -381,7 +381,7 @@ class Table(object):
     def __init__(self, name, num_rows, columns):
         assert isinstance(columns, collections.OrderedDict)
         for col_name, column in columns.iteritems():
-            assert isinstance(col_name, basestring)
+            assert isinstance(col_name, tq_types.STRING_TYPE)
             assert len(column.values) == num_rows, (
                 'Column %s had %s rows, expected %s.' % (
                     col_name, len(column.values), num_rows))

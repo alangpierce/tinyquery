@@ -2,7 +2,11 @@
 """
 from __future__ import absolute_import
 
+import sys
+
 import arrow
+
+PY3 = sys.version_info[0] == 3
 
 # TODO(Samantha): Structs.
 
@@ -22,11 +26,12 @@ CAST_FUNCTION_MAP = {
     INT: int,
     FLOAT: float,
     BOOL: bool,
-    STRING: unicode,
+    STRING: str if PY3 else unicode,
     TIMESTAMP: lambda val: arrow.get(val).to('UTC').naive,
     NONETYPE: lambda _: None,
     'null': lambda _: None
 }
 DATETIME_TYPE_SET = set([INT, STRING, TIMESTAMP])
 
-TYPE_TYPE = basestring
+BINARY_TYPE = bytes if PY3 else str
+TYPE_TYPE = STRING_TYPE = str if PY3 else basestring
