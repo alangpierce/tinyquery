@@ -214,14 +214,16 @@ class ComparisonOperator(ScalarFunction):
                 try:
                     converted = [arrow.get(x).to('UTC').native
                                  for x in other_column.values]
-                except:
+                except Exception:
                     raise TypeError('Invalid comparison on timestamp, '
                                     'expected numeric type or ISO8601 '
                                     'formatted string.')
             elif other_column.type in tq_types.NUMERIC_TYPE_SET:
                 # Cast that numeric to a float accounting for microseconds and
                 # then to a datetime.
-                convert = pass_through_none(lambda x: arrow.get(float(x) / 1E6).to('UTC').naive)
+                convert = pass_through_none(
+                    lambda x: arrow.get(float(x) / 1E6).to('UTC').naive
+                )
                 converted = [convert(x) for x in other_column.values]
 
             else:
@@ -411,7 +413,7 @@ class IntegerCastFunction(ScalarFunction):
             converter = string_converter
         elif column.type == tq_types.TIMESTAMP:
             return timestamp_to_usec.evaluate(num_rows, column)
-        values = [converter(x) for x in  column.values]
+        values = [converter(x) for x in column.values]
         return context.Column(type=tq_types.INT, mode=tq_modes.NULLABLE,
                               values=values)
 
@@ -566,8 +568,9 @@ class NoArgFunction(ScalarFunction):
         return self.type
 
     def _evaluate(self, num_rows):
-        return context.Column(type=self.type, mode=tq_modes.NULLABLE,
-                              values=[self.func() for _ in six.moves.xrange(num_rows)])
+        return context.Column(
+            type=self.type, mode=tq_modes.NULLABLE,
+            values=[self.func() for _ in six.moves.xrange(num_rows)])
 
 
 class InFunction(ScalarFunction):
@@ -575,9 +578,11 @@ class InFunction(ScalarFunction):
         return tq_types.BOOL
 
     def _evaluate(self, num_rows, arg1, *other_args):
-        values = [val1 in val_list
-                  for val1, val_list in zip(arg1.values,
-                                            zip(*[x.values for x in other_args]))]
+        values = [
+            val1 in val_list
+            for val1, val_list in zip(arg1.values,
+                                      zip(*[x.values for x in other_args]))
+        ]
         return context.Column(type=tq_types.BOOL, mode=tq_modes.NULLABLE,
                               values=values)
 
@@ -614,9 +619,10 @@ class MinMaxFunction(AggregateFunction):
         return arg
 
     def _evaluate(self, num_rows, column):
-        return context.Column(type=self.check_types(column.type),
-                              mode=tq_modes.NULLABLE,
-                              values=[self.func([x for x in column.values if x is not None])])
+        return context.Column(
+            type=self.check_types(column.type),
+            mode=tq_modes.NULLABLE,
+            values=[self.func([x for x in column.values if x is not None])])
 
 
 class SumFunction(AggregateFunction):
@@ -687,9 +693,14 @@ class GroupConcatUnquotedFunction(AggregateFunction):
         # TODO: this implementation supports repeated fields but we have not
         # confirmed that bigquery does (if it doesn't, this should be removed)
         if column.mode == tq_modes.REPEATED:
-            values = [separator.join([v for val_list in column.values for v in val_list if v])]
+            values = [separator.join([v
+                                      for val_list in column.values
+                                      for v in val_list
+                                      if v])]
         else:
-            values = [separator.join([v for v in column.values if v is not None])]
+            values = [separator.join([v
+                                      for v in column.values
+                                      if v is not None])]
         return context.Column(type=self.check_types(column.type),
                               mode=tq_modes.NULLABLE,
                               values=values)
@@ -773,7 +784,7 @@ class TimestampFunction(ScalarFunction):
                 lambda ts: arrow.get(converter(ts)).to('UTC').naive)
         try:
             values = [convert_fn(x) for x in column.values]
-        except:
+        except Exception:
             raise TypeError(
                 'TIMESTAMP requires an ISO8601 string or unix timestamp in '
                 'microseconds (or something that is already a timestamp).')
@@ -850,7 +861,8 @@ class DateDiffFunction(ScalarFunction):
         return tq_types.INT
 
     def _evaluate(self, num_rows, lhs_ts, rhs_ts):
-        values = [None if None in (lhs, rhs) else int(round((lhs - rhs).total_seconds() / 24 / 3600))
+        values = [(None if None in (lhs, rhs)
+                   else int(round((lhs - rhs).total_seconds() / 24 / 3600)))
                   for lhs, rhs in zip(lhs_ts.values, rhs_ts.values)]
         return context.Column(type=tq_types.INT, mode=tq_modes.NULLABLE,
                               values=values)

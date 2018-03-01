@@ -665,7 +665,8 @@ class EvaluatorTest(unittest.TestCase):
         self.skipTest("Ordering by an aggregate field is not yet supported")
         # TODO: this is not yet supported
         self.assert_query_result(
-            'SELECT val1, MAX(val2) as m FROM test_table GROUP BY val1 ORDER BY m',
+            'SELECT val1, MAX(val2) as m '
+            'FROM test_table GROUP BY val1 ORDER BY m',
             self.make_context([
                 ('val1', tq_types.INT, [1, 2, 8, 4]),
                 ('m', tq_types.INT, [2, 4, 6, 8]),
@@ -817,7 +818,8 @@ class EvaluatorTest(unittest.TestCase):
     def test_join_ordering(self):
         # Using aliases
         self.assert_query_result(
-            'SELECT t1.val1 as v1, t1.val2 as v2, t3.foo as foo, t3.bar as bar FROM test_table t1'
+            'SELECT t1.val1 as v1, t1.val2 as v2, t3.foo as foo, t3.bar as bar'
+            '    FROM test_table t1'
             '    JOIN test_table_3 t3 ON t1.val1 = t3.foo ORDER BY v2, bar',
             self.make_context([
                 ('v1', tq_types.INT, [1, 1, 1, 1, 2, 4]),

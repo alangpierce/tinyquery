@@ -135,6 +135,7 @@ class JoinType(object):
     def __str__(self):
         return '%s JOIN' % self.name
 
+
 JoinType.LEFT_OUTER = JoinType('LEFT OUTER')
 JoinType.INNER = JoinType('INNER')
 JoinType.CROSS = JoinType('CROSS')

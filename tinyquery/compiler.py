@@ -264,7 +264,8 @@ class Compiler(object):
             [table_expr.base],
             (join_part.table_expr for join_part in table_expr.join_parts)
         )
-        compiled_result = [self.compile_joined_table(x) for x in table_expressions]
+        compiled_result = [self.compile_joined_table(x)
+                           for x in table_expressions]
         compiled_table_exprs, compiled_aliases = zip(*compiled_result)
         type_contexts = [compiled_table.type_ctx
                          for compiled_table in compiled_table_exprs]
@@ -278,8 +279,9 @@ class Compiler(object):
             type_contexts)
         return typed_ast.Join(
             base=compiled_table_exprs[0],
-            # wrapping in list() for python 3 support (shouldn't be a large number
-            # of items so performance impact should be minimal)
+            # wrapping in list() for python 3 support (shouldn't be a
+            # large number of items so performance impact should be
+            # minimal)
             tables=list(zip(compiled_table_exprs[1:],
                             (join_part.join_type
                              for join_part in table_expr.join_parts))),
@@ -294,7 +296,8 @@ class Compiler(object):
         elif isinstance(table_expr, tq_ast.TableId):
             alias = table_expr.name
         else:
-            raise exceptions.CompileError('Table expression must have an alias name.')
+            raise exceptions.CompileError(
+                'Table expression must have an alias name.')
         result_ctx = compiled_table.type_ctx.context_with_full_alias(alias)
         compiled_table = compiled_table.with_type_ctx(result_ctx)
         return compiled_table, alias
@@ -366,9 +369,10 @@ class Compiler(object):
                                                      left_column_id)]
                     # Fall through to the error case if the aliases are the
                     # same for both sides.
-            raise exceptions.CompileError('JOIN conditions must consist of an AND of = '
-                               'comparisons between two field on distinct '
-                               'tables. Got expression %s' % expr)
+            raise exceptions.CompileError(
+                'JOIN conditions must consist of an AND of = '
+                'comparisons between two field on distinct '
+                'tables. Got expression %s' % expr)
         return [compile_join_field(expr, join_type)
                 for expr, join_type in zip(conditions, join_types)]
 
@@ -485,8 +489,9 @@ class Compiler(object):
         try:
             result_type = func.check_types(compiled_val.type)
         except TypeError:
-            raise exceptions.CompileError('Invalid type for operator {}: {}'.format(
-                expr.operator, [compiled_val.type]))
+            raise exceptions.CompileError(
+                'Invalid type for operator {}: {}'.format(
+                    expr.operator, [compiled_val.type]))
         return typed_ast.FunctionCall(func, [compiled_val], result_type)
 
     # TODO(Samantha): Don't pass the type, just pass the column so that mode is
@@ -501,9 +506,10 @@ class Compiler(object):
             result_type = func.check_types(compiled_left.type,
                                            compiled_right.type)
         except TypeError:
-            raise exceptions.CompileError('Invalid types for operator {}: {}'.format(
-                expr.operator, [arg.type for arg in [compiled_left,
-                                                     compiled_right]]))
+            raise exceptions.CompileError(
+                'Invalid types for operator {}: {}'.format(
+                    expr.operator, [arg.type for arg in [compiled_left,
+                                                         compiled_right]]))
 
         return typed_ast.FunctionCall(
             func, [compiled_left, compiled_right], result_type)
@@ -530,8 +536,9 @@ class Compiler(object):
             result_type = func.check_types(
                 *(arg.type for arg in compiled_args))
         except TypeError:
-            raise exceptions.CompileError('Invalid types for function {}: {}'.format(
-                expr.name, [arg.type for arg in compiled_args]))
+            raise exceptions.CompileError(
+                'Invalid types for function {}: {}'.format(
+                    expr.name, [arg.type for arg in compiled_args]))
         return ast_type(func, compiled_args, result_type)
 
     def compile_CaseExpression(self, expr, type_ctx):

@@ -58,6 +58,8 @@ class GroupSet(collections.namedtuple(
         field_groups: A list of ColumnRefs referencing columns in the table
             expression of the SELECT statement.
     """
+
+
 # This special GroupSet means "group by nothing". In other words, everything
 # should end up in the same group (which happens when an aggregate function is
 # used, but no GROUP BY groups are specified explicitly). It's almost enough to

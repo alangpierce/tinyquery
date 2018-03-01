@@ -156,9 +156,11 @@ class Evaluator(object):
         Returns:
             A context with the results.
         """
-        # A dict of aliases for select fields since an order by field might be an alias
+        # A dict of aliases for select fields since an order by field
+        # might be an alias
         select_aliases = collections.OrderedDict(
-            (select_field.alias, (select_field.expr.table, select_field.expr.column))
+            (select_field.alias,
+             (select_field.expr.table, select_field.expr.column))
             for select_field in select_fields
         )
 
@@ -178,7 +180,8 @@ class Evaluator(object):
                     # order by column is of the form `table_name.col`
                     '%s.%s' % column_identifier_pair == order_column_name
                     # order by column is an alias
-                    or select_aliases.get(order_column_name) == column_identifier_pair
+                    or (select_aliases.get(order_column_name) ==
+                        column_identifier_pair)
                     or (
                         # order by column is just the field name
                         # but not if that field name is also an alias
@@ -208,13 +211,15 @@ class Evaluator(object):
             ordered_values = all_values
 
         for key in select_context.columns:
-            for count, overall_column_identifier_pair in enumerate(overall_context.columns):
+            for count, overall_column_identifier_pair in (
+                    enumerate(overall_context.columns)):
                 overall_context_loop_break = False
                 if (
                     key == overall_column_identifier_pair
                     or not key[0] and (
                         key[1] == '%s.%s' % overall_column_identifier_pair
-                        or select_aliases.get(key[1]) == overall_column_identifier_pair
+                        or (select_aliases.get(key[1]) ==
+                            overall_column_identifier_pair)
                     )
                 ):
                     select_context.columns[key] = context.Column(
@@ -313,7 +318,8 @@ class Evaluator(object):
             context.append_context_to_context(ctx, ctx_with_primary_key)
 
             table_name = next(iter(ctx_with_primary_key.columns))
-            row_nums = list(six.moves.xrange(1, ctx_with_primary_key.num_rows + 1))
+            row_nums = list(
+                six.moves.xrange(1, ctx_with_primary_key.num_rows + 1))
             row_nums_col = context.Column(
                 type=tq_types.INT, mode=tq_modes.NULLABLE, values=row_nums)
             ctx_with_primary_key.columns[(table_name,
@@ -501,7 +507,8 @@ class Evaluator(object):
         return func_call.func.evaluate(context.num_rows, *arg_results)
 
     def evaluate_Literal(self, literal, context_object):
-        values = [literal.value for _ in six.moves.xrange(context_object.num_rows)]
+        values = [literal.value
+                  for _ in six.moves.xrange(context_object.num_rows)]
         return context.Column(type=literal.type, mode=tq_modes.NULLABLE,
                               values=values)
 

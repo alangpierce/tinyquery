@@ -141,7 +141,8 @@ class TypeContext(collections.namedtuple(
             if self.implicit_column_context is not None:
                 return self.implicit_column_context.column_ref_for_name(name)
             else:
-                raise exceptions.CompileError('Field not found: {}'.format(name))
+                raise exceptions.CompileError(
+                    'Field not found: {}'.format(name))
 
     def context_with_subquery_alias(self, subquery_alias):
         """Handle the case where a subquery has an alias.
